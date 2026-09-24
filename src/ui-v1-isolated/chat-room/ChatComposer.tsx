@@ -27,11 +27,10 @@ import {
   cancelPlayerTurnDraft,
   loadPlayerTurnDraft,
   newPlayerTurnCommandId,
-  orderedPlayerTurnComponents,
-  reorderPlayerTurnComponents,
+  reorderPlayerTurnEntries,
   savePlayerTurnDraft,
   submitPlayerTurnDraft,
-  type PlayerTurnComponent,
+  withPlayerTurnCommandId,
   type PlayerTurnDraft,
   type PlayerTurnEntry,
   type PlayerTurnSlot,
@@ -48,6 +47,45 @@ const ACTION_MENU_ITEMS: Array<{
   { mode: "item", label: "Инвентарь", hint: "Предметы и расходники" },
   { mode: "action", label: "Атака", hint: "Оружие и боевые действия" },
 ]
+
+function turnEconomyLabel(entry: PlayerTurnEntry) {
+  const economy = String(entry.economy || "")
+  if (entry.kind === "movement" || economy === "movement") return "Движение"
+  if (economy === "bonus_action") return "Бонус"
+  if (economy === "reaction") return "Реакция"
+  return "Действие"
+}
+
+function planWithMovement(
+  entries: PlayerTurnEntry[],
+  description: string,
+) {
+  const next = [...entries]
+  const index = next.findIndex((entry) => entry.kind === "movement")
+  const value = description.trim()
+
+  if (!value) {
+    return index >= 0
+      ? next.filter((_, entryIndex) => entryIndex !== index)
+      : next
+  }
+
+  const movement: PlayerTurnEntry = {
+    ...(index >= 0 ? next[index] : {}),
+    kind: "movement",
+    label: "Перемещение",
+    economy: "movement",
+    description: value,
+    commandId:
+      index >= 0 && typeof next[index]?.commandId === "string"
+        ? next[index].commandId
+        : newPlayerTurnCommandId(),
+  }
+
+  if (index >= 0) next[index] = movement
+  else next.push(movement)
+  return next
+}
 
 function PlusIcon() {
   return (
@@ -278,8 +316,7 @@ export default function ChatComposer({
   )
 
   const hasQueuedTurnContent = Boolean(
-    turnDraft?.action_entry ||
-      turnDraft?.bonus_action_entry ||
+    (turnDraft?.plan_entries || []).length ||
       movementText.trim() ||
       text.trim(),
   )
@@ -382,7 +419,14 @@ export default function ChatComposer({
       .then((draft) => {
         if (cancelled) return
         setTurnDraft(draft)
-        setMovementText(draft?.movement?.description || "")
+        const movement = (draft?.plan_entries || []).find(
+          (entry) => entry.kind === "movement",
+        )
+        setMovementText(
+          typeof movement?.description === "string"
+            ? movement.description
+            : "",
+        )
         setText(draft?.description || "")
         setRecipientCharacterIds(draft?.recipient_character_ids || [])
       })
@@ -477,18 +521,10 @@ export default function ChatComposer({
   }
 
   const saveTurnState = async ({
-    actionEntry = turnDraft?.action_entry || null,
-    bonusActionEntry = turnDraft?.bonus_action_entry || null,
-    movement = movementText.trim()
-      ? { description: movementText.trim() }
-      : null,
-    componentOrder = turnDraft?.component_order || [],
+    planEntries = turnDraft?.plan_entries || [],
     description = text,
   }: {
-    actionEntry?: PlayerTurnEntry | null
-    bonusActionEntry?: PlayerTurnEntry | null
-    movement?: { description?: string } | null
-    componentOrder?: PlayerTurnComponent[]
+    planEntries?: PlayerTurnEntry[]
     description?: string
   } = {}) => {
     if (!queuePlayerTurn || !selectedCharacterId) {
@@ -498,16 +534,18 @@ export default function ChatComposer({
     const saved = await savePlayerTurnDraft({
       roomId: model.roomId,
       characterId: selectedCharacterId,
-      actionEntry,
-      bonusActionEntry,
-      movement,
-      componentOrder,
+      planEntries,
       description,
       expectedRevision: turnDraft?.revision ?? null,
       recipientCharacterIds,
     })
     setTurnDraft(saved)
-    setMovementText(saved.movement?.description || "")
+    const movement = (saved.plan_entries || []).find(
+      (entry) => entry.kind === "movement",
+    )
+    setMovementText(
+      typeof movement?.description === "string" ? movement.description : "",
+    )
     return saved
   }
 
@@ -517,11 +555,15 @@ export default function ChatComposer({
   ) => {
     setSendError(null)
     try {
-      if (slot === "bonus_action") {
-        await saveTurnState({ bonusActionEntry: entry })
-      } else {
-        await saveTurnState({ actionEntry: entry })
+      const current = turnDraft?.plan_entries || []
+      if (current.length >= 64) {
+        throw new Error("В одном плане можно держать не больше 64 компонентов.")
       }
+      const queued = withPlayerTurnCommandId({
+        ...entry,
+        economy: slot,
+      })
+      await saveTurnState({ planEntries: [...current, queued] })
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "Действие не добавлено в ход"
@@ -530,23 +572,18 @@ export default function ChatComposer({
     }
   }
 
-  const moveTurnComponent = async (
-    component: PlayerTurnComponent,
+  const moveTurnEntry = async (
+    index: number,
     direction: -1 | 1,
   ) => {
-    if (!turnDraft) return
-
-    const currentOrder = orderedPlayerTurnComponents(turnDraft)
-    const nextOrder = reorderPlayerTurnComponents(
-      currentOrder,
-      component,
-      direction,
-    )
-    if (nextOrder.join(":") === currentOrder.join(":")) return
+    const current = turnDraft?.plan_entries || []
+    if (!current.length) return
+    const next = reorderPlayerTurnEntries(current, index, direction)
+    if (next === current) return
 
     setSendError(null)
     try {
-      await saveTurnState({ componentOrder: nextOrder })
+      await saveTurnState({ planEntries: next })
     } catch (error) {
       setSendError(
         error instanceof Error ? error.message : "Порядок хода не изменён",
@@ -554,29 +591,41 @@ export default function ChatComposer({
     }
   }
 
-  const clearTurnSlot = async (slot: PlayerTurnSlot) => {
+  const clearTurnEntry = async (index: number) => {
     setSendError(null)
     try {
-      await saveTurnState(
-        slot === "action"
-          ? {
-              actionEntry: null,
-              componentOrder: orderedPlayerTurnComponents(turnDraft).filter(
-                (component) => component !== "action",
-              ),
-            }
-          : {
-              bonusActionEntry: null,
-              componentOrder: orderedPlayerTurnComponents(turnDraft).filter(
-                (component) => component !== "bonus_action",
-              ),
-            },
-      )
+      const current = turnDraft?.plan_entries || []
+      const removed = current[index]
+      const next = current.filter((_, entryIndex) => entryIndex !== index)
+      await saveTurnState({ planEntries: next })
+      if (removed?.kind === "movement") setMovementText("")
     } catch (error) {
       setSendError(
-        error instanceof Error ? error.message : "Слот хода не очищен",
+        error instanceof Error ? error.message : "Компонент хода не удалён",
       )
     }
+  }
+
+  const updateReactionCondition = async (
+    index: number,
+    triggerCondition: string,
+  ) => {
+    const current = turnDraft?.plan_entries || []
+    const entry = current[index]
+    if (!entry || entry.economy !== "reaction") return
+    const next = current.map((item, entryIndex) =>
+      entryIndex === index
+        ? { ...item, triggerCondition: triggerCondition.slice(0, 600) }
+        : item,
+    )
+    await saveTurnState({ planEntries: next })
+  }
+
+  const saveMovement = async () => {
+    const current = turnDraft?.plan_entries || []
+    return saveTurnState({
+      planEntries: planWithMovement(current, movementText),
+    })
   }
 
   const cancelTurn = async () => {
@@ -607,9 +656,10 @@ export default function ChatComposer({
     try {
       if (queuePlayerTurn && selectedCharacterId) {
         const saved = await saveTurnState({
-          movement: movementText.trim()
-            ? { description: movementText.trim() }
-            : null,
+          planEntries: planWithMovement(
+            turnDraft?.plan_entries || [],
+            movementText,
+          ),
           description: body,
         })
         const submitted = await submitPlayerTurnDraft({
@@ -708,81 +758,86 @@ export default function ChatComposer({
             data-turn-draft={turnDraft?.id || undefined}
             data-turn-loading={turnLoading || undefined}
           >
-            <div className="u1-player-turn__slots">
-              {(["action", "bonus_action"] as const).map((slot) => {
-                const entry =
-                  slot === "action"
-                    ? turnDraft?.action_entry
-                    : turnDraft?.bonus_action_entry
-                return (
+            <div className="u1-player-turn__plan-head">
+              <span>План хода</span>
+              <small>
+                До «Отправить» ИИ не видит способности, броски и расход ресурсов.
+              </small>
+            </div>
+
+            {(turnDraft?.plan_entries || []).length ? (
+              <div
+                className="u1-player-turn__order"
+                aria-label="Порядок заявленных компонентов хода"
+              >
+                {(turnDraft?.plan_entries || []).map((entry, index, order) => (
                   <div
-                    key={slot}
-                    className="u1-player-turn__slot"
-                    data-filled={Boolean(entry) || undefined}
+                    key={String(entry.commandId || index)}
+                    data-turn-component={String(entry.economy || entry.kind)}
                   >
-                    <span>{slot === "action" ? "Действие" : "Бонус"}</span>
-                    <strong>{entry?.label || "Не выбрано"}</strong>
-                    {entry ? (
+                    <span>{index + 1}</span>
+                    <strong>
+                      <em>{turnEconomyLabel(entry)}</em>
+                      {entry.kind === "movement"
+                        ? String(entry.description || "Перемещение")
+                        : entry.label}
+                    </strong>
+                    <div>
                       <button
                         type="button"
-                        aria-label={
-                          slot === "action"
-                            ? "Убрать действие из хода"
-                            : "Убрать бонусное действие из хода"
-                        }
-                        onClick={() => void clearTurnSlot(slot)}
+                        aria-label="Выше"
+                        disabled={index === 0 || sending}
+                        onClick={() => void moveTurnEntry(index, -1)}
+                      >
+                        ↑
+                      </button>
+                      <button
+                        type="button"
+                        aria-label="Ниже"
+                        disabled={index === order.length - 1 || sending}
+                        onClick={() => void moveTurnEntry(index, 1)}
+                      >
+                        ↓
+                      </button>
+                      <button
+                        type="button"
+                        aria-label="Убрать из плана"
+                        disabled={sending}
+                        onClick={() => void clearTurnEntry(index)}
                       >
                         ×
                       </button>
+                    </div>
+                    {entry.economy === "reaction" ? (
+                      <input
+                        className="u1-player-turn__reaction-condition"
+                        defaultValue={
+                          typeof entry.triggerCondition === "string"
+                            ? entry.triggerCondition
+                            : ""
+                        }
+                        maxLength={600}
+                        placeholder="Условие реакции, например: если маг начинает каст"
+                        disabled={sending || turnLoading}
+                        onBlur={(event) => {
+                          void updateReactionCondition(
+                            index,
+                            event.currentTarget.value,
+                          ).catch((error) => {
+                            setSendError(
+                              error instanceof Error
+                                ? error.message
+                                : "Условие реакции не сохранено",
+                            )
+                          })
+                        }}
+                      />
                     ) : null}
                   </div>
-                )
-              })}
-            </div>
-
-            {turnDraft && orderedPlayerTurnComponents(turnDraft).length > 1 ? (
-              <div
-                className="u1-player-turn__order"
-                aria-label="Порядок компонентов хода"
-              >
-                {orderedPlayerTurnComponents(turnDraft).map(
-                  (component, index, order) => (
-                    <div key={component} data-turn-component={component}>
-                      <span>{index + 1}</span>
-                      <strong>
-                        {component === "action"
-                          ? turnDraft.action_entry?.label || "Действие"
-                          : component === "bonus_action"
-                            ? turnDraft.bonus_action_entry?.label || "Бонус"
-                            : turnDraft.movement?.description || "Движение"}
-                      </strong>
-                      <div>
-                        <button
-                          type="button"
-                          aria-label="Выше"
-                          disabled={index === 0 || sending}
-                          onClick={() =>
-                            void moveTurnComponent(component, -1)
-                          }
-                        >
-                          ↑
-                        </button>
-                        <button
-                          type="button"
-                          aria-label="Ниже"
-                          disabled={index === order.length - 1 || sending}
-                          onClick={() =>
-                            void moveTurnComponent(component, 1)
-                          }
-                        >
-                          ↓
-                        </button>
-                      </div>
-                    </div>
-                  ),
-                )}
+                ))}
               </div>
             ) : null}
+
             <div className="u1-player-turn__movement">
               <span>Движение</span>
               <input
@@ -793,11 +848,7 @@ export default function ChatComposer({
                 onChange={(event) => setMovementText(event.target.value)}
                 onBlur={() => {
                   if (!queuePlayerTurn || !selectedCharacterId) return
-                  void saveTurnState({
-                    movement: movementText.trim()
-                      ? { description: movementText.trim() }
-                      : null,
-                  }).catch((error) => {
+                  void saveMovement().catch((error) => {
                     setSendError(
                       error instanceof Error
                         ? error.message
