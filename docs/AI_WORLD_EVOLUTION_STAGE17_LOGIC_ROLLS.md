@@ -1,6 +1,6 @@
 # Stage 17 — Canon-bound intent adjudication and real player rolls
 
-Status: PLANNED
+Status: IMPLEMENTED — 2026-09-24
 
 This stage exists because a player d20 answers **how well the character performs an action**. It does not get to decide whether an unstated world fact suddenly exists.
 
@@ -159,3 +159,19 @@ Stage 17 is **not complete** if:
 4. Deterministic open door -> no roll.
 5. Canonically sealed impossible door -> deterministic failure unless another mechanic changes the situation.
 6. Genuinely unresolved world existence -> Stage 11 d100 resolves existence first -> only then, if present and still nontrivial to locate, player skill check happens.
+
+
+## Implementation closure (2026-09-24)
+
+The deployed Stage 17 entrypoints are:
+
+- `create_ai_gm_player_roll_request_v4` for real player d20 requests;
+- `record_ai_gm_deterministic_adjudication_v2` for no-roll deterministic outcomes.
+
+The public service runtime cannot directly execute legacy player-roll request v1/v3 or deterministic adjudication v1.
+
+World-discovery evidence is now bound to the current scene. A real UUID elsewhere in the campaign is insufficient. Location evidence must be current-scene scoped or backed by a relevant quest/memory reference; NPC and scene-actor evidence must be physically/currently scoped; quest targets must resolve to a current-scene location/NPC; a reference item definition by itself never proves a physical item instance exists.
+
+A replay while a roll is already pending must reproduce the frozen Stage 17 contract. A changed target, mode, scope, mechanic, DC/difficulty, envelope, evidence set or Resolver decision key fails closed with `stage17_pending_roll_replay_contract_mismatch`.
+
+Full end-to-end certification remains coupled to the Stage 18 rebuild because the rejected Stage 18 gate currently blocks the requested player-roll event. Stage 18 must be deleted/rebuilt rather than patched around this dependency.
