@@ -24,7 +24,6 @@ type BehaviorChoice = {
   display_name: string
   summary: string
   selected: boolean
-  dimensions?: Record<string, number>
 }
 
 type BehaviorResponse = {
@@ -71,7 +70,9 @@ type RuntimeFeature = {
   key: string
   display_name: string
   summary: string
-  state: "always_on" | "triggered"
+  enabled: boolean
+  mutable: boolean
+  state: "toggle" | "locked"
 }
 
 type ControlPanelResponse = {
@@ -104,7 +105,9 @@ const DIRECTOR_CONTROLS: Array<{
   { key: "pacing", label: "Темп", low: "медленнее", high: "быстрее" },
 ]
 
-function modelMeta(model: ModelChoice) {
+function modelMeta(model: ModelChoice | null) {
+  if (!model) return "Модель не выбрана"
+
   const context =
     model.context_window >= 1_000_000
       ? Math.round(model.context_window / 1_000_000) + "M"
@@ -172,7 +175,6 @@ export default function AiGmControl({ onBack }: { onBack: () => void }) {
     () => selectedModel(panel?.junior_models || []),
     [panel?.junior_models],
   )
-
   const canManage = panel?.can_manage === true
 
   async function saveAndReload(
@@ -198,7 +200,7 @@ export default function AiGmControl({ onBack }: { onBack: () => void }) {
   }
 
   async function chooseModel(kind: "gm" | "junior", modelId: string) {
-    if (!campaignId || !canManage) return
+    if (!campaignId || !canManage || !modelId) return
 
     await saveAndReload(
       kind + ":" + modelId,
@@ -214,8 +216,30 @@ export default function AiGmControl({ onBack }: { onBack: () => void }) {
         return { error: result.error }
       },
       kind === "gm"
-        ? "Модель главного ИИ-ГМ сохранена."
-        : "Модель младшего шуршальщика сохранена.",
+        ? "Старшая модель ИИ-ГМ сохранена."
+        : "Младшая модель ИИ сохранена.",
+    )
+  }
+
+  async function toggleFeature(feature: RuntimeFeature) {
+    if (!campaignId || !canManage || !feature.mutable) return
+
+    await saveAndReload(
+      "feature:" + feature.key,
+      async () => {
+        const result = await supabase.rpc(
+          "set_campaign_ai_gm_runtime_feature_v1",
+          {
+            p_campaign_id: campaignId,
+            p_feature_key: feature.key,
+            p_enabled: !feature.enabled,
+          },
+        )
+        return { error: result.error }
+      },
+      feature.enabled
+        ? "Функция отключена."
+        : "Функция включена.",
     )
   }
 
@@ -313,7 +337,7 @@ export default function AiGmControl({ onBack }: { onBack: () => void }) {
     return (
       <main className="u1-ai-gm-control">
         <div className="u1-ai-gm-control__loading">
-          Поднимаем настоящий пульт ИИ-ГМ…
+          Загружаем настройки ИИ-ГМ…
         </div>
       </main>
     )
@@ -325,13 +349,14 @@ export default function AiGmControl({ onBack }: { onBack: () => void }) {
         <button type="button" onClick={onBack} aria-label="Назад">‹</button>
         <div>
           <span>MEGANOT / AI WORLD</span>
-          <h1>Управление ИИ-ГМ</h1>
+          <h1>Настройки ИИ-ГМ</h1>
         </div>
         <button
           type="button"
           className="u1-ai-gm-control__refresh"
           onClick={() => void load(false)}
           disabled={Boolean(busy)}
+          aria-label="Обновить настройки"
         >
           ↻
         </button>
@@ -340,86 +365,67 @@ export default function AiGmControl({ onBack }: { onBack: () => void }) {
       {!panel?.ai_world ? (
         <section className="u1-ai-gm-control__empty">
           <strong>Это не ИИ-мир</strong>
-          <p>Настройки главного и младшего ИИ доступны внутри экспериментальной AI-кампании.</p>
+          <p>Настройки старшего и младшего ИИ доступны внутри экспериментальной AI-кампании.</p>
           {error && <p>{error}</p>}
         </section>
       ) : (
         <div className="u1-ai-gm-control__body">
-          <section className="u1-ai-gm-overview">
-            <div>
-              <span>ГЛАВНЫЙ</span>
-              <strong>{gmModel?.display_name || "Не выбран"}</strong>
-              <small>Ведёт сцену и принимает решения.</small>
-            </div>
-            <div>
-              <span>МЛАДШИЙ</span>
-              <strong>{juniorModel?.display_name || "Не выбран"}</strong>
-              <small>Шуршит канон после ответа.</small>
-            </div>
-          </section>
-
-          <section className="u1-ai-gm-card">
-            <span className="u1-ai-gm-card__eyebrow">01 · ГЛАВНЫЙ ИИ</span>
-            <h2>Модель мастера</h2>
+          <section className="u1-ai-gm-card u1-ai-gm-card--models">
+            <span className="u1-ai-gm-card__eyebrow">01 · МОДЕЛИ ИИ</span>
+            <h2>Кто ведёт и кто шуршит</h2>
             <p>
-              Именно эта модель пишет ответ игроку, назначает проверки и решает,
-              что логично происходит в сцене.
+              Старший ИИ ведёт сцену. Младший выполняет техническую работу:
+              материализацию, post-turn изменения и служебные задачи.
             </p>
-            <div className="u1-ai-gm-models">
-              {(panel.gm_models || []).map((model) => (
-                <button
-                  key={model.id}
-                  type="button"
-                  className="u1-ai-gm-choice"
-                  data-selected={model.selected || undefined}
-                  disabled={!canManage || Boolean(busy)}
-                  onClick={() => void chooseModel("gm", model.id)}
-                >
-                  <span>
-                    <strong>{model.display_name}</strong>
-                    <small>{modelMeta(model)}</small>
-                  </span>
-                  <i>{model.selected ? "✓" : "›"}</i>
-                </button>
-              ))}
-            </div>
-          </section>
 
-          <section className="u1-ai-gm-card">
-            <span className="u1-ai-gm-card__eyebrow">02 · МЛАДШИЙ ИИ</span>
-            <h2>Шуршальщик</h2>
-            <p>
-              Не переписывает решение мастера. Его работа — после ответа
-              создать или обновить нужные сущности и довести базу до уже
-              объявленного канона.
-            </p>
-            <div className="u1-ai-gm-models">
-              {(panel.junior_models || []).map((model) => (
-                <button
-                  key={model.id}
-                  type="button"
-                  className="u1-ai-gm-choice"
-                  data-selected={model.selected || undefined}
+            <div className="u1-ai-gm-model-selectors">
+              <label>
+                <span>
+                  <strong>Старший ИИ</strong>
+                  <small>Ведущий, решения, проверки и ответы игроку</small>
+                </span>
+                <select
+                  value={gmModel?.id || ""}
                   disabled={!canManage || Boolean(busy)}
-                  onClick={() => void chooseModel("junior", model.id)}
+                  onChange={(event) => void chooseModel("gm", event.target.value)}
                 >
-                  <span>
-                    <strong>{model.display_name}</strong>
-                    <small>{modelMeta(model)}</small>
-                  </span>
-                  <i>{model.selected ? "✓" : "›"}</i>
-                </button>
-              ))}
+                  {(panel.gm_models || []).map((model) => (
+                    <option key={model.id} value={model.id}>
+                      {model.display_name}
+                    </option>
+                  ))}
+                </select>
+                <em>{modelMeta(gmModel)}</em>
+              </label>
+
+              <label>
+                <span>
+                  <strong>Младший ИИ</strong>
+                  <small>Шуршальщик, мир, сущности и фоновые задачи</small>
+                </span>
+                <select
+                  value={juniorModel?.id || ""}
+                  disabled={!canManage || Boolean(busy)}
+                  onChange={(event) => void chooseModel("junior", event.target.value)}
+                >
+                  {(panel.junior_models || []).map((model) => (
+                    <option key={model.id} value={model.id}>
+                      {model.display_name}
+                    </option>
+                  ))}
+                </select>
+                <em>{modelMeta(juniorModel)}</em>
+              </label>
             </div>
           </section>
 
           {panel.behavior && (
             <section className="u1-ai-gm-card">
-              <span className="u1-ai-gm-card__eyebrow">03 · РЕЖИМ МАСТЕРА</span>
-              <h2>Как мир давит на игрока</h2>
+              <span className="u1-ai-gm-card__eyebrow">02 · РЕЖИМ МАСТЕРА</span>
+              <h2>Стиль ведения</h2>
               <p>
-                Режим меняет выбор между одинаково правдоподобными ветками.
-                Канон, кубы и характер NPC он не переписывает.
+                Режим влияет на выбор между одинаково правдоподобными ветками,
+                но не отменяет канон, кубы и самостоятельность NPC.
               </p>
               <div className="u1-ai-gm-behaviors">
                 {panel.behavior.profiles.map((profile) => (
@@ -444,11 +450,11 @@ export default function AiGmControl({ onBack }: { onBack: () => void }) {
 
           {directorDraft && (
             <section className="u1-ai-gm-card">
-              <span className="u1-ai-gm-card__eyebrow">04 · ДИРЕКТОР</span>
-              <h2>Что тебе интереснее играть</h2>
+              <span className="u1-ai-gm-card__eyebrow">03 · ДИРЕКТОР</span>
+              <h2>Что хочется встречать чаще</h2>
               <p>
-                Это мягкое направление будущих возможностей, а не чит-код.
-                NPC всё ещё могут отказать, а мир не обязан исполнять желание.
+                Мягкое направление будущих возможностей. Это не приказ миру
+                выдать игроку желаемый результат.
               </p>
               <div className="u1-ai-gm-sliders">
                 {DIRECTOR_CONTROLS.map((control) => (
@@ -506,10 +512,10 @@ export default function AiGmControl({ onBack }: { onBack: () => void }) {
 
           {panel.content && (
             <section className="u1-ai-gm-card">
-              <span className="u1-ai-gm-card__eyebrow">05 · КОНТЕНТ-ПРОФИЛЬ</span>
-              <h2>Зрелая / life-sim тематика</h2>
+              <span className="u1-ai-gm-card__eyebrow">04 · КОНТЕНТ-ПРОФИЛЬ</span>
+              <h2>Тематика кампании</h2>
               <p>
-                Это профиль приложения. Он не отменяет ограничения провайдера,
+                Профиль приложения не отменяет ограничения провайдера,
                 причинность мира и самостоятельность NPC.
               </p>
               <div className="u1-ai-gm-behaviors">
@@ -534,23 +540,42 @@ export default function AiGmControl({ onBack }: { onBack: () => void }) {
           )}
 
           <section className="u1-ai-gm-card">
-            <span className="u1-ai-gm-card__eyebrow">06 · ФУНКЦИИ МИРА</span>
-            <h2>Что работает автоматически</h2>
+            <span className="u1-ai-gm-card__eyebrow">05 · ФУНКЦИИ ИИ-МИРА</span>
+            <h2>Автоматика</h2>
             <p>
-              Эти функции являются частью причинного ядра ИИ-мира. Их нельзя
-              случайно отключить галочкой и потом удивляться, почему канон
-              разъехался с чатом.
+              Дополнительные системы можно включать и выключать здесь.
+              Системы ядра отмечены замком и остаются включёнными.
             </p>
+
             <div className="u1-ai-gm-features">
               {(panel.features || []).map((feature) => (
-                <article key={feature.key}>
+                <article
+                  key={feature.key}
+                  data-enabled={feature.enabled || undefined}
+                  data-locked={!feature.mutable || undefined}
+                >
                   <div>
                     <strong>{feature.display_name}</strong>
                     <small>{feature.summary}</small>
                   </div>
-                  <span data-triggered={feature.state === "triggered" || undefined}>
-                    {feature.state === "triggered" ? "по триггеру" : "включено"}
-                  </span>
+
+                  {feature.mutable ? (
+                    <button
+                      type="button"
+                      className="u1-ai-gm-switch"
+                      aria-pressed={feature.enabled}
+                      aria-label={
+                        (feature.enabled ? "Отключить: " : "Включить: ") +
+                        feature.display_name
+                      }
+                      disabled={!canManage || Boolean(busy)}
+                      onClick={() => void toggleFeature(feature)}
+                    >
+                      <i />
+                    </button>
+                  ) : (
+                    <span className="u1-ai-gm-feature-lock">ядро</span>
+                  )}
                 </article>
               ))}
             </div>
@@ -558,8 +583,8 @@ export default function AiGmControl({ onBack }: { onBack: () => void }) {
 
           {!canManage && (
             <div className="u1-ai-gm-control__notice">
-              Модели и режим кампании меняет владелец/ГМ. Личные настройки
-              директора доступны каждому участнику для себя.
+              Модели, режим и функции кампании меняет владелец/ГМ.
+              Личные настройки директора доступны участнику для себя.
             </div>
           )}
 
@@ -572,7 +597,7 @@ export default function AiGmControl({ onBack }: { onBack: () => void }) {
             onClick={() => openAgent()}
           >
             <span>Открыть {assistantName}</span>
-            <small>Фредди — отдельный дворецкий/админ, а не вход в настройки ИИ-ГМ.</small>
+            <small>Фредди остаётся отдельным дворецким/админом, а не настройками ИИ-ГМ.</small>
           </button>
         </div>
       )}
