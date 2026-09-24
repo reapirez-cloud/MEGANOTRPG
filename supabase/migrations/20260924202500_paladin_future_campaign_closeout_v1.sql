@@ -1,3 +1,4 @@
+-- CLASS_MIGRATION_SCOPE: infrastructure
 -- Repair future campaign bootstrap for Paladin final closeout.
 --
 -- The historical closeout migration updated only campaigns that already existed
