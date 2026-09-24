@@ -731,7 +731,7 @@ export const AI_WORLD_EVOLUTION_STAGES = [
     title: "Persistent NPC identity fingerprint",
     purpose:
       "Give every persistent NPC a durable personality core so dialogue, social checks, background simulation and long-term decisions come from the same person instead of being reinvented on every model call.",
-    status: "planned",
+    status: "implemented",
     existingFoundation: [
       "npc_profiles already contains demeanor, motivation, notes and tags",
       "character relationships and faction reputations already model changing external state",
