@@ -8,6 +8,12 @@ const read = (path: string) =>
 const migration = read(
   "supabase/migrations/20260924172000_ai_gm_mimo_and_junior_model_selector_v1.sql",
 )
+const runtimeSettingsMigration = read(
+  "supabase/migrations/20260925041000_ai_gm_control_panel_runtime_settings_v2.sql",
+)
+const juniorBackgroundRouteMigration = read(
+  "supabase/migrations/20260925042000_ai_gm_junior_background_route_v1.sql",
+)
 const router = read("supabase/functions/voss-agent/model-router.ts")
 const gateway = read("supabase/functions/voss-agent/provider-gateway.ts")
 const runtime = read("supabase/functions/voss-agent/game-chat-runtime.ts")
@@ -25,15 +31,14 @@ test("MiMo V2.5 Pro is a selectable 1M campaign GM model", () => {
   assert.match(gateway, /mimo-v2\.5-pro.*return "high"/)
 })
 
-test("junior selector exposes exactly DeepSeek Flash and MiMo", () => {
-  assert.match(migration, /list_campaign_ai_junior_models_v1/)
+test("junior selector exposes every compatible campaign tool model", () => {
+  assert.match(runtimeSettingsMigration, /list_campaign_ai_junior_models_v1/)
   assert.match(migration, /set_campaign_ai_junior_model_v1/)
-  assert.match(
-    migration,
-    /model_key in \('deepseek-v4\.1-flash','mimo-v2\.5-pro'\)/,
-  )
-  assert.match(migration, /agent_key='junior'/)
-  assert.match(migration, /ai_gm_junior_model_ai_world_only/)
+  assert.match(runtimeSettingsMigration, /supports_tools=true/)
+  assert.match(runtimeSettingsMigration, /supports_json=true/)
+  assert.doesNotMatch(router, /const allowedKeys =/)
+  assert.match(runtimeSettingsMigration, /agent_key='junior'/)
+  assert.match(runtimeSettingsMigration, /ai_gm_junior_model_ai_world_only/)
   assert.match(migration, /private\.is_campaign_manager/)
 })
 
@@ -63,15 +68,9 @@ test("all live junior worker surfaces consume the campaign selector", () => {
   assert.doesNotMatch(maintenance, /WORKER_MODEL_KEY/)
 })
 
-test("daily background run freezes its selected junior model", () => {
-  assert.match(
-    migration,
-    /private\.ai_gm_junior_model_key_v1\(p_campaign_id\)/,
-  )
-  assert.match(
-    migration,
-    /private\.is_ai_gm_junior_model_key_v1\(v_run\.worker_model\)/,
-  )
+test("daily background run freezes the currently selected junior model", () => {
+  assert.match(juniorBackgroundRouteMigration, /agent_key='junior'/)
+  assert.match(juniorBackgroundRouteMigration, /can_select_campaign_junior_model_v1/)
   assert.match(background, /prepared\.worker_model/)
   assert.match(background, /model\.model_key !== frozenWorkerModel/)
 })
