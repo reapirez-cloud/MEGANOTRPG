@@ -13,6 +13,7 @@ import {
   type AIGeneratedAssetRef,
 } from "./AIProvider"
 import ArtPlayer, { type ArtPlayerItem } from "../components/media/ArtPlayer"
+import { supabase } from "../lib/supabase"
 import {
   AGENT_OPEN_EVENT,
   type AgentOpenDetail,
