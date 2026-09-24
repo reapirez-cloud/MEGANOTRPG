@@ -211,6 +211,63 @@ const WORLD_MATERIALIZER_TOOLS = [
   ),
 ]
 
+const STAGE18_POST_TURN_MANAGER_TOOL_NAMES = new Set([
+  "create_location",
+  "update_location",
+  "set_location_archived",
+  "create_world_npc",
+  "update_world_npc",
+  "upsert_location_transition",
+  "upsert_location_secret",
+  "set_location_secret_state",
+  "upsert_faction",
+  "set_faction_membership",
+  "set_character_faction_reputation",
+  "set_npc_habitat",
+  "move_character_world",
+  "set_world_discovery",
+  "set_character_life_state",
+])
+const STAGE18_POST_TURN_QUEST_TOOL_NAMES = new Set([
+  "create_quest_plan",
+  "activate_quest",
+  "update_quest_brief",
+  "bind_quest_target",
+  "materialize_quest_target",
+  "resolve_quest_condition",
+  "run_quest_resolver",
+  "close_quest",
+])
+const STAGE18_POST_TURN_MEMORY_TOOL_NAMES = new Set([
+  "remember_campaign_fact",
+])
+const STAGE18_POST_TURN_TOOLS = [
+  ...VOSS_MANAGER_TOOLS.filter((tool) =>
+    STAGE18_POST_TURN_MANAGER_TOOL_NAMES.has(tool.function.name)
+  ),
+  ...VOSS_QUEST_TOOLS.filter((tool) =>
+    STAGE18_POST_TURN_QUEST_TOOL_NAMES.has(tool.function.name)
+  ),
+  ...VOSS_MEMORY_WRITE_TOOLS.filter((tool) =>
+    STAGE18_POST_TURN_MEMORY_TOOL_NAMES.has(tool.function.name)
+  ),
+]
+
+const STAGE18_POST_TURN_WORKER_SYSTEM = [
+  "Ты младший post-turn commit worker MEGANOT на DeepSeek V4.1 Flash.",
+  "Игрок УЖЕ увидел финальный ответ GM. Ты не ведёшь сцену и не можешь менять этот ответ.",
+  "Тебе передаётся РОВНО ОДИН immutable intent. Выполни максимум ОДНУ каноническую мутацию tool-вызовом.",
+  "Если intent требует две мутации, это ошибка upstream: не объединяй их сам.",
+  "Создавай или меняй только то, что буквально установлено published_messages + intent.instruction/evidence.",
+  "Не достраивай новый сюжет, секрет, награду, отношения, имя, мотивацию, врага, исход проверки или событие.",
+  "Не добавляй декоративные факты, которых нет в опубликованном ответе. Заполняй только минимально нужные поля.",
+  "Если канон уже удовлетворяет intent, НЕ вызывай write-tool. Верни только JSON {status:'already_satisfied',resolved_entity_ids:['UUID',...],reason:'...'}",
+  "Если intent невозможно безопасно выполнить по имеющимся данным, верни JSON {status:'unsafe_or_ambiguous',reason:'...'}; сервер оставит gate закрытым для recovery.",
+  "Никогда не придумывай UUID. Используй только canonical_context, published_messages или результаты серверной reconciliation.",
+  "Для create_quest_plan quest_key задаёт сервер. Для memory fact_key/source_event_ids задаёт сервер.",
+  "После успешного tool call не вызывай второй tool.",
+].join("\n")
+
 const PRIMARY_GM_SCENE_ACTOR_TOOLS = [
   RESOLVE_RANDOM_DECISION_TOOL,
   {
