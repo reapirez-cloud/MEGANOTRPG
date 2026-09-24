@@ -1576,3 +1576,113 @@
   font-size: 8px;
   line-height: 1.45;
 }
+
+
+.u1-agent-director-list {
+  display: grid;
+  gap: 6px;
+}
+
+.u1-agent-director-row {
+  min-height: 43px;
+  padding: 7px 8px;
+  border: 1px solid var(--u1-line-soft);
+  border-radius: 7px;
+  background: rgba(255,255,255,.014);
+  display: grid;
+  grid-template-columns: minmax(92px, 1fr) minmax(92px, 1.25fr) 18px;
+  align-items: center;
+  gap: 8px;
+}
+
+.u1-agent-director-row > span {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.u1-agent-director-row strong {
+  color: var(--u1-text);
+  font-size: 10px;
+  font-weight: 650;
+}
+
+.u1-agent-director-row small {
+  color: var(--u1-text-faint);
+  font-size: 8px;
+  line-height: 1.25;
+}
+
+.u1-agent-director-row input[type="range"] {
+  width: 100%;
+  min-width: 0;
+  accent-color: rgba(214, 218, 220, .68);
+}
+
+.u1-agent-director-row b {
+  color: rgba(232, 235, 236, .78);
+  font-size: 10px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.u1-agent-director-text {
+  display: grid;
+  gap: 5px;
+}
+
+.u1-agent-director-text > span {
+  color: rgba(220, 224, 226, .68);
+  font-size: 9px;
+  font-weight: 650;
+}
+
+.u1-agent-director-text textarea {
+  width: 100%;
+  resize: vertical;
+  min-height: 78px;
+  max-height: 180px;
+  padding: 9px 10px;
+  border: 1px solid var(--u1-line-soft);
+  border-radius: 8px;
+  background: rgba(255,255,255,.018);
+  color: var(--u1-text);
+  font: inherit;
+  font-size: 10px;
+  line-height: 1.45;
+  outline: none;
+}
+
+.u1-agent-director-text textarea:focus {
+  border-color: rgba(220, 224, 226, .28);
+  background: rgba(255,255,255,.026);
+}
+
+.u1-agent-director-text > small {
+  color: var(--u1-text-faint);
+  font-size: 8px;
+  text-align: right;
+}
+
+.u1-agent-director-save {
+  min-height: 34px;
+  border: 1px solid var(--u1-line-soft);
+  border-radius: 7px;
+  background: rgba(255,255,255,.018);
+  color: rgba(225, 229, 231, .68);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: .02em;
+}
+
+.u1-agent-director-save[data-dirty] {
+  border-color: rgba(220,224,226,.3);
+  background: rgba(220,224,226,.07);
+  color: rgba(239,241,242,.92);
+}
+
+.u1-agent-director-save:disabled,
+.u1-agent-director-row input:disabled,
+.u1-agent-director-text textarea:disabled {
+  opacity: .52;
+}
