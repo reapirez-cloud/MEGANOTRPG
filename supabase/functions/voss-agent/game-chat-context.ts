@@ -1684,6 +1684,19 @@ export function stage19ContextTelemetry(context: Stage2GameChatContext) {
   }
 }
 
+export function stage21BehaviorProfileTelemetry(
+  context: Stage2GameChatContext,
+) {
+  const profile = record(context.gmBehaviorProfile)
+  return {
+    stage21_gm_behavior_profile_key:
+      nullableString(profile.profile_key) || "adventure",
+    stage21_gm_behavior_dimensions:
+      record(profile.dimensions),
+  }
+}
+
+
 export function npcDialogueContextForPrompt(
   context: Stage2GameChatContext,
   npcCharacterId: string,
