@@ -137,7 +137,8 @@ test("promotion bootstraps conservatively from established actor provenance", ()
   assert.match(promotion, /ai_scene_actor_damage_receipts/)
   assert.match(promotion, /source_bestiary_slug/)
   assert.match(promotion, /conservative_no_unobserved_biography/)
-  assert.match(promotion, /p_allow_same_hash/)
+  assert.match(promotion, /'bootstrap_refinement'/)
+  assert.match(promotion, /'scene_actor_promotion'/)
 })
 
 test("all AI NPC surfaces consume the same current fingerprint", () => {
