@@ -45,7 +45,7 @@ test("ephemeral actors remain a distinct certified boundary rather than canonica
 test("existing campaign memory is not accepted as compact background-state completion", () => {
   const stage = AI_WORLD_EVOLUTION_STAGES.find((entry) => entry.id === 12)
   assert.ok(stage)
-  assert.equal(stage.status, "planned")
+  assert.equal(stage.status, "certified")
   assert.match(stage.notSatisfiedBy.join("\n"), /campaign_memory_fact/)
   assert.match(stage.requiredArtifacts.join("\n"), /snapshot/)
 })
