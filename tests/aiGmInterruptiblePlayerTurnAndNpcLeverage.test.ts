@@ -172,6 +172,13 @@ test("no leverage and identity blocks cannot silently become a Persuasion roll",
   assert.match(runtime, /blocked_by_identity — deterministic_failure или impossible_exact/)
 })
 
+test("invalid no-leverage roll requests are reprompted instead of silently accepted", () => {
+  assert.match(runtime, /КОРРЕКЦИЯ КОНТРАКТА/)
+  assert.match(runtime, /ты сам классифицировал социальный подход как no_leverage\/blocked_by_identity/)
+  assert.match(runtime, /бросок запрещён/)
+  assert.match(runtime, /social_leverage_analysis: reaction\.socialLeverageAnalysis/)
+})
+
 test("sparse NPC identity refinement cannot tailor a weakness to the current tactic", () => {
   assert.match(migration, /refine_npc_identity_bootstrap_v2/)
   assert.match(migration, /fill_missing_stable_dimensions_only/)
