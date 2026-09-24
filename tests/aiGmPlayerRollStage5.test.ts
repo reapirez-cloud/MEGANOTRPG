@@ -34,7 +34,7 @@ test("Stage 5 derives modifiers on the server and ignores model-supplied modifie
   assert.match(sql, /spell_attack_bonus/)
   assert.match(sql, /proficiency_bonus/)
   assert.doesNotMatch(runtime, /p_modifier/)
-  assert.match(runtime, /Не указывай modifier/)
+  assert.match(runtime, /НЕ указывай request_type\/ability_key\/skill_key\/attack_kind\/modifier/)
 })
 
 test("Stage 5 hidden DC never enters the player-facing request payload", () => {
@@ -59,7 +59,11 @@ test("Stage 5 GM runtime has a real request_player_roll branch and stops after r
   )
 
   assert.match(runtime, /\| "request_player_roll"/)
-  assert.match(runtime, /create_ai_gm_player_roll_request_v1/)
+  const stage17 = read(
+    "supabase/migrations/20260924071000_ai_world_evolution_stage17_logic_rolls_v1.sql",
+  )
+  assert.match(runtime, /create_ai_gm_player_roll_request_v2/)
+  assert.match(stage17, /public\.create_ai_gm_player_roll_request_v1\(/)
   assert.match(runtime, /if \(reaction\.mode === "request_player_roll"/)
   assert.match(
     runtime,
