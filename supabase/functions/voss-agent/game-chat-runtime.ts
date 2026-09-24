@@ -1405,14 +1405,24 @@ async function finalizeStage18VisibleAnswer({
   if (error) throw new Error(error.message)
 
   const finalized = jsonRecord(data)
-  await syncStage11TurnLedger(admin, claimed.id)
+  try {
+    await syncStage11TurnLedger(admin, claimed.id)
+  } catch {
+    // The visible answer and Stage 18 gate are already committed atomically.
+    // Ledger maintenance must not retroactively fail a published GM turn.
+  }
 
   const commitId =
     typeof finalized.post_turn_commit_id === "string"
       ? finalized.post_turn_commit_id
       : ""
   if (commitId) {
-    await runStage18PostTurnCommit(admin, campaignId, commitId)
+    try {
+      await runStage18PostTurnCommit(admin, campaignId, commitId)
+    } catch {
+      // The durable commit remains queued/running/failed and can be resumed.
+      // Never rewrite a published parent turn as failed here.
+    }
   }
 
   return finalized
@@ -2598,6 +2608,7 @@ async function completeWithGameplayMessage({
 
 async function publishDialogueSequence({
   admin,
+  campaignId,
   claimed,
   route,
   sourceMessageId,
@@ -2606,6 +2617,7 @@ async function publishDialogueSequence({
   extraResult = {},
 }: {
   admin: SupabaseClient
+  campaignId: string
   claimed: ClaimedJob
   route: Awaited<ReturnType<typeof resolveCampaignGmModel>>
   sourceMessageId: number
@@ -2649,7 +2661,8 @@ async function publishDialogueSequence({
         ...reaction,
         mode: "none",
         dialogueOutputs: [],
-        reason: "stage7_dialogue_sequence_empty_after_generation",
+        postTurnIntents: [],
+        reason: "stage18_dialogue_sequence_empty_after_generation",
       },
       extraResult,
       completedOutputs: Object.keys(extraResult).length ? 1 : 0,
@@ -2657,61 +2670,17 @@ async function publishDialogueSequence({
     return
   }
 
-  const { data, error } = await admin.rpc("publish_ai_gm_turn_messages_v1", {
-    p_job_id: claimed.id,
-    p_messages: messages,
+  await finalizeStage18VisibleAnswer({
+    admin,
+    campaignId,
+    claimed,
+    route,
+    sourceMessageId,
+    context,
+    reaction,
+    messages,
+    extraResult,
   })
-  if (error) throw new Error(error.message)
-
-  const messageIds = Array.isArray(data)
-    ? data.map(Number).filter((id) => Number.isInteger(id) && id > 0)
-    : []
-  if (messageIds.length !== messages.length) {
-    throw new Error("ai_gm_stage7_message_publish_incomplete")
-  }
-
-  await admin
-    .from("agent_jobs")
-    .update({
-      status: "completed",
-      completed_outputs: 1,
-      result: {
-        ...claimed.result,
-        ...extraResult,
-        surface: GAME_CHAT_SURFACE,
-        runtime_stage: 12,
-        source_chat_message_id: String(sourceMessageId),
-        reply_message_id: messageIds[messageIds.length - 1],
-        reply_message_ids: messageIds,
-        reply_character_id: null,
-        reaction_mode: reaction.mode,
-        reaction_reason: reaction.reason,
-        dialogue_message_kinds: messages.map((item) => item.kind),
-        context_message_count: context.recentMessages.length,
-        source_location_id: context.sourceLocation?.id || null,
-        player_location_count: new Set(
-          context.players.map((player) => player.location_id).filter(Boolean),
-        ).size,
-        model_id: route.model.id,
-        model_key: route.model.model_key,
-        model_name: route.model.display_name,
-        route_mode: route.routeMode,
-        route_reason: route.reason,
-        answer_chars: messages.reduce(
-          (sum, item) =>
-            sum + (typeof item.body === "string" ? item.body.length : 0),
-          0,
-        ),
-      },
-      completed_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-      error_code: null,
-      error_message: null,
-    })
-    .eq("id", claimed.id)
-    .eq("status", "running")
-
-  await syncStage11TurnLedger(admin, claimed.id)
 }
 
 
@@ -3440,6 +3409,7 @@ export async function runGameChatTurn(
       await setRuntimePhase(admin, claimed, "applying")
       await publishDialogueSequence({
         admin,
+        campaignId,
         claimed,
         route,
         sourceMessageId,
