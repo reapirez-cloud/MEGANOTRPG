@@ -1,3 +1,4 @@
+-- CLASS_MIGRATION_SCOPE: infrastructure
 -- Remove PL/pgSQL output-column ambiguity from AI-world slot membership upsert.
 -- open_ai_world_slot_v2 returns a column named campaign_id, so the old
 -- ON CONFLICT(campaign_id,user_id) could be parsed as a PL/pgSQL variable.
