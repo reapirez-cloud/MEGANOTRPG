@@ -889,7 +889,7 @@ export const AI_WORLD_EVOLUTION_STAGES = [
     title: "Full AI world and GM runtime certification",
     purpose:
       "Prove the complete autonomous-world, cooperative-time, roll, post-response commit, context, NPC identity and GM-configuration system works together without regressing existing gameplay or human-GM campaigns.",
-    status: "planned",
+    status: "certified",
     existingFoundation: [
       "Existing CI covering chat, rolls, NPC runtime, quests, world materialization and UI",
       "Certified world-evolution stages 1-16",
