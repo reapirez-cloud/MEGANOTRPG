@@ -1051,11 +1051,7 @@ export default function ChatComposer({
             type="submit"
             className="u1-chat-composer__send"
             aria-label={queuePlayerTurn ? "Отправить ход" : "Отправить"}
-            disabled={
-              !canCompose ||
-              sending ||
-              (queuePlayerTurn ? !text.trim() : !text.trim())
-            }
+            disabled={!canCompose || sending || !text.trim()}
             data-sending={sending || undefined}
           >
             {sending ? (
