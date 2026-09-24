@@ -235,7 +235,6 @@ const STAGE18_POST_TURN_QUEST_TOOL_NAMES = new Set([
   "bind_quest_target",
   "materialize_quest_target",
   "resolve_quest_condition",
-  "run_quest_resolver",
   "close_quest",
 ])
 const STAGE18_POST_TURN_MEMORY_TOOL_NAMES = new Set([
@@ -261,9 +260,9 @@ const STAGE18_POST_TURN_WORKER_SYSTEM = [
   "Создавай или меняй только то, что буквально установлено published_messages + intent.instruction/evidence.",
   "Не достраивай новый сюжет, секрет, награду, отношения, имя, мотивацию, врага, исход проверки или событие.",
   "Не добавляй декоративные факты, которых нет в опубликованном ответе. Заполняй только минимально нужные поля.",
-  "Для каждого intent обязан быть ровно ОДИН write-tool call. Даже если факт уже существует, вызови тот же минимальный create/update/upsert tool: серверная reconciliation/idempotency сама превратит повтор в no-op.",
+  "Для каждого intent обязан быть ровно ОДИН write-tool call. Tool является только предложением мутации: сервер проверяет kind, lease и выполняет каноническую мутацию + receipt в одной PostgreSQL-транзакции.",
   "Если intent невозможно безопасно выполнить по имеющимся данным, не вызывай tool и верни JSON {status:'unsafe_or_ambiguous',reason:'...'}; сервер оставит gate закрытым для recovery.",
-  "Никогда не придумывай UUID. Используй только canonical_context, published_messages или результаты серверной reconciliation.",
+  "Никогда не придумывай UUID. Используй только canonical_context и published_messages. Сервер повторно проверяет границы кампании и тип мутации.",
   "Для create_quest_plan quest_key задаёт сервер. Для memory fact_key/source_event_ids задаёт сервер.",
   "После успешного tool call не вызывай второй tool.",
 ].join("\n")
@@ -831,35 +830,36 @@ function stage18ToolsForIntent(kind: PostTurnIntent["kind"]) {
             "create_world_npc",
             "update_world_npc",
             "set_npc_habitat",
+            "move_character_world",
             "set_character_life_state",
           ])
         : kind === "quest"
-          ? STAGE18_POST_TURN_QUEST_TOOL_NAMES
+          ? new Set([
+              "create_quest_plan",
+              "activate_quest",
+              "update_quest_brief",
+              "bind_quest_target",
+              "materialize_quest_target",
+              "resolve_quest_condition",
+              "close_quest",
+            ])
           : kind === "memory"
-            ? STAGE18_POST_TURN_MEMORY_TOOL_NAMES
+            ? new Set(["remember_campaign_fact"])
             : kind === "binding"
               ? new Set([
                   "bind_quest_target",
                   "set_faction_membership",
-                  "set_character_faction_reputation",
                   "set_npc_habitat",
                   "set_world_discovery",
                   "upsert_location_transition",
-                  "move_character_world",
                 ])
               : new Set([
-                  "update_location",
-                  "update_world_npc",
                   "upsert_faction",
                   "set_faction_membership",
                   "set_character_faction_reputation",
-                  "set_npc_habitat",
                   "move_character_world",
                   "set_world_discovery",
-                  "upsert_location_secret",
-                  "set_location_secret_state",
                   "set_character_life_state",
-                  "set_location_archived",
                 ])
 
   return STAGE18_POST_TURN_TOOLS.filter((tool) =>
@@ -867,275 +867,28 @@ function stage18ToolsForIntent(kind: PostTurnIntent["kind"]) {
   )
 }
 
-function stage18UuidValues(value: unknown, output = new Set<string>()) {
-  if (typeof value === "string") {
-    if (
-      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
-        .test(value)
-    ) {
-      output.add(value)
-    }
-    return output
-  }
-  if (Array.isArray(value)) {
-    for (const item of value) stage18UuidValues(item, output)
-    return output
-  }
-  if (value && typeof value === "object") {
-    for (const item of Object.values(value as JsonRecord)) {
-      stage18UuidValues(item, output)
-    }
-  }
-  return output
-}
-
-async function stage18PublishedEventIds({
-  admin,
-  campaignId,
-  replyMessageIds,
-}: {
-  admin: SupabaseClient
-  campaignId: string
-  replyMessageIds: number[]
-}) {
-  if (!replyMessageIds.length) return [] as string[]
-
-  const { data, error } = await admin
-    .from("campaign_events")
-    .select("id,source_id")
-    .eq("campaign_id", campaignId)
-    .eq("source_kind", "chat_message")
-    .in("source_id", replyMessageIds.map(String))
-
-  if (error) throw new Error(error.message)
-  return (data || [])
-    .map((row) => typeof row.id === "string" ? row.id : "")
-    .filter(Boolean)
-}
-
-async function reconcileStage18Create({
-  admin,
-  campaignId,
-  toolName,
-  args,
-  commitId,
-  intentKey,
-}: {
-  admin: SupabaseClient
-  campaignId: string
-  toolName: string
-  args: JsonRecord
-  commitId: string
-  intentKey: string
-}): Promise<JsonRecord | null> {
-  if (toolName === "create_location") {
-    const name = typeof args.name === "string" ? args.name.trim() : ""
-    if (!name) return null
-
-    let query = admin
-      .from("locations")
-      .select("id,parent_location_id,name,summary,description,visibility_mode,background_simulation_scope,lifecycle_state")
-      .eq("campaign_id", campaignId)
-      .eq("name", name)
-      .eq("lifecycle_state", "active")
-      .limit(2)
-
-    const parentId =
-      typeof args.parent_location_id === "string" &&
-        args.parent_location_id.trim()
-        ? args.parent_location_id.trim()
-        : null
-    query = parentId
-      ? query.eq("parent_location_id", parentId)
-      : query.is("parent_location_id", null)
-
-    const { data, error } = await query
-    if (error) throw new Error(error.message)
-    if ((data || []).length > 1) {
-      throw new Error("stage18_existing_location_ambiguous")
-    }
-    if (data?.length === 1) {
-      return {
-        location: data[0],
-        reconciled_existing: true,
-        canonical_state_changed: false,
-      }
-    }
-  }
-
-  if (toolName === "create_world_npc") {
-    const name = typeof args.name === "string" ? args.name.trim() : ""
-    if (!name) return null
-    const { data, error } = await admin
-      .from("characters")
-      .select("id,name,character_type,publication_state,life_state")
-      .eq("campaign_id", campaignId)
-      .eq("character_type", "npc")
-      .eq("publication_state", "campaign")
-      .eq("name", name)
-      .limit(2)
-
-    if (error) throw new Error(error.message)
-    if ((data || []).length > 1) {
-      throw new Error("stage18_existing_npc_ambiguous")
-    }
-    if (data?.length === 1) {
-      return {
-        character: data[0],
-        reconciled_existing: true,
-        canonical_state_changed: false,
-      }
-    }
-  }
-
-  if (toolName === "create_quest_plan") {
-    args.quest_key = ("stage18:" + commitId + ":" + intentKey).slice(0, 120)
-  }
-
-  if (toolName === "upsert_location_secret" && !args.secret_id) {
-    args.secret_key = ("stage18:" + commitId + ":" + intentKey).slice(0, 160)
-  }
-
-  if (toolName === "remember_campaign_fact") {
-    args.fact_key = ("stage18:" + commitId + ":" + intentKey).slice(0, 180)
-    const { data, error } = await admin
-      .from("campaign_memory_facts")
-      .select("id,fact_key,statement,status")
-      .eq("campaign_id", campaignId)
-      .eq("fact_key", args.fact_key)
-      .eq("status", "active")
-      .limit(2)
-
-    if (error) throw new Error(error.message)
-    if ((data || []).length > 1) {
-      throw new Error("stage18_existing_memory_fact_ambiguous")
-    }
-    if (data?.length === 1) {
-      return {
-        fact_id: data[0].id,
-        stored: true,
-        reconciled_existing: true,
-        canonical_state_changed: false,
-      }
-    }
-  }
-
-  return null
-}
-
-async function executeStage18PostTurnTool({
-  admin,
-  campaignId,
-  managerUserId,
-  modelId,
-  roomId,
-  commitId,
-  intent,
-  toolName,
-  rawArgs,
-  sourceEventIds,
-}: {
-  admin: SupabaseClient
-  campaignId: string
-  managerUserId: string
-  modelId: string | null
-  roomId: string
-  commitId: string
-  intent: PostTurnIntent
-  toolName: string
-  rawArgs: JsonRecord
-  sourceEventIds: string[]
-}) {
-  const allowed = new Set(
-    stage18ToolsForIntent(intent.kind).map((tool) => tool.function.name),
-  )
-  if (!allowed.has(toolName)) {
-    throw new Error("stage18_post_turn_tool_not_allowed_for_intent")
-  }
-
-  const args: JsonRecord = { ...rawArgs }
-
-  if (toolName === "remember_campaign_fact") {
-    args.source_event_ids = sourceEventIds
-    args.visibility = "room"
-    args.room_id = roomId
-  }
-
-  const reconciled = await reconcileStage18Create({
-    admin,
-    campaignId,
-    toolName,
-    args,
-    commitId,
-    intentKey: intent.intentKey,
-  })
-  if (reconciled) return { args, result: reconciled }
-
-  let result: unknown
-  if (STAGE18_POST_TURN_MEMORY_TOOL_NAMES.has(toolName)) {
-    result = await executeVossMemoryTool(
-      {
-        client: admin,
-        admin,
-        campaignId,
-        userId: managerUserId,
-        modelId,
-        canManage: true,
-      },
-      toolName,
-      args,
-    )
-  } else if (STAGE18_POST_TURN_QUEST_TOOL_NAMES.has(toolName)) {
-    result = await executeVossQuestTool(
-      {
-        client: admin,
-        campaignId,
-        userId: managerUserId,
-        authority: "admin",
-      },
-      toolName,
-      args,
-    )
-  } else {
-    result = await executeVossManagerTool(
-      {
-        client: admin,
-        admin,
-        campaignId,
-        userId: managerUserId,
-        authority: "admin",
-      },
-      toolName,
-      args,
-    )
-  }
-
-  const resultRecord = jsonRecord(result)
-  if (typeof resultRecord.error === "string" && resultRecord.error) {
-    throw new Error(resultRecord.error)
-  }
-  return { args, result: resultRecord }
-}
-
 async function runStage18Intent({
   admin,
   commit,
   intentRow,
   model,
+  commitLeaseToken,
 }: {
   admin: SupabaseClient
   commit: JsonRecord
   intentRow: JsonRecord
   model: RouterModel
+  commitLeaseToken: string
 }) {
   const campaignId = String(commit.campaign_id || "")
   const roomId = String(commit.room_id || "")
-  const managerUserId = String(commit.manager_user_id || "")
   const sourceCharacterId = String(commit.source_character_id || "")
   const sourceMessageId = Number(commit.source_message_id || 0)
   const parentJobId = String(commit.parent_job_id || "")
   const replyMessageIds = Array.isArray(commit.reply_message_ids)
-    ? commit.reply_message_ids.map(Number).filter((id) => Number.isInteger(id) && id > 0)
+    ? commit.reply_message_ids
+        .map(Number)
+        .filter((id) => Number.isInteger(id) && id > 0)
     : []
   const publishedMessages = Array.isArray(commit.published_messages)
     ? commit.published_messages
@@ -1148,14 +901,20 @@ async function runStage18Intent({
     evidence: String(intentRow.evidence || ""),
   }
 
+  const intentLeaseToken = String(intentRow.lease_token || "")
+  if (!commitLeaseToken || !intentLeaseToken) {
+    throw new Error("stage18_lease_token_missing")
+  }
+
   const { data: parentJob, error: parentError } = await admin
     .from("agent_jobs")
     .select("input")
     .eq("id", parentJobId)
     .maybeSingle()
   if (parentError) throw new Error(parentError.message)
+  if (!parentJob) throw new Error("stage18_parent_job_not_found")
 
-  const parentInput = jsonRecord(parentJob?.input)
+  const parentInput = jsonRecord(parentJob.input)
   const context = await buildGameChatContextV2({
     admin,
     campaignId,
@@ -1170,11 +929,7 @@ async function runStage18Intent({
           : String(sourceMessageId),
     },
   })
-  const sourceEventIds = await stage18PublishedEventIds({
-    admin,
-    campaignId,
-    replyMessageIds,
-  })
+
   const tools = stage18ToolsForIntent(intent.kind)
   if (!tools.length) {
     throw new Error("stage18_post_turn_intent_has_no_tools")
@@ -1195,7 +950,12 @@ async function runStage18Intent({
           },
           published_messages: publishedMessages,
           canonical_context: JSON.parse(stage2ContextForPrompt(context)),
-          published_source_event_ids: sourceEventIds,
+          execution_contract: {
+            exactly_one_tool_call: true,
+            server_atomic_mutation_receipt: true,
+            do_not_invent_uuid: true,
+            do_not_expand_published_canon: true,
+          },
         }),
       },
     ],
@@ -1224,32 +984,31 @@ async function runStage18Intent({
   const call = calls[0]
   const toolName =
     typeof call.function?.name === "string" ? call.function.name : ""
-  const rawArgs = parseProviderToolArguments(call.function?.arguments)
-  const execution = await executeStage18PostTurnTool({
-    admin,
-    campaignId,
-    managerUserId,
-    modelId: model.id || null,
-    roomId,
-    commitId: String(commit.id),
-    intent,
-    toolName,
-    rawArgs,
-    sourceEventIds,
-  })
-  const resolvedIds = [...stage18UuidValues(execution.result)].slice(0, 24)
+  const toolArgs = parseProviderToolArguments(call.function?.arguments)
 
-  const { error } = await admin.rpc(
-    "complete_ai_gm_post_turn_intent_v1",
+  if (!stage18ToolsForIntent(intent.kind).some(
+    (tool) => tool.function.name === toolName
+  )) {
+    throw new Error("stage18_worker_selected_disallowed_tool")
+  }
+
+  const { data, error } = await admin.rpc(
+    "execute_ai_gm_post_turn_mutation_v3",
     {
       p_intent_id: String(intentRow.id),
+      p_commit_lease_token: commitLeaseToken,
+      p_intent_lease_token: intentLeaseToken,
       p_tool_name: toolName,
-      p_tool_arguments: execution.args,
-      p_tool_result: execution.result,
-      p_resolved_entity_ids: resolvedIds,
+      p_args: toolArgs,
     },
   )
   if (error) throw new Error(error.message)
+
+  const execution = jsonRecord(data)
+  if (execution.state !== "completed") {
+    throw new Error("stage18_atomic_mutation_not_completed")
+  }
+  return execution
 }
 
 async function runStage18PostTurnCommit(
@@ -1261,51 +1020,107 @@ async function runStage18PostTurnCommit(
 
   for (let cycle = 0; cycle < 3; cycle += 1) {
     const { data: claimData, error: claimError } = await admin.rpc(
-      "claim_ai_gm_post_turn_commit_v1",
+      "claim_ai_gm_post_turn_commit_v3",
       { p_commit_id: commitId },
     )
     if (claimError) throw new Error(claimError.message)
+
     const commit = jsonRecord(claimData)
     if (!commit.id || String(commit.campaign_id || "") !== campaignId) return
     if (commit.state === "completed" || commit.state === "failed") return
     if (commit.claimed !== true) return
 
+    const commitLeaseToken = String(commit.lease_token || "")
+    if (!commitLeaseToken) {
+      throw new Error("stage18_commit_lease_token_missing")
+    }
+
+    let commitCompleted = false
+
     try {
       for (;;) {
         const { data: intentData, error: intentClaimError } = await admin.rpc(
-          "claim_ai_gm_post_turn_intent_v1",
-          { p_commit_id: commitId },
+          "claim_ai_gm_post_turn_intent_v3",
+          {
+            p_commit_id: commitId,
+            p_commit_lease_token: commitLeaseToken,
+          },
         )
         if (intentClaimError) throw new Error(intentClaimError.message)
+
         const intentRow = jsonRecord(intentData)
         if (!intentRow.id) break
 
+        const intentLeaseToken = String(intentRow.lease_token || "")
         try {
           await runStage18Intent({
             admin,
             commit,
             intentRow,
             model,
+            commitLeaseToken,
           })
         } catch (error) {
-          const message =
-            error instanceof Error ? error.message : String(error)
-          await admin.rpc("fail_ai_gm_post_turn_intent_v1", {
-            p_intent_id: String(intentRow.id),
-            p_error: message,
-          })
+          const message = error instanceof Error ? error.message : String(error)
+          if (intentLeaseToken) {
+            const { error: failIntentError } = await admin.rpc(
+              "fail_ai_gm_post_turn_intent_v3",
+              {
+                p_intent_id: String(intentRow.id),
+                p_intent_lease_token: intentLeaseToken,
+                p_error: message,
+              },
+            )
+            if (failIntentError) {
+              throw new Error(
+                message + " | stage18_intent_fail_record:" + failIntentError.message,
+              )
+            }
+          }
           throw error
         }
       }
 
-      const { error: completeError } = await admin.rpc(
-        "complete_ai_gm_post_turn_commit_v1",
-        { p_commit_id: commitId },
+      const { data: completedData, error: completeError } = await admin.rpc(
+        "complete_ai_gm_post_turn_commit_v3",
+        {
+          p_commit_id: commitId,
+          p_commit_lease_token: commitLeaseToken,
+        },
       )
       if (completeError) throw new Error(completeError.message)
 
-      const parentJobId = String(commit.parent_job_id || "")
-      if (parentJobId) {
+      const completed = jsonRecord(completedData)
+      if (completed.state !== "completed") {
+        throw new Error("stage18_commit_not_terminal_after_complete")
+      }
+      commitCompleted = true
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      const { data: failedData, error: failError } = await admin.rpc(
+        "fail_ai_gm_post_turn_commit_v3",
+        {
+          p_commit_id: commitId,
+          p_commit_lease_token: commitLeaseToken,
+          p_error: message,
+        },
+      )
+      if (failError) throw new Error(failError.message)
+
+      const failed = jsonRecord(failedData)
+      if (failed.state !== "queued") return
+      await new Promise((resolve) => setTimeout(resolve, 250 * (cycle + 1)))
+      continue
+    }
+
+    if (!commitCompleted) return
+
+    // The commit is terminal now. Scheduling the next queued GM turn is deliberately
+    // outside the commit failure path: a downstream wake error may be retried later
+    // but can never turn a completed Stage 18 commit back into failed/queued.
+    const parentJobId = String(commit.parent_job_id || "")
+    if (parentJobId) {
+      try {
         const { data: nextJobId, error: nextError } = await admin.rpc(
           "next_ai_gm_scene_job_v1",
           { p_completed_job_id: parentJobId },
@@ -1318,19 +1133,12 @@ async function runStage18PostTurnCommit(
         ) {
           await runGameChatTurn(admin, campaignId, nextJobId)
         }
+      } catch {
+        // The next conversation job is durable. A later wake/resume can run it.
+        // Never mutate an already completed Stage 18 commit here.
       }
-      return
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error)
-      const { data: failedData, error: failError } = await admin.rpc(
-        "fail_ai_gm_post_turn_commit_v1",
-        { p_commit_id: commitId, p_error: message },
-      )
-      if (failError) throw new Error(failError.message)
-      const failed = jsonRecord(failedData)
-      if (failed.state !== "queued") return
-      await new Promise((resolve) => setTimeout(resolve, 250 * (cycle + 1)))
     }
+    return
   }
 }
 
@@ -1382,7 +1190,7 @@ async function finalizeStage18VisibleAnswer({
     ),
   }
 
-  const { data, error } = await admin.rpc("finalize_ai_gm_turn_v18", {
+  const { data, error } = await admin.rpc("finalize_ai_gm_turn_v3", {
     p_job_id: claimed.id,
     p_messages: messages,
     p_post_turn_intents: reaction.postTurnIntents.map((intent) => ({
@@ -1396,19 +1204,24 @@ async function finalizeStage18VisibleAnswer({
   if (error) throw new Error(error.message)
 
   const finalized = jsonRecord(data)
+
   try {
     await syncStage11TurnLedger(admin, claimed.id)
   } catch {
-    // The visible answer and Stage 18 gate are already committed atomically.
-    // Ledger maintenance must not retroactively fail a published GM turn.
+    // Visible answer + durable Stage 18 gate have already committed atomically.
+    // Ledger maintenance cannot retroactively fail the published turn.
   }
 
   const commitId =
     typeof finalized.post_turn_commit_id === "string"
       ? finalized.post_turn_commit_id
       : ""
+
   if (commitId) {
     try {
+      // runGameChatTurn itself is already a waitUntil-backed background task.
+      // The finalizer transaction has committed the visible chat message before
+      // this begins, so Realtime can render it while junior bookkeeping runs.
       await runStage18PostTurnCommit(admin, campaignId, commitId)
     } catch {
       // The durable commit remains queued/running/failed and can be resumed.
