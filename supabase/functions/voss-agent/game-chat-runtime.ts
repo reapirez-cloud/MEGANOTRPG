@@ -2550,6 +2550,14 @@ function sceneActorHasMechanic(actor: JsonRecord, mechanicKey: string) {
     )
 }
 
+function primaryGmContextForPrompt(context: Stage2GameChatContext) {
+  const canonical = JSON.parse(stage2ContextForPrompt(context)) as JsonRecord
+  return JSON.stringify({
+    ...canonical,
+    gm_behavior_profile: context.gmBehaviorProfile,
+  })
+}
+
 async function requestPrimaryGmDecision({
   admin,
   campaignId,
