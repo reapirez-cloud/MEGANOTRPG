@@ -16,7 +16,8 @@ test("spell events open a full in-chat catalog sheet", () => {
   assert.match(spellDetail, /eq\("slug", rawKey\)/)
   assert.match(spellDetail, /eq\("name_ru", label\.trim\(\)\)/)
   assert.match(spellDetail, /Механика/)
-  assert.doesNotMatch(spellDetail, /объясняет|Заметка Восса/)\n  assert.doesNotMatch(spellDetail, /window\\.location|location\\.hash/)
+  assert.doesNotMatch(spellDetail, /объясняет|Заметка Восса/)
+  assert.doesNotMatch(spellDetail, /window\.location|location\.hash/)
 })
 
 test("GM context keeps location time and recovery as separate actions", () => {
