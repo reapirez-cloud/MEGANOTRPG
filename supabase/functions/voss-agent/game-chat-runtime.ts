@@ -2436,6 +2436,7 @@ function enforceStage12Audience(
       npcAction: null,
       npcRoll: null,
       recoveryRequest: null,
+      socialLeverageAnalysis: null,
       dialogueOutputs: [],
       postTurnIntents: [],
     }
@@ -2451,6 +2452,7 @@ function enforceStage12Audience(
       npcAction: null,
       npcRoll: null,
       recoveryRequest: null,
+      socialLeverageAnalysis: null,
       dialogueOutputs: [],
       postTurnIntents: [],
     }
@@ -2476,6 +2478,7 @@ function enforceStage12Audience(
       npcAction: null,
       npcRoll: null,
       recoveryRequest: null,
+      socialLeverageAnalysis: null,
       dialogueOutputs: [],
       postTurnIntents: [],
     }
@@ -3334,6 +3337,7 @@ async function requestPrimaryGmDecision({
               npcAction: null,
               npcRoll: null,
               recoveryRequest: null,
+              socialLeverageAnalysis: null,
               dialogueOutputs: [],
             },
             messageId,
@@ -3404,6 +3408,7 @@ async function requestPrimaryGmDecision({
               npcAction: null,
               npcRoll: null,
               recoveryRequest: null,
+              socialLeverageAnalysis: null,
               dialogueOutputs: [],
             },
             messageId,
@@ -3713,6 +3718,7 @@ export async function runGameChatTurn(
           npcAction: null,
           npcRoll: null,
           recoveryRequest: null,
+          socialLeverageAnalysis: null,
           dialogueOutputs: [],
         }
       }
