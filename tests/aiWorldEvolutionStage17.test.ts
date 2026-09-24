@@ -148,3 +148,40 @@ test("Stage 17 world creation remains a materializer responsibility, not a playe
   assert.match(code, /СНАЧАЛА используй resolve_random_decision/)
   assert.match(code, /payload\.stage17_world_existence/)
 })
+
+
+test("Stage 17 deterministic success/failure produces an immutable no-roll receipt", () => {
+  const code = runtime()
+  const sql = migration()
+
+  assert.match(code, /intent_adjudication/)
+  assert.match(code, /deterministic_success/)
+  assert.match(code, /deterministic_failure/)
+  assert.match(code, /persistStage17DeterministicAdjudication/)
+  assert.match(sql, /record_ai_gm_deterministic_adjudication_v1/)
+  assert.match(sql, /natural_20_policy/)
+  assert.match(sql, /'not_applicable'/)
+  assert.match(sql, /v_mode='deterministic_success'/)
+  assert.match(sql, /v_mode='deterministic_failure'/)
+})
+
+test("Stage 17 deterministic adjudication never creates a pending d20", () => {
+  const sql = migration()
+  const start = sql.indexOf("create or replace function public.record_ai_gm_deterministic_adjudication_v1")
+  const end = sql.indexOf("revoke all on function public.record_ai_gm_deterministic_adjudication_v1", start)
+  assert.ok(start >= 0)
+  assert.ok(end > start)
+
+  const block = sql.slice(start, end)
+  assert.doesNotMatch(block, /create_ai_gm_player_roll_request_v1/)
+  assert.doesNotMatch(block, /send_chat_roll_v4/)
+  assert.match(block, /insert into public\.ai_player_intent_adjudications/)
+})
+
+test("Stage 17 deterministic world outcomes require real proof", () => {
+  const sql = migration()
+
+  assert.match(sql, /stage17_world_success_requires_canonical_or_resolver_exists_proof/)
+  assert.match(sql, /stage17_world_failure_requires_canonical_or_resolver_absent_proof/)
+  assert.match(sql, /resolver_absent/)
+})
