@@ -32,19 +32,26 @@ export default function PlayerProfileMark() {
   const [open, setOpen] = useState(false)
   const [gmEnabled, setGmEnabled] = useState(false)
   const [models, setModels] = useState<CampaignGmModel[]>([])
+  const [juniorModels, setJuniorModels] = useState<CampaignGmModel[]>([])
   const [loading, setLoading] = useState(false)
   const [savingId, setSavingId] = useState<string | null>(null)
+  const [juniorSavingId, setJuniorSavingId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   const selectedModel = useMemo(
     () => models.find((model) => model.selected) || null,
     [models],
   )
+  const selectedJuniorModel = useMemo(
+    () => juniorModels.find((model) => model.selected) || null,
+    [juniorModels],
+  )
 
   const refresh = useCallback(async () => {
     if (!campaignId) {
       setGmEnabled(false)
       setModels([])
+      setJuniorModels([])
       return
     }
 
@@ -58,24 +65,31 @@ export default function PlayerProfileMark() {
     if (scopeResult.error || scopeResult.data !== true) {
       setGmEnabled(false)
       setModels([])
+      setJuniorModels([])
       setLoading(false)
       return
     }
 
     setGmEnabled(true)
 
-    const { data, error: readError } = await supabase.rpc(
-      "list_campaign_gm_models_v1",
-      { p_campaign_id: campaignId },
-    )
+    const [gmModelsResult, juniorModelsResult] = await Promise.all([
+      supabase.rpc("list_campaign_gm_models_v1", {
+        p_campaign_id: campaignId,
+      }),
+      supabase.rpc("list_campaign_ai_junior_models_v1", {
+        p_campaign_id: campaignId,
+      }),
+    ])
 
+    const readError = gmModelsResult.error || juniorModelsResult.error
     if (readError) {
       setError(readError.message)
       setLoading(false)
       return
     }
 
-    setModels((data || []) as CampaignGmModel[])
+    setModels((gmModelsResult.data || []) as CampaignGmModel[])
+    setJuniorModels((juniorModelsResult.data || []) as CampaignGmModel[])
     setLoading(false)
   }, [campaignId])
 
@@ -109,6 +123,30 @@ export default function PlayerProfileMark() {
 
     await refresh()
     setSavingId(null)
+  }
+
+  async function chooseJuniorModel(modelId: string) {
+    if (!campaignId || !gmEnabled || !canManage || juniorSavingId) return
+
+    setJuniorSavingId(modelId)
+    setError(null)
+
+    const { error: writeError } = await supabase.rpc(
+      "set_campaign_ai_junior_model_v1",
+      {
+        p_campaign_id: campaignId,
+        p_model_id: modelId,
+      },
+    )
+
+    if (writeError) {
+      setError(writeError.message)
+      setJuniorSavingId(null)
+      return
+    }
+
+    await refresh()
+    setJuniorSavingId(null)
   }
 
   if (!campaignId || !gmEnabled) return null
@@ -148,7 +186,7 @@ export default function PlayerProfileMark() {
             <header className="u1-ai-model-sheet__head">
               <div>
                 <small>ИИ-ВЕДУЩИЙ</small>
-                <strong id="u1-ai-model-title">Модель кампании</strong>
+                <strong id="u1-ai-model-title">Модели кампании</strong>
               </div>
               <button
                 type="button"
@@ -161,7 +199,7 @@ export default function PlayerProfileMark() {
             </header>
 
             <div className="u1-ai-model-sheet__current">
-              <span>Сейчас</span>
+              <span>Основной ГМ</span>
               <strong>
                 {selectedModel?.display_name ||
                   (loading ? "Загрузка…" : "Не выбрана")}
@@ -201,6 +239,50 @@ export default function PlayerProfileMark() {
               {!loading && models.length === 0 && !error && (
                 <div className="u1-ai-model-sheet__empty">
                   Нет доступных моделей ИИ-ГМ.
+                </div>
+              )}
+            </div>
+
+            <div className="u1-ai-model-sheet__current">
+              <span>Младший ИИ</span>
+              <strong>
+                {selectedJuniorModel?.display_name ||
+                  (loading ? "Загрузка…" : "Не выбрана")}
+              </strong>
+              <small>
+                Один выбор для materializer, mechanic worker, post-turn,
+                фоновой симуляции и 45-message maintenance.
+              </small>
+            </div>
+
+            <div className="u1-ai-model-list" aria-busy={loading}>
+              {juniorModels.map((model) => (
+                <button
+                  type="button"
+                  key={"junior-" + model.id}
+                  className="u1-ai-model-choice"
+                  data-selected={model.selected || undefined}
+                  disabled={!canManage || Boolean(juniorSavingId)}
+                  onClick={() => void chooseJuniorModel(model.id)}
+                >
+                  <span className="u1-ai-model-choice__mark" aria-hidden="true">
+                    {model.selected ? "●" : "○"}
+                  </span>
+                  <span className="u1-ai-model-choice__copy">
+                    <strong>{model.display_name}</strong>
+                    <small>
+                      {contextLabel(model.context_window)}
+                      {model.supports_vision ? " · изображения" : " · текст"}
+                      {model.supports_tools ? " · инструменты" : ""}
+                    </small>
+                  </span>
+                  {juniorSavingId === model.id && <b>…</b>}
+                </button>
+              ))}
+
+              {!loading && juniorModels.length === 0 && !error && (
+                <div className="u1-ai-model-sheet__empty">
+                  Нет доступных моделей младшего ИИ.
                 </div>
               )}
             </div>
