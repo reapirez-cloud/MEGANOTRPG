@@ -1,6 +1,9 @@
 import type { SupabaseClient } from "npm:@supabase/supabase-js@2.112.3"
 
-import type { RouterModel } from "./model-router.ts"
+import {
+  resolveCampaignJuniorModel,
+  type RouterModel,
+} from "./model-router.ts"
 import {
   ProviderGatewayError,
   requestChatCompletion,
@@ -29,7 +32,6 @@ type ExpectedResult = {
   magnitude: "critical" | "severe" | "notable" | "minor" | "neutral"
 }
 
-const WORKER_MODEL_KEY = "deepseek-v4.1-flash"
 const EVENT_KIND_RE = /^[a-z][a-z0-9._:-]{0,119}$/
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
@@ -363,23 +365,14 @@ export function validateBackgroundWorkerOutput(
 
 async function fixedWorkerModel(
   admin: SupabaseClient,
+  campaignId: string,
+  frozenModelKey: string,
 ): Promise<RouterModel> {
-  const { data, error } = await admin
-    .from("ai_models")
-    .select(
-      "id,provider_key,model_key,display_name,enabled,is_base,gm_selectable,user_selectable,supports_tools,supports_json,supports_streaming,supports_vision,model_kind,access_scope,context_window,cost_tier,reasoning_tier,latency_tier",
-    )
-    .eq("model_key", WORKER_MODEL_KEY)
-    .eq("enabled", true)
-    .eq("model_kind", "agent")
-    .eq("access_scope", "campaign")
-    .eq("supports_json", true)
-    .eq("supports_tools", true)
-    .maybeSingle()
-
-  if (error) throw new Error(error.message)
-  if (!data) throw new Error("background_worker_model_missing")
-  return data as RouterModel
+  const route = await resolveCampaignJuniorModel(admin, {
+    campaignId,
+    frozenModelKey,
+  })
+  return route.model
 }
 
 function failureCode(error: unknown) {
@@ -419,7 +412,14 @@ export async function runAiWorldBackground(
     }
 
     claimed = true
-    if (text(prepared.worker_model, 120) !== WORKER_MODEL_KEY) {
+    const campaignId = text(prepared.campaign_id, 100)
+    const frozenWorkerModel = text(prepared.worker_model, 120)
+    const model = await fixedWorkerModel(
+      admin,
+      campaignId,
+      frozenWorkerModel,
+    )
+    if (model.model_key !== frozenWorkerModel) {
       throw new Error("background_worker_model_mismatch")
     }
 
@@ -428,7 +428,7 @@ export async function runAiWorldBackground(
       "background_worker_input",
     )
     const behavior = await admin.rpc("read_ai_gm_behavior_profile_v1", {
-      p_campaign_id: text(prepared.campaign_id, 100),
+      p_campaign_id: campaignId,
     })
     if (behavior.error) throw new Error(behavior.error.message)
     const workerInput = {
@@ -439,7 +439,6 @@ export async function runAiWorldBackground(
       throw new Error("background_worker_input_surface_invalid")
     }
 
-    const model = await fixedWorkerModel(admin)
 
     const messages: Array<Record<string, unknown>> = [
       { role: "system", content: WORKER_SYSTEM },
