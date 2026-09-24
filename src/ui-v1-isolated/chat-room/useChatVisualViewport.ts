@@ -59,6 +59,10 @@ export function useChatVisualViewport() {
         const viewportBottom = offsetTop + viewportHeight
         const innerBottom = offsetTop + Math.max(1, window.innerHeight || viewportHeight)
         const telegramHeight = Math.max(0, Number(telegram?.viewportHeight) || 0)
+        const telegramStableHeight = Math.max(
+          0,
+          Number(telegram?.viewportStableHeight) || 0,
+        )
         const telegramBottom =
           telegramHeight >= 160
             ? offsetTop + telegramHeight
@@ -91,10 +95,16 @@ export function useChatVisualViewport() {
           document.documentElement.clientHeight,
           window.innerHeight,
           viewportBottom,
+          telegramStableHeight ? offsetTop + telegramStableHeight : 0,
         )
         const shrink = Math.max(0, layoutHeight - visibleBottom)
+        const telegramShrink =
+          telegramHeight && telegramStableHeight
+            ? Math.max(0, telegramStableHeight - telegramHeight)
+            : 0
         const keyboardOpen =
           keyboardHeight >= 60 ||
+          telegramShrink >= 60 ||
           shrink >= 120 ||
           (activeTextControl() && shrink >= 60)
 
