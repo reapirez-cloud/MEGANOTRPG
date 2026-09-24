@@ -1174,7 +1174,7 @@ async function finalizeStage18VisibleAnswer({
     reaction_mode: reaction.mode,
     reaction_reason: reaction.reason,
     dialogue_message_kinds: messages.map((item) => item.kind),
-    context_message_count: context.recentMessages.length,
+    ...stage19ContextTelemetry(context),
     source_location_id: context.sourceLocation?.id || null,
     player_location_count: new Set(
       context.players.map((player) => player.location_id).filter(Boolean),
