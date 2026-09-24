@@ -1,7 +1,10 @@
 import type { SupabaseClient } from "npm:@supabase/supabase-js@2.112.3"
 
 import { executeVossManagerTool } from "./manager-tools.ts"
-import type { RouterModel } from "./model-router.ts"
+import {
+  resolveCampaignJuniorModel,
+  type RouterModel,
+} from "./model-router.ts"
 import { ProviderGatewayError, requestChatCompletion } from "./provider-gateway.ts"
 import { executeVossQuestTool } from "./quest-tools.ts"
 
@@ -20,7 +23,6 @@ type MaintenanceAnalysis = {
   ownerActions: JsonRecord[]
 }
 
-const WORKER_MODEL_KEY = "deepseek-v4.1-flash"
 const MAX_OWNER_ACTIONS = 12
 const OWNER_TOOL_WHITELIST = new Set([
   "move_character_world",
@@ -114,19 +116,12 @@ function parseJsonObject(value: string): JsonRecord | null {
   return null
 }
 
-async function fixedWorkerModel(admin: SupabaseClient): Promise<RouterModel> {
-  const { data, error } = await admin
-    .from("ai_models")
-    .select("id,provider_key,model_key,display_name,enabled,is_base,gm_selectable,user_selectable,supports_tools,supports_json,supports_streaming,supports_vision,model_kind,access_scope,context_window,cost_tier,reasoning_tier,latency_tier")
-    .eq("model_key", WORKER_MODEL_KEY)
-    .eq("enabled", true)
-    .eq("model_kind", "agent")
-    .eq("access_scope", "campaign")
-    .maybeSingle()
-
-  if (error) throw new Error(error.message)
-  if (!data) throw new Error("world_worker_model_missing")
-  return data as RouterModel
+async function fixedWorkerModel(
+  admin: SupabaseClient,
+  campaignId: string,
+): Promise<RouterModel> {
+  const route = await resolveCampaignJuniorModel(admin, { campaignId })
+  return route.model
 }
 
 async function claimMaintenanceJob(
@@ -770,7 +765,7 @@ async function processMaintenanceJob(
   job: MaintenanceJob,
 ) {
   const snapshot = await loadMaintenanceSnapshot(admin, campaignId, job)
-  const model = await fixedWorkerModel(admin)
+  const model = await fixedWorkerModel(admin, campaignId)
 
   const payload = await requestChatCompletion({
     model,
