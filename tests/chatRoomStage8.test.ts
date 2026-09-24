@@ -12,6 +12,7 @@ const panelPath = new URL("../src/ui-v1-isolated/chat-room/ChatActionPanel.tsx",
 const modifierPath = new URL("../src/ui-v1-isolated/chat-room/ChatSpellModifierPanel.tsx", import.meta.url)
 const headerPath = new URL("../src/ui-v1-isolated/chat-room/ChatRoomHeader.tsx", import.meta.url)
 const cssPath = new URL("../src/ui-v1-isolated/chat-room/chat-room.css", import.meta.url)
+const viewportPath = new URL("../src/ui-v1-isolated/chat-room/useChatVisualViewport.ts", import.meta.url)
 const appPath = new URL("../src/ui-v1-isolated/UiV1App.tsx", import.meta.url)
 const mainPath = new URL("../src/ui-v1-isolated/main.tsx", import.meta.url)
 const indexPath = new URL("../index.html", import.meta.url)
@@ -83,6 +84,32 @@ test("stage 8 protects narrow and short screens without clipping core labels", a
   assert.match(css, /overflow-wrap: anywhere/)
   assert.match(css, /-webkit-line-clamp: 2/)
   assert.match(css, /focus-visible/)
+})
+
+test("stage 8 keeps the composer above Android and Telegram keyboards", async () => {
+  const [room, css, viewport] = await Promise.all([
+    readFile(roomPath, "utf8"),
+    readFile(cssPath, "utf8"),
+    readFile(viewportPath, "utf8"),
+  ])
+
+  assert.match(room, /data-keyboard-open=/)
+  assert.match(room, /useChatVisualViewport/)
+  assert.match(viewport, /viewport\.height/)
+  assert.match(viewport, /viewport\.offsetTop/)
+  assert.match(viewport, /Math\.max\(\s*160,/)
+  assert.doesNotMatch(viewport, /Math\.max\(280,/)
+  assert.match(viewport, /focusin/)
+  assert.match(viewport, /focusout/)
+  assert.match(css, /Mobile composer keyboard fix/)
+  assert.match(
+    css,
+    /data-keyboard-open[\s\S]*\.u1-chat-composer \{[\s\S]*padding-bottom: 9px;/,
+  )
+  assert.match(
+    css,
+    /\.u1-chat-composer \{[\s\S]*calc\(12px \+ var\(--u1-safe-bottom/,
+  )
 })
 
 test("stage 8 keeps legacy visual chat panels outside the active room graph", async () => {
