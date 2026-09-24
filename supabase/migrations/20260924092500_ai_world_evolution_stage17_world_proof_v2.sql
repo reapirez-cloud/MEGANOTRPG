@@ -518,7 +518,7 @@ returns jsonb
 language plpgsql
 security definer
 set search_path = ''
-as $
+as $$
 declare
   v_request public.pending_player_roll_requests%rowtype;
   v_adjudication public.ai_player_intent_adjudications%rowtype;
@@ -749,7 +749,7 @@ begin
 
   return v_public_result;
 end;
-$;
+$$;
 
 revoke all on function public.resolve_player_roll_request_v1(uuid)
   from public, anon;
