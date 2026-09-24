@@ -1,3 +1,4 @@
+-- CLASS_MIGRATION_SCOPE: infrastructure
 -- Scope the tail of install_official_class_catalog to the campaign being
 -- installed. The legacy function updated Druid templates across every campaign,
 -- so creating a fresh campaign could touch an older campaign's legacy spell
