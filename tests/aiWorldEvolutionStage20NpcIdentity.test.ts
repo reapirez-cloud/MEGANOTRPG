@@ -22,6 +22,10 @@ const invokerFix = readFileSync(
   new URL("../supabase/migrations/20260924162504_ai_world_evolution_stage20_dossier_invoker_fix_v3.sql", import.meta.url),
   "utf8",
 )
+const rlsPerf = readFileSync(
+  new URL("../supabase/migrations/20260924164004_ai_world_evolution_stage20_rls_perf_v4.sql", import.meta.url),
+  "utf8",
+)
 const context = readFileSync(
   new URL("../supabase/functions/voss-agent/game-chat-context.ts", import.meta.url),
   "utf8",
@@ -211,4 +215,12 @@ test("Stage 20 hardening covers new foreign keys with indexes", () => {
   ]) {
     assert.match(hardening, new RegExp(indexName))
   }
+})
+
+
+test("Stage 20 RLS caches JWT identity lookups and passes explicit user ids", () => {
+  assert.match(rlsPerf, /select \(auth\.jwt\(\)->>'is_anonymous'\)::boolean/)
+  assert.match(rlsPerf, /private\.can_manage_character\([\s\S]*\(select auth\.uid\(\)\)/)
+  assert.match(rlsPerf, /private\.can_manage_campaign\([\s\S]*\(select auth\.uid\(\)\)/)
+  assert.match(rlsPerf, /private\.active_character_for_user\([\s\S]*\(select auth\.uid\(\)\)/)
 })
