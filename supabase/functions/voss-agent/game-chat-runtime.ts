@@ -14,6 +14,7 @@ import {
 } from "./provider-gateway.ts"
 import {
   resolveCampaignGmModel,
+  resolveCampaignJuniorModel,
   type RouterModel,
 } from "./model-router.ts"
 import {
@@ -179,9 +180,6 @@ type GameMasterReaction = {
 }
 
 const GAME_CHAT_SURFACE = "game_chat_v1"
-const WORLD_MATERIALIZER_MODEL_KEY = "deepseek-v4.1-flash"
-const MECHANIC_WORKER_MODEL_KEY = "deepseek-v4.1-flash"
-const POST_TURN_WORKER_MODEL_KEY = "deepseek-v4.1-flash"
 const WORLD_MATERIALIZER_TOOL_NAMES = new Set([
   "create_location",
   "batch_location_changes",
@@ -596,22 +594,11 @@ function worldMaterializerValidationError(name: string, args: JsonRecord) {
 
 async function resolveWorldMaterializerModel(
   admin: SupabaseClient,
-  fallback: RouterModel,
+  campaignId: string,
+  _fallback: RouterModel,
 ): Promise<RouterModel> {
-  const { data, error } = await admin
-    .from("ai_models")
-    .select(
-      "id,provider_key,model_key,display_name,enabled,is_base,gm_selectable,user_selectable,supports_tools,supports_json,supports_streaming,supports_vision,model_kind,access_scope,context_window,cost_tier,reasoning_tier,latency_tier",
-    )
-    .eq("model_key", WORLD_MATERIALIZER_MODEL_KEY)
-    .eq("enabled", true)
-    .eq("model_kind", "agent")
-    .eq("access_scope", "campaign")
-    .eq("supports_tools", true)
-    .maybeSingle()
-
-  if (error) throw new Error(error.message)
-  return data ? data as RouterModel : fallback
+  const route = await resolveCampaignJuniorModel(admin, { campaignId })
+  return route.model
 }
 
 async function runWorldMaterializer({
@@ -631,7 +618,7 @@ async function runWorldMaterializer({
   materializationTask: string
   fallbackModel: RouterModel
 }) {
-  const model = await resolveWorldMaterializerModel(admin, fallbackModel)
+  const model = await resolveWorldMaterializerModel(admin, campaignId, fallbackModel)
   if (!model.supports_tools) {
     return { changed: false, toolRuns: [] as JsonRecord[] }
   }
@@ -811,23 +798,10 @@ async function runWorldMaterializer({
 
 async function resolvePostTurnWorkerModel(
   admin: SupabaseClient,
+  campaignId: string,
 ): Promise<RouterModel> {
-  const { data, error } = await admin
-    .from("ai_models")
-    .select(
-      "id,provider_key,model_key,display_name,enabled,is_base,gm_selectable,user_selectable,supports_tools,supports_json,supports_streaming,supports_vision,model_kind,access_scope,context_window,cost_tier,reasoning_tier,latency_tier",
-    )
-    .eq("model_key", POST_TURN_WORKER_MODEL_KEY)
-    .eq("enabled", true)
-    .eq("model_kind", "agent")
-    .eq("access_scope", "campaign")
-    .eq("supports_tools", true)
-    .eq("supports_json", true)
-    .maybeSingle()
-
-  if (error) throw new Error(error.message)
-  if (!data) throw new Error("stage18_post_turn_worker_model_unavailable")
-  return data as RouterModel
+  const route = await resolveCampaignJuniorModel(admin, { campaignId })
+  return route.model
 }
 
 function stage18ToolsForIntent(kind: PostTurnIntent["kind"]) {
@@ -1032,7 +1006,7 @@ async function runStage18PostTurnCommit(
   campaignId: string,
   commitId: string,
 ) {
-  const model = await resolvePostTurnWorkerModel(admin)
+  const model = await resolvePostTurnWorkerModel(admin, campaignId)
 
   for (let cycle = 0; cycle < 3; cycle += 1) {
     const { data: claimData, error: claimError } = await admin.rpc(
@@ -1329,22 +1303,11 @@ const MECHANIC_WORKER_SYSTEM = [
 
 async function resolveMechanicWorkerModel(
   admin: SupabaseClient,
-  fallback: RouterModel,
+  campaignId: string,
+  _fallback: RouterModel,
 ): Promise<RouterModel> {
-  const { data, error } = await admin
-    .from("ai_models")
-    .select(
-      "id,provider_key,model_key,display_name,enabled,is_base,gm_selectable,user_selectable,supports_tools,supports_json,supports_streaming,supports_vision,model_kind,access_scope,context_window,cost_tier,reasoning_tier,latency_tier",
-    )
-    .eq("model_key", MECHANIC_WORKER_MODEL_KEY)
-    .eq("enabled", true)
-    .eq("model_kind", "agent")
-    .eq("access_scope", "campaign")
-    .eq("supports_json", true)
-    .maybeSingle()
-
-  if (error) throw new Error(error.message)
-  return data ? data as RouterModel : fallback
+  const route = await resolveCampaignJuniorModel(admin, { campaignId })
+  return route.model
 }
 
 function parseNormalizedPlayerRoll(
@@ -1398,18 +1361,20 @@ function parseNormalizedPlayerRoll(
 
 async function normalizePlayerRollWithWorker({
   admin,
+  campaignId,
   fallbackModel,
   context,
   originalMessage,
   request,
 }: {
   admin: SupabaseClient
+  campaignId: string
   fallbackModel: RouterModel
   context: Stage2GameChatContext
   originalMessage: string
   request: PlayerRollRequest
 }): Promise<NormalizedPlayerRollRequest> {
-  const model = await resolveMechanicWorkerModel(admin, fallbackModel)
+  const model = await resolveMechanicWorkerModel(admin, campaignId, fallbackModel)
   const sheet =
     context.sheets.find(
       (item) => String(item.character_id || "") === request.characterId,
@@ -2428,7 +2393,6 @@ async function completeWithGameplayMessage({
         mechanic_result: mechanicResult,
         ...stage19ContextTelemetry(context),
         ...stage21BehaviorProfileTelemetry(context),
-    ...stage21BehaviorProfileTelemetry(context),
         source_location_id: context.sourceLocation?.id || null,
         player_location_count: new Set(
           context.players.map((player) => player.location_id).filter(Boolean),
@@ -3395,6 +3359,7 @@ export async function runGameChatTurn(
       const request = reaction.rollRequest
       const normalized = await normalizePlayerRollWithWorker({
         admin,
+        campaignId,
         fallbackModel: route.model,
         context,
         originalMessage,
