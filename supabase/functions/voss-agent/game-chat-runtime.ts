@@ -197,6 +197,66 @@ type GameMasterReaction = {
 const GAME_CHAT_SURFACE = "game_chat_v1"
 const PRIMARY_GM_PROVIDER_TIMEOUT_MS = 90_000
 const AI_GM_MAX_PROVIDER_CONTINUATIONS = 2
+
+type AiGmRuntimeSettings = {
+  juniorCommit: boolean
+  worldMaterialization: boolean
+  npcIdentity: boolean
+  questUpdates: boolean
+}
+
+const DEFAULT_AI_GM_RUNTIME_SETTINGS: AiGmRuntimeSettings = {
+  juniorCommit: true,
+  worldMaterialization: true,
+  npcIdentity: true,
+  questUpdates: true,
+}
+
+async function loadAiGmRuntimeSettings(
+  admin: SupabaseClient,
+  campaignId: string,
+): Promise<AiGmRuntimeSettings> {
+  const { data, error } = await admin
+    .from("ai_gm_runtime_settings")
+    .select(
+      "junior_commit_enabled,world_materialization_enabled,npc_identity_enabled,quest_updates_enabled",
+    )
+    .eq("campaign_id", campaignId)
+    .maybeSingle()
+
+  if (error) throw new Error(error.message)
+  if (!data) return DEFAULT_AI_GM_RUNTIME_SETTINGS
+
+  return {
+    juniorCommit: data.junior_commit_enabled !== false,
+    worldMaterialization: data.world_materialization_enabled !== false,
+    npcIdentity: data.npc_identity_enabled !== false,
+    questUpdates: data.quest_updates_enabled !== false,
+  }
+}
+
+function applyAiGmRuntimeSettings(
+  reaction: GameMasterReaction,
+  settings: AiGmRuntimeSettings,
+): GameMasterReaction {
+  const postTurnIntents = !settings.juniorCommit
+    ? []
+    : settings.questUpdates
+      ? reaction.postTurnIntents
+      : reaction.postTurnIntents.filter((intent) => intent.kind !== "quest")
+
+  return {
+    ...reaction,
+    postTurnIntents,
+    worldMaterializationRequested:
+      settings.worldMaterialization &&
+      reaction.worldMaterializationRequested === true,
+    worldMaterializationTask:
+      settings.worldMaterialization
+        ? reaction.worldMaterializationTask
+        : "",
+  }
+}
 const WORLD_MATERIALIZER_TOOL_NAMES = new Set([
   "create_location",
   "batch_location_changes",
@@ -2264,6 +2324,7 @@ async function generateNpcDialogue({
   priorOutputs,
 }: {
   route: Awaited<ReturnType<typeof resolveCampaignGmModel>>
+  runtimeSettings: AiGmRuntimeSettings
   context: Stage2GameChatContext
   npcCharacterId: string
   priorOutputs: JsonRecord[]
@@ -3014,6 +3075,7 @@ async function requestPrimaryGmDecision({
   campaignId,
   claimed,
   route,
+  runtimeSettings,
   context,
   sourceMessageId,
   isResume,
@@ -3044,6 +3106,11 @@ async function requestPrimaryGmDecision({
     { role: "user", content: userContent },
   ]
   const toolRuns: JsonRecord[] = []
+  const primaryTools = runtimeSettings.npcIdentity
+    ? PRIMARY_GM_SCENE_ACTOR_TOOLS
+    : PRIMARY_GM_SCENE_ACTOR_TOOLS.filter(
+        (tool) => tool.function.name !== "refine_npc_identity_for_social_scene",
+      )
 
   for (let round = 0; round < 6; round += 1) {
     const payload = await requestChatCompletion({
@@ -3051,13 +3118,13 @@ async function requestPrimaryGmDecision({
       messages,
       ...(route.model.supports_tools
         ? {
-            tools: PRIMARY_GM_SCENE_ACTOR_TOOLS as unknown as Array<Record<string, unknown>>,
+            tools: primaryTools as unknown as Array<Record<string, unknown>>,
             toolChoice: "auto",
           }
         : {}),
       temperature: 0.55,
-      timeoutMs: 120_000,
-      retryCount: 1,
+      timeoutMs: PRIMARY_GM_PROVIDER_TIMEOUT_MS,
+      retryCount: 0,
     })
 
     const assistant = providerMessage(payload)
@@ -3202,6 +3269,9 @@ async function requestPrimaryGmDecision({
           }
         }
       } else if (name === "refine_npc_identity_for_social_scene") {
+        if (!runtimeSettings.npcIdentity) {
+          result = { error: "npc_identity_feature_disabled" }
+        } else {
         const npcCharacterId =
           typeof args.npc_character_id === "string"
             ? args.npc_character_id.trim()
@@ -3242,6 +3312,7 @@ async function requestPrimaryGmDecision({
                   String(item.character_id || "") === npcCharacterId,
               ) || null,
           }
+        }
         }
       } else if (context.sourceAudience.scope === "direct_pc") {
         result = { error: "scene_actor_tool_blocked_for_direct_pc" }
@@ -3635,13 +3706,14 @@ export async function runGameChatTurn(
       throw new Error("ai_gm_turn_input_invalid")
     }
 
-    const [route, initialContext] = await Promise.all([
+    const [route, initialContext, runtimeSettings] = await Promise.all([
       resolveCampaignGmModel(admin, { campaignId }),
       buildGameChatContextV2({
         admin,
         campaignId,
         jobInput: claimed.input,
       }),
+      loadAiGmRuntimeSettings(admin, campaignId),
     ])
 
     let context = initialContext
@@ -3668,6 +3740,7 @@ export async function runGameChatTurn(
       campaignId,
       claimed,
       route,
+      runtimeSettings,
       context,
       sourceMessageId,
       isResume,
@@ -3688,9 +3761,13 @@ export async function runGameChatTurn(
     context = initialDecision.context
     if (initialDecision.completed) return
 
-    let reaction = parseReaction(initialDecision.raw, context)
+    let reaction = applyAiGmRuntimeSettings(
+      parseReaction(initialDecision.raw, context),
+      runtimeSettings,
+    )
 
     if (
+      runtimeSettings.worldMaterialization &&
       !isResume &&
       (
         !context.sourceLocation ||
@@ -3747,6 +3824,7 @@ export async function runGameChatTurn(
         campaignId,
         claimed,
         route,
+        runtimeSettings,
         context,
         sourceMessageId,
         isResume: false,
@@ -3761,7 +3839,10 @@ export async function runGameChatTurn(
       context = continuationDecision.context
       if (continuationDecision.completed) return
 
-      reaction = parseReaction(continuationDecision.raw, context)
+      reaction = applyAiGmRuntimeSettings(
+        parseReaction(continuationDecision.raw, context),
+        runtimeSettings,
+      )
       reaction.worldMaterializationRequested = false
     }
 
@@ -3819,6 +3900,7 @@ export async function runGameChatTurn(
         campaignId,
         claimed,
         route,
+        runtimeSettings,
         context,
         sourceMessageId,
         isResume,
@@ -3835,7 +3917,10 @@ export async function runGameChatTurn(
       if (recoveryDecision.completed) return
 
       reaction = enforceStage12Audience(
-        parseReaction(recoveryDecision.raw, context),
+        applyAiGmRuntimeSettings(
+          parseReaction(recoveryDecision.raw, context),
+          runtimeSettings,
+        ),
         context,
       )
       if (reaction.mode === "recovery") {
