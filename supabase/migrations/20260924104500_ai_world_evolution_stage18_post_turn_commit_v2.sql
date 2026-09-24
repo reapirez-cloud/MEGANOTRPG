@@ -118,28 +118,6 @@ set project_url=excluded.project_url,
 
 create or replace function public.verify_ai_gm_post_turn_dispatch_v2(p_token text)
 returns boolean
-language sql
-stable
-security definer
-set search_path=''
-as $$
-  select coalesce(
-    (
-      select c.enabled is true
-        and nullif(trim(c.dispatch_token),'') is not null
-        and extensions.crypt(coalesce(p_token,''), extensions.crypt(c.dispatch_token, extensions.gen_salt('bf'))) =
-            extensions.crypt(c.dispatch_token, extensions.crypt(c.dispatch_token, extensions.gen_salt('bf')))
-      from private.ai_gm_post_turn_dispatch_config c
-      where c.singleton=true
-    ),
-    false
-  );
-$$;
-
--- Replace the needlessly expensive crypt comparison above with constant text comparison
--- in a service-only verifier. The token never leaves server-to-server dispatch.
-create or replace function public.verify_ai_gm_post_turn_dispatch_v2(p_token text)
-returns boolean
 language plpgsql
 stable
 security definer
