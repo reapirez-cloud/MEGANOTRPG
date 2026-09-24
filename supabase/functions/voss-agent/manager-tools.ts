@@ -9,6 +9,7 @@ export type VossManagerToolContext = {
   campaignId: string
   userId: string
   authority: VossAuthority
+  internalService?: boolean
 }
 
 const NPC_SHEET_PROPERTIES = {
@@ -966,6 +967,23 @@ function managerClient(context: VossManagerToolContext) {
   return context.authority === "admin" ? context.admin : context.client
 }
 
+async function canonicalManagerRpc(
+  context: VossManagerToolContext,
+  operation: string,
+  directArgs: JsonRecord,
+  internalArgs: JsonRecord,
+) {
+  if (context.internalService) {
+    return await context.admin.rpc("ai_gm_invoke_as_manager_v1", {
+      p_actor_user_id: context.userId,
+      p_operation: operation,
+      p_args: internalArgs,
+    })
+  }
+
+  return await context.client.rpc(operation, directArgs)
+}
+
 function canManage(context: VossManagerToolContext) {
   return context.authority === "gm" || context.authority === "admin"
 }
@@ -1742,11 +1760,16 @@ async function createWorldNpc(
   if (!name) return { error: "npc_name_required" }
 
   const payload: JsonRecord = { ...args, name }
-  const { data, error } = await context.client.rpc(
+  const { data, error } = await canonicalManagerRpc(
+    context,
     "create_world_npc_v1",
     {
       p_campaign_id: context.campaignId,
       p_input: payload,
+    },
+    {
+      campaign_id: context.campaignId,
+      input: payload,
     },
   )
 
@@ -1772,11 +1795,16 @@ async function updateWorldNpc(
   const patch: JsonRecord = { ...args }
   delete patch.character_id
 
-  const { data, error } = await context.client.rpc(
+  const { data, error } = await canonicalManagerRpc(
+    context,
     "update_world_npc_v1",
     {
       p_npc_character_id: characterId,
       p_patch: patch,
+    },
+    {
+      npc_character_id: characterId,
+      patch,
     },
   )
 
@@ -1800,11 +1828,16 @@ async function upsertFaction(
   if (factionId) payload.faction_id = factionId
   if (name) payload.name = name
 
-  const { data, error } = await context.client.rpc(
+  const { data, error } = await canonicalManagerRpc(
+    context,
     "upsert_faction_v1",
     {
       p_campaign_id: context.campaignId,
       p_input: payload,
+    },
+    {
+      campaign_id: context.campaignId,
+      input: payload,
     },
   )
 
@@ -1825,12 +1858,18 @@ async function setFactionMembership(
   delete payload.character_id
   delete payload.faction_id
 
-  const { data, error } = await context.client.rpc(
+  const { data, error } = await canonicalManagerRpc(
+    context,
     "set_faction_membership_v1",
     {
       p_character_id: characterId,
       p_faction_id: factionId,
       p_input: payload,
+    },
+    {
+      character_id: characterId,
+      faction_id: factionId,
+      input: payload,
     },
   )
 
@@ -1851,12 +1890,18 @@ async function setCharacterFactionReputation(
   delete payload.character_id
   delete payload.faction_id
 
-  const { data, error } = await context.client.rpc(
+  const { data, error } = await canonicalManagerRpc(
+    context,
     "set_character_faction_reputation_v1",
     {
       p_character_id: characterId,
       p_faction_id: factionId,
       p_input: payload,
+    },
+    {
+      character_id: characterId,
+      faction_id: factionId,
+      input: payload,
     },
   )
 
@@ -1873,15 +1918,24 @@ async function moveCharacterWorld(
   if (!characterId) return { error: "character_id_required" }
   if (!locationId) return { error: "location_id_required" }
 
-  const { data, error } = await context.client.rpc(
+  const campaignDay =
+    args.campaign_day === undefined ? null : Number(args.campaign_day)
+  const dayPeriod =
+    args.day_period === undefined ? null : text(args.day_period, 40)
+  const { data, error } = await canonicalManagerRpc(
+    context,
     "move_character_world_v1",
     {
       p_character_id: characterId,
       p_location_id: locationId,
-      p_campaign_day:
-        args.campaign_day === undefined ? null : Number(args.campaign_day),
-      p_day_period:
-        args.day_period === undefined ? null : text(args.day_period, 40),
+      p_campaign_day: campaignDay,
+      p_day_period: dayPeriod,
+    },
+    {
+      character_id: characterId,
+      location_id: locationId,
+      campaign_day: campaignDay,
+      day_period: dayPeriod,
     },
   )
 
@@ -1906,14 +1960,23 @@ async function setWorldDiscovery(
   if (!entityId) return { error: "entity_id_required" }
   if (!entityType) return { error: "entity_type_invalid" }
 
-  const { data, error } = await context.client.rpc(
+  const discovered = args.discovered !== false
+  const { data, error } = await canonicalManagerRpc(
+    context,
     "manage_world_discovery_v1",
     {
       p_character_id: characterId,
       p_entity_type: entityType,
       p_entity_id: entityId,
-      p_discovered: args.discovered !== false,
+      p_discovered: discovered,
       p_source: "ai_gm",
+    },
+    {
+      character_id: characterId,
+      entity_type: entityType,
+      entity_id: entityId,
+      discovered,
+      source: "ai_gm",
     },
   )
 
@@ -1931,12 +1994,18 @@ async function setNpcHabitat(
   if (!locationId) return { error: "location_id_required" }
 
   const attached = args.attached !== false
-  const { error } = await context.client.rpc(
+  const { error } = await canonicalManagerRpc(
+    context,
     "set_npc_zone_habitat",
     {
       p_npc_character_id: npcCharacterId,
       p_location_id: locationId,
       p_attached: attached,
+    },
+    {
+      npc_character_id: npcCharacterId,
+      location_id: locationId,
+      attached,
     },
   )
 
@@ -1976,12 +2045,18 @@ async function upsertLocationTransition(
     input.sort_order = Number(args.sort_order)
   }
 
-  const { data, error } = await context.client.rpc(
+  const { data, error } = await canonicalManagerRpc(
+    context,
     "upsert_location_transition_v1",
     {
       p_source_location_id: sourceLocationId,
       p_target_location_id: targetLocationId,
       p_input: input,
+    },
+    {
+      source_location_id: sourceLocationId,
+      target_location_id: targetLocationId,
+      input,
     },
   )
 
@@ -1996,9 +2071,11 @@ async function deleteLocationTransition(
   const linkId = uuid(args.link_id)
   if (!linkId) return { error: "link_id_required" }
 
-  const { data, error } = await context.client.rpc(
+  const { data, error } = await canonicalManagerRpc(
+    context,
     "delete_location_transition_v1",
     { p_link_id: linkId },
+    { link_id: linkId },
   )
 
   if (error) return { error: error.message }
@@ -2032,11 +2109,16 @@ async function upsertLocationSecret(
     input.resolution_note = text(args.resolution_note, 12000)
   }
 
-  const { data, error } = await context.client.rpc(
+  const { data, error } = await canonicalManagerRpc(
+    context,
     "upsert_location_secret_v1",
     {
       p_location_id: locationId,
       p_input: input,
+    },
+    {
+      location_id: locationId,
+      input,
     },
   )
 
@@ -2058,12 +2140,19 @@ async function setLocationSecretState(
       : ""
   if (!status) return { error: "location_secret_status_invalid" }
 
-  const { data, error } = await context.client.rpc(
+  const resolutionNote = text(args.resolution_note, 12000)
+  const { data, error } = await canonicalManagerRpc(
+    context,
     "set_location_secret_state_v1",
     {
       p_secret_id: secretId,
       p_status: status,
-      p_resolution_note: text(args.resolution_note, 12000),
+      p_resolution_note: resolutionNote,
+    },
+    {
+      secret_id: secretId,
+      status,
+      resolution_note: resolutionNote,
     },
   )
 
