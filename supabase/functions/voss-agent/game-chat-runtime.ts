@@ -1457,8 +1457,7 @@ function parseReaction(
     ...empty(mode, reason),
     body,
     npcCharacterId: mode === "npc_interjection" ? npcCharacterId : null,
-    deterministicAdjudication:
-      mode === "request_player_roll" ? null : deterministicAdjudication,
+    deterministicAdjudication,
   }
 }
 
