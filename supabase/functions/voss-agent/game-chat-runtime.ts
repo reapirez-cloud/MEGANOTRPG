@@ -144,6 +144,13 @@ type DialoguePlanOutput =
   | { kind: "narration"; body: string }
   | { kind: "npc_dialogue"; npcCharacterId: string }
 
+type PostTurnIntent = {
+  intentKey: string
+  kind: "location" | "npc" | "quest" | "memory" | "canonical_state" | "binding"
+  instruction: string
+  evidence: string
+}
+
 type RecoveryRequest = {
   trigger: "short_rest" | "long_rest" | "dawn"
   targetCharacterIds: string[]
@@ -160,6 +167,7 @@ type GameMasterReaction = {
   npcRoll: NpcRollRequest | null
   recoveryRequest: RecoveryRequest | null
   dialogueOutputs: DialoguePlanOutput[]
+  postTurnIntents: PostTurnIntent[]
   worldMaterializationRequested?: boolean
   worldMaterializationTask?: string
 }
@@ -384,10 +392,13 @@ const STAGE12_GAME_MASTER_SYSTEM = [
   "Для recovery передай recovery.trigger=short_rest|long_rest|dawn. Для short_rest/long_rest передай target_character_ids только из characters_physically_present_with_source. Можно указать несколько персонажей.",
   "Для dawn target_character_ids должен быть пустым. Сервер сам переводит текущую локацию к dawn: если сейчас уже dawn, второй рассвет этого же campaign_day не срабатывает; иначе наступает следующий campaign_day. Dawn восстанавливает только физически находящихся в этой location_id персонажей.",
   "После recovery сервер перечитает канонический контекст и даст тебе продолжить ТОТ ЖЕ GM turn уже с обновлёнными ресурсами и временем. Не проси тот же recovery второй раз.",
-  "Если для текущего хода нужна новая каноническая локация, NPC, фракция, переход, секрет или квест, которых НЕТ в снимке, не выдумывай UUID и не изображай отсутствующую сущность как уже существующую. Поставь world_materialization=true и reaction_mode=none.",
-  "Одновременно заполни world_materialization_task коротким ТЗ для Flash-worker: что именно создать/обновить, зачем это нужно текущей сцене, обязательные факты, сюжетную функцию, настроение/контекст и ограничения. Не расписывай все декоративные детали: Flash имеет право сам достроить их до полноценной сущности. Явно укажи, что нельзя менять или выдумывать. Максимум 2000 символов.",
-  "Сервер передаст world_materialization_task в DeepSeek V4.1 Flash, тот выполнит только операции с базой, затем ты получишь обновлённый канонический снимок и продолжишь ТОТ ЖЕ ход.",
-  "Если все нужные сущности уже существуют, world_materialization=false и world_materialization_task=''.",
+  "PRE-RESPONSE world_materialization используй ТОЛЬКО когда без нового канонического UUID/состояния невозможно корректно закончить ЭТОТ ЖЕ ответ: например source_location отсутствует или в этом же ходе требуется механически обратиться к ещё не созданной сущности. Тогда поставь world_materialization=true и reaction_mode=none.",
+  "Если новый факт можно сначала честно сообщить игроку, а затем спокойно записать в базу пока игрок читает ответ, НЕ тормози ответ world_materialization. Поставь world_materialization=false и добавь этот факт в post_turn_intents.",
+  "world_materialization_task для действительно обязательной pre-response материализации: короткое ТЗ Flash-worker, обязательные факты, сюжетная функция и ограничения. Максимум 2000 символов.",
+  "post_turn_intents — скрытый bounded список максимум 12 записей. Каждая запись описывает РОВНО ОДНУ уже установленную видимым ответом каноническую мутацию: {intent_key,kind, instruction,evidence}. kind: location|npc|quest|memory|canonical_state|binding. intent_key короткий стабильный lower-case ключ без пробелов. Не пиши tool/RPC названия.",
+  "Не добавляй post_turn_intent для будущей идеи, возможного события или детали, которой нет в опубликованном ответе. Младший после публикации не имеет права дописывать сюжет.",
+  "Если один ответ устанавливает несколько независимых изменений, разнеси их на отдельные intents. Один intent = одна атомарная каноническая операция.",
+  "Если все нужные сущности уже существуют и ответ ничего нового не устанавливает, world_materialization=false, world_materialization_task='' и post_turn_intents=[]."
   "Если вмешательство не нужно, используй none.",
   "World existence и character performance — разные неопределённости. Player d20 никогда не создаёт отсутствующую хижину, дракона, NPC, предмет или улику. Если существование реально не определено каноном и допустимы 2+ исхода, СНАЧАЛА используй resolve_random_decision; только после зафиксированного existence result можно просить character check.",
   "Когда resolve_random_decision решает именно СУЩЕСТВОВАНИЕ факта мира для последующей проверки игрока, КАЖДЫЙ outcome_band обязан нести payload.stage17_world_existence='exists' или 'absent'. Если выпал exists, передай возвращённый полный decision_key в roll_request.resolver_decision_key. Сервер проверит реальный resolver receipt; текстового заявления недостаточно.",
@@ -403,7 +414,7 @@ const STAGE12_GAME_MASTER_SYSTEM = [
   "Для request_player_roll НЕ указывай request_type/ability_key/skill_key/attack_kind/modifier и не думай о RPC/API. Укажи roll_request: character_id, adjudication_mode(check|impossible_exact), uncertainty_scope(character_performance|world_discovery), canonical_evidence, resolver_decision_key, exact_goal, semantic_check обычным языком D&D, logical_difficulty(very_easy|easy|moderate|hard|very_hard|nearly_impossible), dc_visibility(public|hidden), success_envelope, failure_envelope, partial_success_envelope, label, reason. Для check success/failure envelopes обязательны; для impossible_exact обязательны failure + partial_success, а exact goal остаётся false.",
   "Для mechanic modes body пустой и messages пустой.",
   "Если нужен scene actor, сначала вызывай доступные scene-actor provider tools. После их результата либо закончи механическое действие tool-вызовом, либо верни обычный JSON для narration/диалога.",
-  "Ответь ТОЛЬКО одним JSON-объектом без markdown с полями reaction_mode, world_materialization, world_materialization_task, messages, body, npc_character_id, intent_adjudication, roll_request, npc_action, npc_roll, recovery, reason.",
+  "Ответь ТОЛЬКО одним JSON-объектом без markdown с полями reaction_mode, world_materialization, world_materialization_task, post_turn_intents, messages, body, npc_character_id, intent_adjudication, roll_request, npc_action, npc_roll, recovery, reason.",
   "reaction_mode: recovery|dialogue_sequence|environment|npc_interjection|request_player_roll|npc_action|npc_roll|none.",
 ].join("\n")
 
@@ -982,6 +993,7 @@ function parseReaction(
 ): GameMasterReaction {
   let worldMaterializationRequested = false
   let worldMaterializationTask = ""
+  let postTurnIntents: PostTurnIntent[] = []
   const empty = (
     mode: ReactionMode,
     reason: string,
@@ -996,6 +1008,7 @@ function parseReaction(
     npcRoll: null,
     recoveryRequest: null,
     dialogueOutputs: [],
+    postTurnIntents,
     worldMaterializationRequested,
     worldMaterializationTask,
   })
@@ -1007,6 +1020,54 @@ function parseReaction(
       typeof parsed.world_materialization_task === "string"
         ? parsed.world_materialization_task.trim().slice(0, 2000)
         : ""
+
+    const allowedPostTurnKinds = new Set([
+      "location",
+      "npc",
+      "quest",
+      "memory",
+      "canonical_state",
+      "binding",
+    ])
+    const seenPostTurnKeys = new Set<string>()
+    postTurnIntents = Array.isArray(parsed.post_turn_intents)
+      ? parsed.post_turn_intents.slice(0, 12).flatMap((value): PostTurnIntent[] => {
+          const item = jsonRecord(value)
+          const intentKey =
+            typeof item.intent_key === "string"
+              ? item.intent_key.trim().toLowerCase().slice(0, 96)
+              : ""
+          const kind =
+            typeof item.kind === "string"
+              ? item.kind.trim().toLowerCase()
+              : ""
+          const instruction =
+            typeof item.instruction === "string"
+              ? item.instruction.trim().slice(0, 1600)
+              : ""
+          const evidence =
+            typeof item.evidence === "string"
+              ? item.evidence.trim().slice(0, 1600)
+              : ""
+
+          if (
+            !/^[a-z0-9][a-z0-9._:-]{0,95}$/.test(intentKey) ||
+            !allowedPostTurnKinds.has(kind) ||
+            !instruction ||
+            seenPostTurnKeys.has(intentKey)
+          ) {
+            return []
+          }
+
+          seenPostTurnKeys.add(intentKey)
+          return [{
+            intentKey,
+            kind: kind as PostTurnIntent["kind"],
+            instruction,
+            evidence,
+          }]
+        })
+      : []
   }
 
   if (!parsed) {
@@ -1399,6 +1460,7 @@ function parseReaction(
       ? {
           ...empty(mode, reason || "stage7_dialogue_sequence"),
           dialogueOutputs,
+          postTurnIntents,
         }
       : empty("none", "empty_or_invalid_dialogue_sequence")
   }
@@ -1449,6 +1511,7 @@ function parseReaction(
         ),
         body,
         deterministicAdjudication,
+        postTurnIntents,
       }
     }
   }
@@ -1458,6 +1521,7 @@ function parseReaction(
     body,
     npcCharacterId: mode === "npc_interjection" ? npcCharacterId : null,
     deterministicAdjudication,
+    postTurnIntents,
   }
 }
 
