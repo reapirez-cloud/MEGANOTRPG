@@ -525,7 +525,7 @@ returns jsonb
 language plpgsql
 security definer
 set search_path=''
-as $
+as $$
 declare
   v_job public.agent_jobs%rowtype;
   v_room_id uuid;
@@ -758,7 +758,7 @@ begin
     'runtime_stage',17
   );
 end;
-$;
+$$;
 
 revoke all on function public.record_ai_gm_deterministic_adjudication_v1(
   uuid,uuid,text,text,text,text,jsonb,jsonb,jsonb,text,text
