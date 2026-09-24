@@ -115,9 +115,9 @@ export default function ChatActionDetailSheet({ campaignId, mechanicId, label, d
         {!loading && !error && !view && <div className="auth-error">Описание способности «{label}» не найдено в справочнике.</div>}
 
         {view && <div className="chat-spell-detail__body">
+          {view.description && <section className="chat-spell-detail__block chat-spell-detail__rules"><small>Механика способности</small><p>{view.description}</p></section>}
+          {view.facts.length > 0 && <section className="chat-spell-detail__block"><small>Точные параметры</small>{view.facts.map((fact) => <p key={fact}>{fact}</p>)}</section>}
           {view.explanation && <section className="chat-spell-detail__author"><small>Восс объясняет</small><p>{view.explanation}</p></section>}
-          {view.description && <section className="chat-spell-detail__block chat-spell-detail__rules"><small>Полное правило</small><p>{view.description}</p></section>}
-          {view.facts.length > 0 && <section className="chat-spell-detail__block"><small>Механика</small>{view.facts.map((fact) => <p key={fact}>{fact}</p>)}</section>}
           {view.comment && <section className="chat-spell-detail__comment"><small>Заметка Восса</small><p>{view.comment}</p></section>}
         </div>}
       </article>
