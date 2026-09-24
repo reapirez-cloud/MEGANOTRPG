@@ -27,8 +27,11 @@ test("stage 10 contract is certified", () => {
   assert.match(stage10, /status: "certified"/)
 })
 
-test("stage 10 keeps one fixed Flash batch workflow", () => {
-  assert.match(worker, /WORKER_MODEL_KEY = "deepseek-v4\.1-flash"/)
+test("stage 10 keeps one frozen junior-model batch workflow", () => {
+  assert.match(worker, /resolveCampaignJuniorModel/)
+  assert.match(worker, /frozenModelKey/)
+  assert.match(worker, /prepared\.worker_model/)
+  assert.match(worker, /model\.model_key !== frozenWorkerModel/)
   assert.equal((worker.match(/await requestChatCompletion\(/g) || []).length, 1)
   assert.match(worker, /retryCount: 0/)
   assert.match(worker, /responseFormat: \{ type: "json_object" \}/)
