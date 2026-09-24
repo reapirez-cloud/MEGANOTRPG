@@ -78,7 +78,7 @@ test("Stage 23 is narrative-only and stays out of generic world-worker context",
 test("Stage 23 does not turn mature profile into NPC compliance or mechanics", () => {
   assert.match(runtime, /adult_focused[^\n]*тематический приоритет/)
   assert.match(runtime, /не означает consent или compliance/)
-  assert.match(runtime, /не меняет consent, hard red_lines, отношения или личность NPC/)
+  assert.match(runtime, /не меняют consent, hard red_lines, отношения или личность NPC/)
   assert.match(runtime, /НИКОГДА не меняет канон, механику, цены, последствия/)
   assert.match(runtime, /однозначно взрослых персонажей\/контекста/)
 })
