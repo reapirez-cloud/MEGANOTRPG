@@ -317,8 +317,7 @@ async function loadSpellDetail(
     description:
       row.rules_text ||
       row.effect_summary ||
-      payloadDescription(event) ||
-      row.author_description,
+      payloadDescription(event),
     meta: [
       ...(row.casting_time
         ? [{ label: "Сотворение", value: row.casting_time }]
@@ -530,19 +529,6 @@ async function loadAbilityDetail(
         .find((value): value is string => Boolean(value))
     : null
 
-  const directPresentation = isRecord(direct.presentation)
-    ? direct.presentation
-    : null
-  const fallback =
-    directPresentation
-      ? readString(
-          directPresentation,
-          "authorExplanation",
-          "author_explanation",
-          "summary",
-        )
-      : null
-
   if (sourceDescription) {
     return {
       title: presentation.title,
@@ -553,14 +539,6 @@ async function loadAbilityDetail(
 
   const reference = await loadReferenceFeatureDetail(presentation)
   if (reference) return reference
-
-  if (fallback) {
-    return {
-      title: presentation.title,
-      description: fallback,
-      meta: [],
-    }
-  }
 
   return {
     title: presentation.title,
