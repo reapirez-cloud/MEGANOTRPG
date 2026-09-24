@@ -1172,7 +1172,7 @@ Rollback-only database certification covered:
 
 ## Stage 21 — GM behavior profiles
 
-**Status: PLANNED**
+**Status: IMPLEMENTED — 2026-09-24**
 
 Profiles change **how hard reality presses on the player**, not what reality is.
 
@@ -1239,6 +1239,30 @@ Persist normalized dimensions such as:
 - life/social focus;
 - pacing;
 - persistence/forgetfulness of consequences.
+
+### Implementation closure — 2026-09-24
+
+Stage 21 now stores AI-GM behavior as fixed campaign-level presets instead of one vague prompt adjective.
+
+Implemented:
+- fixed presets `brutal / adventure / sims` with Russian labels **Жестокий / Приключение / Симс**;
+- normalized 0..5 dimensions for consequence strictness, plot armor, lethal pressure, danger telegraphing, recoverable complications, adventure coincidence, life/social focus, pacing pressure and consequence persistence;
+- a shared server-owned constitution stating that player intent is not canon and profiles cannot modify facts, resolved mechanics/dice or NPC identity/agency;
+- **Приключение** is the default for AI-world campaigns;
+- profile changes are campaign-level, AI-world-only and require campaign-manager authority;
+- primary GM receives the same selected profile in canonical context and is explicitly instructed to use it only as tie-breaking among already plausible branches;
+- background simulation receives the same profile, while its validator still freezes the server-supplied d100 result/direction/magnitude;
+- world materializer and post-turn junior remain outside profile discretion because they only materialize already published canon;
+- GM job results record the selected profile key and dimensions for audit;
+- the AI tools drawer exposes the three profiles for AI-world campaigns and explains that canon, dice and NPC personality remain unchanged.
+
+Rollback-only smoke certification changed an existing campaign to AI-world only inside the test transaction, selected **Жестокий**, and verified:
+- ordinary non-AI campaigns reject behavior-profile mutation;
+- a non-manager player cannot change the campaign profile;
+- all 9 normalized dimensions are present;
+- NPC identity version/hash is unchanged;
+- campaign event count is unchanged;
+- temporary AI-slot binding is fully rolled back.
 
 **Done when:** changing profile changes the campaign pressure while identical facts, NPC identity and resolved dice remain authoritative.
 
