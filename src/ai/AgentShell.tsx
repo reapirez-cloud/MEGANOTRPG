@@ -195,7 +195,11 @@ function readableBytes(bytes: number) {
   return (bytes / (1024 * 1024)).toFixed(1) + " МБ"
 }
 
-export default function AgentShell() {
+export default function AgentShell({
+  onOpenControl,
+}: {
+  onOpenControl?: () => void
+} = {}) {
   const {
     campaignId,
     canManage,
@@ -708,7 +712,13 @@ export default function AgentShell() {
 
     if (!drag.moved) {
       setOrbPosition(current)
-      setOpen((value) => !value)
+      if (open) {
+        setOpen(false)
+      } else if (canManage && onOpenControl) {
+        onOpenControl()
+      } else {
+        setOpen(true)
+      }
       return
     }
 
@@ -751,14 +761,22 @@ export default function AgentShell() {
         onKeyDown={(event) => {
           if (event.key !== "Enter" && event.key !== " ") return
           event.preventDefault()
-          setOpen((current) => !current)
+          if (open) {
+            setOpen(false)
+          } else if (canManage && onOpenControl) {
+            onOpenControl()
+          } else {
+            setOpen(true)
+          }
         }}
         aria-label={
           open
             ? `Свернуть ${assistantName}`
             : sending || pendingReply
               ? `${assistantName} работает в фоне`
-              : `Открыть ${assistantName}`
+              : canManage && onOpenControl
+                ? "Открыть управление ИИ-ГМ"
+                : `Открыть ${assistantName}`
         }
         aria-expanded={open}
         aria-controls="u1-agent-panel"
@@ -857,7 +875,9 @@ export default function AgentShell() {
           </header>
 
           <div className="u1-agent-tools-section">
-            <span className="u1-agent-tools-section__label">Модель</span>
+            <span className="u1-agent-tools-section__label">
+              Модель {assistantName}
+            </span>
             <div className="u1-agent-model-list">
               {selectableModels.map((model) => (
                 <button
