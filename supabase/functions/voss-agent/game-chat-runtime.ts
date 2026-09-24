@@ -1265,6 +1265,7 @@ async function finalizeStage18VisibleAnswer({
       reaction.mode === "npc_interjection" ? reaction.npcCharacterId : null,
     reaction_mode: reaction.mode,
     reaction_reason: reaction.reason,
+    social_leverage_analysis: reaction.socialLeverageAnalysis,
     dialogue_message_kinds: messages.map((item) => item.kind),
     ...stage19ContextTelemetry(context),
     ...stage21BehaviorProfileTelemetry(context),
@@ -2979,6 +2980,27 @@ async function requestPrimaryGmDecision({
     if (!calls.length) {
       const raw = providerText(payload)
       if (!raw) throw new Error("ai_gm_provider_empty_answer")
+
+      const semanticPreview = parseJsonObject(raw)
+      const leveragePreview = jsonRecord(
+        semanticPreview?.social_leverage_analysis,
+      )
+      if (
+        semanticPreview?.reaction_mode === "request_player_roll" &&
+        (
+          leveragePreview.classification === "no_leverage" ||
+          leveragePreview.classification === "blocked_by_identity"
+        )
+      ) {
+        messages.push({ role: "assistant", content: raw })
+        messages.push({
+          role: "system",
+          content:
+            "КОРРЕКЦИЯ КОНТРАКТА: ты сам классифицировал социальный подход как no_leverage/blocked_by_identity, поэтому бросок запрещён. Пересуди ТОТ ЖЕ ход без нового факта мира: используй deterministic_failure либо impossible_exact по смыслу, дай игроку наблюдаемый ответ сцены и не проси декоративный Persuasion/Intimidation.",
+        })
+        continue
+      }
+
       return { raw, context, completed: false, toolRuns }
     }
 
@@ -3931,6 +3953,7 @@ export async function runGameChatTurn(
             source_chat_message_id: String(sourceMessageId),
             reaction_mode: reaction.mode,
             reaction_reason: reaction.reason,
+            social_leverage_analysis: reaction.socialLeverageAnalysis,
             stage17_adjudication_mode: request.adjudicationMode,
             stage17_uncertainty_scope: request.uncertaintyScope,
             stage17_canonical_evidence_count: request.canonicalEvidence.length,
