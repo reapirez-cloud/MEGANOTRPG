@@ -74,7 +74,7 @@ test("stage 20 requires durable NPC identity rather than demeanor only", () => {
   assert.match(s, /red lines\/non-negotiables/)
   assert.match(s, /behavior under pressure/)
   assert.match(s, /Primary GM, NPC dialogue model and background simulation/)
-  assert.match(s, /social adjudication/)
+  assert.match(s, /social adjudication/i)
 })
 
 test("stages 21-23 preserve world and NPC autonomy", () => {
