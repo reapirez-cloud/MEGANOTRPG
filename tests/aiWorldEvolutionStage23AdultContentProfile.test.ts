@@ -8,6 +8,12 @@ const read = (path: string) =>
 const migration = read(
   "supabase/migrations/20260924180941_ai_world_evolution_stage23_adult_life_sim_content_profile_v1.sql",
 )
+const privilegeHardening = read(
+  "supabase/migrations/20260924181456_ai_world_evolution_stage23_content_privilege_hardening_v2.sql",
+)
+const fkIndex = read(
+  "supabase/migrations/20260924181711_ai_world_evolution_stage23_content_fk_index_v3.sql",
+)
 const context = read("supabase/functions/voss-agent/game-chat-context.ts")
 const runtime = read("supabase/functions/voss-agent/game-chat-runtime.ts")
 const shell = read("src/ai/AgentShell.tsx")
@@ -40,6 +46,20 @@ test("Stage 23 selector is member-readable and manager-writable through invoker 
   )
 })
 
+test("Stage 23 closes table privilege and FK advisor debt", () => {
+  assert.match(
+    privilegeHardening,
+    /revoke all on table public\.ai_gm_content_settings from service_role/,
+  )
+  assert.match(
+    privilegeHardening,
+    /grant select, insert, update on table public\.ai_gm_content_settings to service_role/,
+  )
+  assert.doesNotMatch(privilegeHardening, /grant[^\n]*(?:delete|truncate)/i)
+  assert.match(fkIndex, /ai_gm_content_settings_updated_by_idx/)
+  assert.match(fkIndex, /where updated_by is not null/)
+})
+
 test("Stage 23 is narrative-only and stays out of generic world-worker context", () => {
   assert.match(context, /contentProfile: JsonRecord/)
   assert.match(context, /from\("ai_gm_content_settings"\)/)
@@ -50,6 +70,9 @@ test("Stage 23 is narrative-only and stays out of generic world-worker context",
   const stage2End = context.indexOf("export function stage19ContextTelemetry")
   const genericPrompt = context.slice(stage2Start, stage2End)
   assert.doesNotMatch(genericPrompt, /contentProfile|content_profile/)
+
+  const background = read("supabase/functions/voss-agent/background-world.ts")
+  assert.doesNotMatch(background, /contentProfile|content_profile/)
 })
 
 test("Stage 23 does not turn mature profile into NPC compliance or mechanics", () => {
