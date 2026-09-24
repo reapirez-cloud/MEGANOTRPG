@@ -992,6 +992,66 @@ function stage17EvidenceRefs(context: Stage2GameChatContext): JsonRecord {
   }
 }
 
+const STAGE18_POST_TURN_KINDS = new Set([
+  "location",
+  "npc",
+  "quest",
+  "memory",
+  "canonical_state",
+  "binding",
+])
+
+function parseStage18PostTurnIntents(value: unknown): PostTurnIntent[] {
+  if (value === undefined || value === null) return []
+  if (!Array.isArray(value)) {
+    throw new Error("stage18_post_turn_intents_must_be_array")
+  }
+  if (value.length > 16) {
+    throw new Error("stage18_post_turn_intent_count_invalid")
+  }
+
+  const seen = new Set<string>()
+  return value.map((raw, index) => {
+    const item = jsonRecord(raw)
+    const intentKey =
+      typeof item.intent_key === "string"
+        ? item.intent_key.trim().toLowerCase()
+        : ""
+    const kind =
+      typeof item.kind === "string" ? item.kind.trim().toLowerCase() : ""
+    const instruction =
+      typeof item.instruction === "string"
+        ? item.instruction.trim().slice(0, 3000)
+        : ""
+    const evidence =
+      typeof item.evidence === "string"
+        ? item.evidence.trim().slice(0, 3000)
+        : ""
+
+    if (!/^[a-z0-9][a-z0-9:_-]{0,119}$/.test(intentKey)) {
+      throw new Error(`stage18_post_turn_intent_key_invalid:${index}`)
+    }
+    if (seen.has(intentKey)) {
+      throw new Error(`stage18_post_turn_intent_key_duplicate:${intentKey}`)
+    }
+    seen.add(intentKey)
+
+    if (!STAGE18_POST_TURN_KINDS.has(kind)) {
+      throw new Error(`stage18_post_turn_intent_kind_invalid:${index}`)
+    }
+    if (!instruction) {
+      throw new Error(`stage18_post_turn_intent_instruction_missing:${index}`)
+    }
+
+    return {
+      intentKey,
+      kind: kind as PostTurnIntent["kind"],
+      instruction,
+      evidence,
+    }
+  })
+}
+
 function parseReaction(
   raw: string,
   context: Stage2GameChatContext,
@@ -1012,6 +1072,7 @@ function parseReaction(
     npcRoll: null,
     recoveryRequest: null,
     dialogueOutputs: [],
+    postTurnIntents: [],
     worldMaterializationRequested,
     worldMaterializationTask,
   })
@@ -1052,6 +1113,22 @@ function parseReaction(
     requestedMode === "none"
       ? requestedMode
       : "gm_response"
+
+  const postTurnIntents = parseStage18PostTurnIntents(
+    parsed.post_turn_intents,
+  )
+  if (
+    postTurnIntents.length &&
+    (
+      mode === "request_player_roll" ||
+      mode === "npc_action" ||
+      mode === "npc_roll" ||
+      mode === "recovery" ||
+      mode === "none"
+    )
+  ) {
+    throw new Error("stage18_post_turn_intents_not_allowed_for_nonfinal_mode")
+  }
 
   const body =
     typeof parsed.body === "string" ? fitChatBody(parsed.body) : ""
@@ -1415,6 +1492,7 @@ function parseReaction(
       ? {
           ...empty(mode, reason || "stage7_dialogue_sequence"),
           dialogueOutputs,
+          postTurnIntents,
         }
       : empty("none", "empty_or_invalid_dialogue_sequence")
   }
@@ -1465,6 +1543,7 @@ function parseReaction(
         ),
         body,
         deterministicAdjudication,
+        postTurnIntents,
       }
     }
   }
@@ -1474,6 +1553,7 @@ function parseReaction(
     body,
     npcCharacterId: mode === "npc_interjection" ? npcCharacterId : null,
     deterministicAdjudication,
+    postTurnIntents,
   }
 }
 
