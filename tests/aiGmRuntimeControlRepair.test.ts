@@ -53,9 +53,11 @@ test("post-turn junior mutations execute as the immutable manager identity", () 
   )
 })
 
-test("orphaned long-running GM jobs can be resumed without adding a thinking timeout", () => {
+test("orphaned GM jobs recover after the hosted wall-clock while provider timeouts use durable continuation", () => {
   assert.match(runtime, /game_chat_turn_resume/)
-  assert.match(runtime, /8 \* 60 \* 1000/)
+  assert.match(runtime, /3 \* 60 \* 1000/)
+  assert.match(runtime, /PRIMARY_GM_PROVIDER_TIMEOUT_MS = 90_000/)
+  assert.match(runtime, /requeueTimedOutGameTurn/)
   assert.match(runtime, /background: runGameChatTurn/)
   assert.match(runtime, /provider_error:/)
   assert.match(status, /wakeGameTurn/)
