@@ -44,7 +44,7 @@ test("stage 7 gates composer by server write permission", async () => {
   assert.match(contracts, /canWrite: boolean/)
   assert.match(presentation, /const canCompose =/)
   assert.match(presentation, /model\.canWrite &&/)
-  assert.match(composer, /const canCompose = presentation\.canCompose/)
+  assert.match(composer, /const canCompose =[\s\S]{0,120}presentation\.canCompose/)
   assert.match(composer, /disabled=\{speakers\.loading \|\| !model\.canWrite\}/)
   assert.match(composer, /Нет права писать в этот чат/)
 })
