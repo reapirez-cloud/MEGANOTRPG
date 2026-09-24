@@ -14,21 +14,22 @@ const translationMigration = read(
   "supabase/migrations/20260924224500_spell_reference_ru_route_and_gap_fill_v1.sql",
 )
 
-test("chat spell inspection prefers Russian catalog copy over English source rules", () => {
+test("chat spell inspection opens canonical Russian mechanics before commentary", () => {
   assert.match(
     chatCard,
-    /row\.author_description \|\|[\s\S]*row\.effect_summary \|\|[\s\S]*row\.rules_text/,
+    /row\.rules_text \|\|[\s\S]*row\.effect_summary \|\|[\s\S]*row\.author_description/,
   )
   assert.match(chatCard, /title: row\.name_ru\?\.trim\(\) \|\| presentation\.title/)
   assert.doesNotMatch(
     chatCard,
-    /description:\s*row\.rules_text \|\|\s*row\.author_description/,
+    /description:\s*row\.author_description \|\|/,
   )
 
   assert.match(
     chatSheet,
-    /spell\.effect_summary \|\| spell\.author_description \|\| spell\.rules_text/,
+    /spell\.rules_text \|\| spell\.effect_summary/,
   )
+  assert.match(chatSheet, /<small>Механика<\/small>/)
 })
 
 test("chat class ability inspection can fall back to the Russian reference feature catalog", () => {
