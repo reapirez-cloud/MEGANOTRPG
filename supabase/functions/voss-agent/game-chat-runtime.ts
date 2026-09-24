@@ -2279,7 +2279,7 @@ async function generateNpcDialogue({
       },
     ],
     temperature: 0.62,
-    timeoutMs: 85_000,
+    timeoutMs: 120_000,
     retryCount: 1,
   })
 
@@ -2968,7 +2968,7 @@ async function requestPrimaryGmDecision({
           }
         : {}),
       temperature: 0.55,
-      timeoutMs: 85_000,
+      timeoutMs: 120_000,
       retryCount: 1,
     })
 
