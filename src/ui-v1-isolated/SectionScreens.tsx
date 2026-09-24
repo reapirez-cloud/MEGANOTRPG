@@ -413,6 +413,8 @@ function WorldNpcDossierScreen({
   }
 
   const { character, profile, sheet, relationship, manager } = dossier
+  const identityFingerprint = manager?.identity_fingerprint || null
+  const identityCore = identityFingerprint?.core || null
   const relation = relationshipLabel(relationship)
   const relationPercent = Math.max(
     0,
@@ -612,6 +614,154 @@ function WorldNpcDossierScreen({
       {manager && (
         <section className="u1-npc-gm">
           <span>GM / AI · скрыто от игрока</span>
+          {identityFingerprint && identityCore && (
+            <div className="u1-npc-identity">
+              <header>
+                <strong>Личность</strong>
+                <small>
+                  v{identityFingerprint.version} · {
+                    identityFingerprint.bootstrap_state === "evolved"
+                      ? "изменена крупным событием"
+                      : identityFingerprint.bootstrap_state === "seeded"
+                        ? "зафиксирована"
+                        : "черновое ядро"
+                  }
+                </small>
+              </header>
+
+              {identityCore.traits.length > 0 && (
+                <div className="u1-npc-identity__group">
+                  <b>Черты</b>
+                  <span className="u1-npc-identity__chips">
+                    {identityCore.traits.map((item) => <i key={item}>{item}</i>)}
+                  </span>
+                </div>
+              )}
+
+              {identityCore.weighted_values.length > 0 && (
+                <div className="u1-npc-identity__group">
+                  <b>Ценности</b>
+                  <div className="u1-npc-identity__ranked">
+                    {identityCore.weighted_values.map((item) => (
+                      <span key={item.key}>
+                        <strong>{item.label}</strong>
+                        <small>{item.weight}/5</small>
+                        {item.reason && <em>{item.reason}</em>}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {identityCore.red_lines.length > 0 && (
+                <div className="u1-npc-identity__group">
+                  <b>Красные линии</b>
+                  <div className="u1-npc-identity__red-lines">
+                    {identityCore.red_lines.map((item) => (
+                      <span key={item.key} data-hard={item.hard || undefined}>
+                        <strong>{item.label}</strong>
+                        <small>{item.hard ? "Жёсткая граница" : "Сильное отторжение"}</small>
+                        {item.reason && <em>{item.reason}</em>}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {(identityCore.long_term_desires.length > 0 ||
+                identityCore.fears.length > 0 ||
+                identityCore.loyalties.length > 0) && (
+                <div className="u1-npc-identity__columns">
+                  {identityCore.long_term_desires.length > 0 && (
+                    <span>
+                      <b>Желания</b>
+                      {identityCore.long_term_desires.map((item) => <small key={item}>{item}</small>)}
+                    </span>
+                  )}
+                  {identityCore.fears.length > 0 && (
+                    <span>
+                      <b>Страхи</b>
+                      {identityCore.fears.map((item) => <small key={item}>{item}</small>)}
+                    </span>
+                  )}
+                  {identityCore.loyalties.length > 0 && (
+                    <span>
+                      <b>Лояльности</b>
+                      {identityCore.loyalties.map((item) => <small key={item}>{item}</small>)}
+                    </span>
+                  )}
+                </div>
+              )}
+
+              {(identityCore.authority_attitude.stance ||
+                identityCore.authority_attitude.notes ||
+                identityCore.risk_tolerance !== null ||
+                identityCore.violence_threshold !== null) && (
+                <div className="u1-npc-identity__axes">
+                  {(identityCore.authority_attitude.stance ||
+                    identityCore.authority_attitude.notes) && (
+                    <span>
+                      <small>Власть / закон</small>
+                      <strong>{identityCore.authority_attitude.stance || "Не определено"}</strong>
+                      {identityCore.authority_attitude.notes && <em>{identityCore.authority_attitude.notes}</em>}
+                    </span>
+                  )}
+                  {identityCore.risk_tolerance !== null && (
+                    <span>
+                      <small>Риск</small>
+                      <strong>{identityCore.risk_tolerance}/5</strong>
+                    </span>
+                  )}
+                  {identityCore.violence_threshold !== null && (
+                    <span>
+                      <small>Порог насилия</small>
+                      <strong>{identityCore.violence_threshold}/5</strong>
+                    </span>
+                  )}
+                </div>
+              )}
+
+              {identityCore.pressure_behavior.length > 0 && (
+                <div className="u1-npc-identity__group">
+                  <b>Под давлением</b>
+                  {identityCore.pressure_behavior.map((item) => <p key={item}>{item}</p>)}
+                </div>
+              )}
+              {identityCore.self_image && (
+                <div className="u1-npc-identity__group">
+                  <b>Образ себя</b>
+                  <p>{identityCore.self_image}</p>
+                </div>
+              )}
+              {identityCore.social_style.length > 0 && (
+                <div className="u1-npc-identity__group">
+                  <b>Социальный стиль</b>
+                  {identityCore.social_style.map((item) => <p key={item}>{item}</p>)}
+                </div>
+              )}
+              {identityCore.decision_priorities.length > 0 && (
+                <div className="u1-npc-identity__group">
+                  <b>Приоритет решений</b>
+                  <ol>
+                    {identityCore.decision_priorities.map((item) => <li key={item}>{item}</li>)}
+                  </ol>
+                </div>
+              )}
+
+              {identityFingerprint.bootstrap_state === "stub" && (
+                <p className="u1-npc-identity__empty">
+                  Стабильное ядро создано, но пока не заполнено каноническими чертами. AI не должен додумывать их сам.
+                </p>
+              )}
+
+              <footer>
+                <small>Fingerprint {identityFingerprint.fingerprint_hash.slice(0, 10)}</small>
+                {identityFingerprint.last_major_event_id && (
+                  <small>Последнее изменение: каноническое событие</small>
+                )}
+              </footer>
+            </div>
+          )}
           {manager.profile.motivation && (
             <div>
               <strong>Мотивация</strong>
