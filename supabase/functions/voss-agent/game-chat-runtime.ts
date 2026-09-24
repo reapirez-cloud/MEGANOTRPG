@@ -2885,6 +2885,26 @@ export async function runGameChatTurn(
       throw new Error("ai_gm_reply_message_missing")
     }
 
+    const { data: postCommitJob, error: postCommitError } = await admin.rpc(
+      "create_ai_gm_post_turn_commit_v1",
+      {
+        p_parent_job_id: jobId,
+        p_campaign_id: campaignId,
+        p_room_id: String(claimed.input.room_id || ""),
+        p_source_chat_message_id: sourceMessageId,
+        p_reply_message_id: numericReplyId,
+        p_manager_user_id: String(claimed.input.manager_user_id || ""),
+        p_source_character_id: String(claimed.input.source_character_id || ""),
+        p_original_message: originalMessage,
+        p_published_answer: finalBody,
+        p_post_turn_intents: reaction.postTurnIntents,
+      },
+    )
+    if (postCommitError) throw new Error(postCommitError.message)
+
+    const postCommitJobId = String(jsonRecord(postCommitJob).job_id || "")
+    if (!postCommitJobId) throw new Error("stage18_post_turn_job_missing")
+
     await admin
       .from("agent_jobs")
       .update({
@@ -2893,6 +2913,7 @@ export async function runGameChatTurn(
         result: {
           ...claimed.result,
           ...recoveryExtra,
+          post_turn_commit_job_id: postCommitJobId,
           surface: GAME_CHAT_SURFACE,
           runtime_stage: 12,
           source_chat_message_id: String(sourceMessageId),
