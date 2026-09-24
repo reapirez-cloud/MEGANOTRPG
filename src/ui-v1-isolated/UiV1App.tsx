@@ -738,6 +738,7 @@ function Screen({ route }: { route: Route }) {
       <Workspace
         onOpenCharacter={(characterId) => go(`workspace/character/${characterId}`)}
         onOpenManagement={() => go("workspace/manage")}
+        onOpenAiGm={() => go("ai-gm")}
       />
     )
   }
@@ -823,7 +824,7 @@ export default function UiV1App() {
         )}
       </div>
 
-      <AgentShell onOpenControl={() => go("ai-gm")} />
+      <AgentShell />
     </div>
   )
 }
