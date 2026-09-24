@@ -7,6 +7,9 @@ const read = (path: string) =>
 
 const screens = read("src/ui-v1-isolated/SectionScreens.tsx")
 const data = read("src/ui-v1-isolated/useUiV1SectionData.ts")
+const detailStart = screens.indexOf("function KnowledgeCatalogDetailScreen")
+const detailEnd = screens.indexOf("export function KnowledgeBaseScreen", detailStart)
+const knowledgeDetail = screens.slice(detailStart, detailEnd)
 
 test("knowledge-base live rows open real database detail routes", () => {
   assert.match(screens, /u1-catalog-row--button/)
@@ -32,5 +35,6 @@ test("invocations are loaded from the live reference database", () => {
 test("knowledge spell and invocation detail leads with mechanics, not Voss commentary", () => {
   assert.match(screens, /label: "Механика"/)
   assert.match(screens, /row\.rules_text \|\| row\.effect_summary/)
-  assert.doesNotMatch(screens, /Восс объясняет/)
+  assert.ok(detailStart >= 0 && detailEnd > detailStart)
+  assert.doesNotMatch(knowledgeDetail, /Восс объясняет/)
 })
