@@ -814,7 +814,7 @@ Detailed spec:
 
 ## Stage 18 — Post-response junior world commit and turn gate
 
-**Status: PLANNED**
+**Status: IN PROGRESS — REBUILD AUDIT 2026-09-24**
 
 This changes the current ordering.
 
@@ -915,6 +915,10 @@ If junior work fails:
 - UI shows a recoverable synchronization failure instead of pretending the world is current.
 
 **Done when:** response latency is dominated by the GM, bookkeeping happens while the player is reading, and the next message is impossible until canonical state has caught up.
+
+### Certification result
+
+Pending hardened v3 verification. Previous certification revoked after audit.
 
 ---
 

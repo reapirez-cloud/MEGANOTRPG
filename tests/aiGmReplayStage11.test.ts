@@ -100,7 +100,9 @@ test("Stage 11 replay remains service-mediated while control and undo are authen
 test("Stage 11 runtime synchronizes ledger at completed and waiting boundaries", () => {
   assert.match(runtime, /syncStage11TurnLedger/)
   assert.match(runtime, /sync_ai_gm_turn_ledger_v1/)
-  assert.match(runtime, /action !== "game_chat_turn" && action !== "game_chat_replay"/)
+  assert.match(runtime, /action !== "game_chat_turn"/)
+  assert.match(runtime, /action !== "game_chat_replay"/)
+  assert.match(runtime, /action !== "game_chat_post_turn_resume"/)
   assert.match(runtime, /reserve_ai_gm_replay_v1/)
   assert.match(runtime, /replayMode === "regenerate"/)
   assert.match(runtime, /replayMode === "edit_resend"/)

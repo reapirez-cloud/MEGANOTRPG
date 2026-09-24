@@ -1,5 +1,6 @@
 import {
   type FormEvent,
+  useCallback,
   useEffect,
   useRef,
   useState,
@@ -34,6 +35,14 @@ import {
   type PlayerTurnEntry,
   type PlayerTurnSlot,
 } from "./playerTurnQueue"
+
+type AiGmFreeFormGate = {
+  phase?: string
+  active?: boolean
+  commit_id?: string
+  commit_state?: string
+  error_message?: string | null
+}
 
 const ACTION_MENU_ITEMS: Array<{
   mode: ChatActionLauncherMode
@@ -231,6 +240,7 @@ export default function ChatComposer({
   const [turnLoading, setTurnLoading] = useState(false)
   const [dialogueRecipients, setDialogueRecipients] = useState<PcDialogueRecipient[]>([])
   const [recipientCharacterIds, setRecipientCharacterIds] = useState<string[]>([])
+  const [aiGmGate, setAiGmGate] = useState<AiGmFreeFormGate | null>(null)
 
   const speakers = useChatSpeakerOptions({
     campaignId: model.viewer.campaignId,
@@ -273,6 +283,54 @@ export default function ChatComposer({
       movementText.trim() ||
       text.trim(),
   )
+
+  const freeFormTurnLocked = Boolean(
+    model.viewer.aiGameMasterEnabled === true &&
+      (
+        aiGmGate?.phase === "post_turn_commit" ||
+        aiGmGate?.phase === "post_turn_failed" ||
+        aiGmGate?.phase === "waiting_for_roll"
+      ),
+  )
+
+  const refreshAiGmGate = useCallback(async () => {
+    if (model.viewer.aiGameMasterEnabled !== true) {
+      setAiGmGate(null)
+      return
+    }
+
+    const result = await supabase.rpc("get_ai_gm_room_status_v2", {
+      p_room_id: model.roomId,
+    })
+    if (result.error) return
+
+    const value =
+      result.data && typeof result.data === "object" && !Array.isArray(result.data)
+        ? result.data as AiGmFreeFormGate
+        : null
+    setAiGmGate(value)
+  }, [model.roomId, model.viewer.aiGameMasterEnabled])
+
+  useEffect(() => {
+    void refreshAiGmGate()
+    if (model.viewer.aiGameMasterEnabled !== true) return
+
+    const timer = window.setInterval(() => void refreshAiGmGate(), 1200)
+    const onMessage = (event: Event) => {
+      const detail = (event as CustomEvent<{ roomId?: string }>).detail
+      if (detail?.roomId === model.roomId) void refreshAiGmGate()
+    }
+    window.addEventListener(CHAT_MESSAGE_SENT_EVENT, onMessage)
+
+    return () => {
+      window.clearInterval(timer)
+      window.removeEventListener(CHAT_MESSAGE_SENT_EVENT, onMessage)
+    }
+  }, [
+    model.roomId,
+    model.viewer.aiGameMasterEnabled,
+    refreshAiGmGate,
+  ])
 
   const resizeTextarea = () => {
     const textarea = textareaRef.current
@@ -567,7 +625,7 @@ export default function ChatComposer({
     event.preventDefault()
 
     const body = text.trim()
-    if (!canCompose || sending) return
+    if (!canCompose || sending || freeFormTurnLocked) return
     if (queuePlayerTurn && !hasQueuedTurnContent) return
     if (!queuePlayerTurn && !body) return
 
@@ -944,7 +1002,13 @@ export default function ChatComposer({
                   : queuePlayerTurn
                     ? "Опиши ход или реплику…"
                     : canCompose
-                      ? "Сообщение…"
+                      ? aiGmGate?.phase === "post_turn_failed"
+                        ? "Синхронизация мира требует восстановления. Можно подготовить текст."
+                        : aiGmGate?.phase === "waiting_for_roll"
+                          ? "Сначала завершите запрошенный бросок. Текст можно подготовить."
+                          : aiGmGate?.phase === "post_turn_commit"
+                            ? "Младший шуршит… Текст можно подготовить."
+                            : "Сообщение…"
                       : playerHasCharacter
                         ? "Нет права писать в этот чат"
                         : "Нет персонажа в этой сцене"
@@ -971,6 +1035,7 @@ export default function ChatComposer({
             disabled={
               !canCompose ||
               sending ||
+              freeFormTurnLocked ||
               (queuePlayerTurn ? !hasQueuedTurnContent : !text.trim())
             }
             data-sending={sending || undefined}
