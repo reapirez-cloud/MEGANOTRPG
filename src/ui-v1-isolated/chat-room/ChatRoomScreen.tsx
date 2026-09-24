@@ -8,7 +8,7 @@ import ChatRoomHeader from "./ChatRoomHeader"
 import { navigateAppBack, pushAppHash } from "../navigationGestures"
 import { chatRoomPresentationState } from "./chatRoomPresentation"
 import { useChatRoomShell } from "./useChatRoomShell"
-import { useChatVisualViewportHeight } from "./useChatVisualViewport"
+import { useChatVisualViewport } from "./useChatVisualViewport"
 import "./chat-room.css"
 
 function BackIcon() {
@@ -35,10 +35,10 @@ function LoadingShell() {
 export default function ChatRoomScreen({ roomId }: { roomId: string }) {
   const { model, loading, error, reload } = useChatRoomShell(roomId)
   const [gmDrawerOpen, setGmDrawerOpen] = useState(false)
-  const visualViewportHeight = useChatVisualViewportHeight()
-  const viewportStyle = visualViewportHeight
+  const visualViewport = useChatVisualViewport()
+  const viewportStyle = visualViewport.height
     ? ({
-        "--u1-chat-viewport-height": visualViewportHeight + "px",
+        "--u1-chat-viewport-height": visualViewport.height + "px",
       } as CSSProperties)
     : undefined
 
@@ -98,6 +98,7 @@ export default function ChatRoomScreen({ roomId }: { roomId: string }) {
       data-has-identity={Boolean(model.identity) || undefined}
       data-observer={presentation.identityKind === "observer" || undefined}
       data-read-only={model.readOnly || undefined}
+      data-keyboard-open={visualViewport.keyboardOpen || undefined}
       style={viewportStyle}
     >
       <ChatRoomFrame>
