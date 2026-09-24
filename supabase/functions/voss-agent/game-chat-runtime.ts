@@ -1882,6 +1882,15 @@ async function completeWithGameplayMessage({
 }
 
 
+function postTurnIntentsForDb(intents: PostTurnIntent[]) {
+  return intents.map((intent) => ({
+    intent_key: intent.intentKey,
+    kind: intent.kind,
+    instruction: intent.instruction,
+    evidence: intent.evidence,
+  }))
+}
+
 async function publishDialogueSequence({
   admin,
   claimed,
@@ -1943,15 +1952,27 @@ async function publishDialogueSequence({
     return
   }
 
-  const { data, error } = await admin.rpc("publish_ai_gm_turn_messages_v1", {
-    p_job_id: claimed.id,
-    p_messages: messages,
-  })
+  const { data, error } = await admin.rpc(
+    "publish_ai_gm_turn_messages_stage18_v2",
+    {
+      p_job_id: claimed.id,
+      p_messages: messages,
+      p_post_turn_intents: postTurnIntentsForDb(reaction.postTurnIntents),
+    },
+  )
   if (error) throw new Error(error.message)
 
-  const messageIds = Array.isArray(data)
-    ? data.map(Number).filter((id) => Number.isInteger(id) && id > 0)
+  const publishResult = jsonRecord(data)
+  const rawMessageIds = Array.isArray(publishResult.reply_message_ids)
+    ? publishResult.reply_message_ids
     : []
+  const messageIds = rawMessageIds
+    .map(Number)
+    .filter((id) => Number.isInteger(id) && id > 0)
+  const postTurnJobId =
+    typeof publishResult.post_turn_job_id === "string"
+      ? publishResult.post_turn_job_id
+      : null
   if (messageIds.length !== messages.length) {
     throw new Error("ai_gm_stage7_message_publish_incomplete")
   }
@@ -1965,9 +1986,11 @@ async function publishDialogueSequence({
         ...claimed.result,
         ...extraResult,
         surface: GAME_CHAT_SURFACE,
-        runtime_stage: 12,
+        runtime_stage: 18,
         source_chat_message_id: String(sourceMessageId),
         reply_message_id: messageIds[messageIds.length - 1],
+        post_turn_job_id: postTurnJobId,
+        post_turn_intent_count: reaction.postTurnIntents.length,
         reply_message_ids: messageIds,
         reply_character_id: null,
         reaction_mode: reaction.mode,
@@ -2940,28 +2963,35 @@ export async function runGameChatTurn(
 
     const rpcName =
       reaction.mode === "npc_interjection"
-        ? "publish_ai_gm_npc_message_v2"
-        : "publish_ai_gm_message_v1"
+        ? "publish_ai_gm_npc_message_stage18_v2"
+        : "publish_ai_gm_message_stage18_v2"
     const rpcArgs =
       reaction.mode === "npc_interjection"
         ? {
             p_job_id: jobId,
             p_npc_character_id: reaction.npcCharacterId,
             p_body: finalBody,
+            p_post_turn_intents: postTurnIntentsForDb(reaction.postTurnIntents),
           }
         : {
             p_job_id: jobId,
             p_body: finalBody,
+            p_post_turn_intents: postTurnIntentsForDb(reaction.postTurnIntents),
           }
 
-    const { data: replyMessageId, error: publishError } = await admin.rpc(
+    const { data: publishData, error: publishError } = await admin.rpc(
       rpcName,
       rpcArgs,
     )
 
     if (publishError) throw new Error(publishError.message)
 
-    const numericReplyId = Number(replyMessageId)
+    const publishResult = jsonRecord(publishData)
+    const numericReplyId = Number(publishResult.reply_message_id)
+    const postTurnJobId =
+      typeof publishResult.post_turn_job_id === "string"
+        ? publishResult.post_turn_job_id
+        : null
     if (!Number.isInteger(numericReplyId) || numericReplyId <= 0) {
       throw new Error("ai_gm_reply_message_missing")
     }
@@ -2975,9 +3005,11 @@ export async function runGameChatTurn(
           ...claimed.result,
           ...recoveryExtra,
           surface: GAME_CHAT_SURFACE,
-          runtime_stage: 12,
+          runtime_stage: 18,
           source_chat_message_id: String(sourceMessageId),
           reply_message_id: numericReplyId,
+          post_turn_job_id: postTurnJobId,
+          post_turn_intent_count: reaction.postTurnIntents.length,
           reply_character_id: reaction.npcCharacterId,
           reaction_mode: reaction.mode,
           reaction_reason: reaction.reason,
