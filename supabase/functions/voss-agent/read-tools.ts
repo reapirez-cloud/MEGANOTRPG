@@ -3,7 +3,10 @@ import type { SupabaseClient } from "npm:@supabase/supabase-js@2.112.3"
 type JsonObject = Record<string, unknown>
 
 export type VossReadToolContext = {
+  // Authenticated user-scoped client. Keep this for RPCs that rely on auth.uid().
   client: SupabaseClient
+  // Direct data reads. Freddy uses the server client here; Voss stays RLS-scoped.
+  dataClient: SupabaseClient
   admin: SupabaseClient
   campaignId: string
   userId: string
@@ -306,7 +309,7 @@ async function searchEntities(
 
   if (types.has("character")) {
     jobs.push(
-      context.client
+      context.dataClient
         .from("characters")
         .select("id,name,character_class,level,character_type,life_state,publication_state,visibility_mode")
         .eq("campaign_id", context.campaignId)
@@ -323,7 +326,7 @@ async function searchEntities(
 
   if (types.has("location")) {
     jobs.push(
-      context.client
+      context.dataClient
         .from("locations")
         .select("id,name,summary,parent_location_id,visibility_mode,lifecycle_state")
         .eq("campaign_id", context.campaignId)
@@ -342,7 +345,7 @@ async function searchEntities(
     jobs.push(
       (async () => {
         const templateKind = templateKindFromGenericSearch(query)
-        const baseQuery = context.client
+        const baseQuery = context.dataClient
           .from("rule_templates")
           .select("id,kind,slug,name,description,parent_template_id,unlock_level,mechanical_summary,is_active")
           .eq("campaign_id", context.campaignId)
@@ -372,7 +375,7 @@ async function searchEntities(
   if (types.has("reference_definition")) {
     jobs.push(
       (async () => {
-        const { data: revisions, error } = await context.client
+        const { data: revisions, error } = await context.dataClient
           .from("reference_definition_revisions")
           .select("definition_id,revision,name,summary")
           .ilike("name", pattern)
@@ -392,7 +395,7 @@ async function searchEntities(
           return { type: "reference_definition", rows: [] }
         }
 
-        const { data: definitions, error: definitionError } = await context.client
+        const { data: definitions, error: definitionError } = await context.dataClient
           .from("reference_definitions")
           .select("id,kind,scope,campaign_id,slug,visibility,status,current_revision,source_kind,source_label")
           .in("id", ids)
@@ -415,7 +418,7 @@ async function searchEntities(
 
   if (types.has("world_article")) {
     jobs.push(
-      context.client
+      context.dataClient
         .from("world_articles")
         .select("id,title,summary,section_id")
         .eq("campaign_id", context.campaignId)
@@ -432,7 +435,7 @@ async function searchEntities(
 
   if (types.has("gm_material") && context.canManage) {
     jobs.push(
-      context.client
+      context.dataClient
         .from("gm_workspace_files")
         .select("id,folder_id,kind,title,body,original_name,mime_type,updated_at")
         .eq("campaign_id", context.campaignId)
@@ -458,7 +461,7 @@ async function searchEntities(
 async function listClassesAndSubclasses(
   context: VossReadToolContext,
 ) {
-  const { data, error } = await context.client
+  const { data, error } = await context.dataClient
     .from("rule_templates")
     .select("id,kind,slug,name,parent_template_id,unlock_level")
     .eq("campaign_id", context.campaignId)
@@ -512,7 +515,7 @@ async function readCharacter(
   const characterId = typeof args.character_id === "string" ? args.character_id : ""
   if (!characterId) return { error: "character_id is required" }
 
-  const { data: character, error: characterError } = await context.client
+  const { data: character, error: characterError } = await context.dataClient
     .from("characters")
     .select("id,campaign_id,assigned_user_id,name,character_class,level,bio,character_type,life_state,visibility_mode,publication_state")
     .eq("campaign_id", context.campaignId)
@@ -531,33 +534,33 @@ async function readCharacter(
     assignmentResult,
     worldStateResult,
   ] = await Promise.all([
-    context.client.from("character_sheets").select("*").eq("character_id", characterId).maybeSingle(),
-    context.client
+    context.dataClient.from("character_sheets").select("*").eq("character_id", characterId).maybeSingle(),
+    context.dataClient
       .from("character_inventory_items")
       .select("id,name,quantity,weight,equipped,category,equipment_slot,description,definition_id,definition_revision,mechanics,usage_mode,charges_current,charges_max,item_state")
       .eq("character_id", characterId)
       .order("sort_order"),
-    context.client
+    context.dataClient
       .from("character_spells")
       .select("id,name,spell_level,school,casting_time,spell_range,duration,components,concentration,ritual,prepared,cast_mode,slot_level,description,source,catalog_spell_id,wizard_spell_mastery,wizard_signature_spell")
       .eq("character_id", characterId)
       .order("spell_level")
       .order("sort_order"),
-    context.client
+    context.dataClient
       .from("character_features")
       .select("id,kind,name,description,mechanics,sort_order")
       .eq("character_id", characterId)
       .order("sort_order"),
-    context.client
+    context.dataClient
       .from("character_resource_states")
       .select("state_key,current,max_snapshot,label,recharge,temporary_max_bonus")
       .eq("character_id", characterId)
       .order("state_key"),
-    context.client
+    context.dataClient
       .from("character_template_assignments")
       .select("id,template_id,template_level,selected_choices,assigned_at,updated_at")
       .eq("character_id", characterId),
-    context.client
+    context.dataClient
       .from("character_world_state")
       .select("location_id,campaign_day,day_period,updated_at")
       .eq("campaign_id", context.campaignId)
@@ -580,7 +583,7 @@ async function readCharacter(
   let templateRows: unknown[] = []
 
   if (templateIds.length) {
-    const { data, error } = await context.client
+    const { data, error } = await context.dataClient
       .from("rule_templates")
       .select("id,kind,slug,name,description,version,mechanics,choices,parent_template_id,unlock_level,catalog_key,catalog_revision,source_kind,source_label,is_builtin,mechanical_summary,author_description,author_comment,rules_meta,is_active")
       .eq("campaign_id", context.campaignId)
@@ -592,7 +595,7 @@ async function readCharacter(
 
   let location: unknown = null
   if (worldStateResult.data?.location_id) {
-    const { data } = await context.client
+    const { data } = await context.dataClient
       .from("locations")
       .select("id,name,summary")
       .eq("campaign_id", context.campaignId)
@@ -617,18 +620,18 @@ async function readCharacter(
 
   if (character.character_type === "npc" && context.canManage) {
     const [profileResult, habitatResult, relationshipResult] = await Promise.all([
-      context.client
+      context.dataClient
         .from("npc_profiles")
         .select("character_id,role,species,creature_type,size,challenge_rating,occupation,faction,appearance,demeanor,motivation,public_notes,gm_notes,tags,updated_at")
         .eq("campaign_id", context.campaignId)
         .eq("character_id", characterId)
         .maybeSingle(),
-      context.client
+      context.dataClient
         .from("location_npc_habitats")
         .select("location_id,created_at")
         .eq("campaign_id", context.campaignId)
         .eq("npc_character_id", characterId),
-      context.client
+      context.dataClient
         .from("character_relationships")
         .select("id,subject_character_id,target_character_id,relationship_kind,public_label,attitude_score,player_note,gm_note,player_visible,state,started_at,ended_at,updated_at")
         .eq("campaign_id", context.campaignId)
@@ -647,7 +650,7 @@ async function readCharacter(
 
     const habitatIds = (habitatResult.data || []).map((row) => row.location_id)
     if (habitatIds.length) {
-      const { data: habitatLocations, error: habitatLocationError } = await context.client
+      const { data: habitatLocations, error: habitatLocationError } = await context.dataClient
         .from("locations")
         .select("id,name,summary,visibility_mode,lifecycle_state")
         .eq("campaign_id", context.campaignId)
@@ -691,7 +694,7 @@ async function readLocation(
   const locationId = typeof args.location_id === "string" ? args.location_id : ""
   if (!locationId) return { error: "location_id is required" }
 
-  const { data: location, error: locationError } = await context.client
+  const { data: location, error: locationError } = await context.dataClient
     .from("locations")
     .select("id,campaign_id,parent_location_id,name,summary,description,sort_order,visibility_mode,lifecycle_state,updated_at")
     .eq("campaign_id", context.campaignId)
@@ -712,12 +715,12 @@ async function readLocation(
     locationDiscoveryResult,
     locationSecretsResult,
   ] = await Promise.all([
-    context.client
+    context.dataClient
       .from("location_sections")
       .select("id,location_id,title,body,sort_order")
       .eq("location_id", locationId)
       .order("sort_order"),
-    context.client
+    context.dataClient
       .from("locations")
       .select("id,name,summary,visibility_mode,lifecycle_state")
       .eq("campaign_id", context.campaignId)
@@ -725,19 +728,19 @@ async function readLocation(
       .order("sort_order")
       .order("name"),
     location.parent_location_id
-      ? context.client
+      ? context.dataClient
           .from("locations")
           .select("id,name,summary")
           .eq("campaign_id", context.campaignId)
           .eq("id", location.parent_location_id)
           .maybeSingle()
       : Promise.resolve({ data: null, error: null }),
-    context.client
+    context.dataClient
       .from("location_npc_habitats")
       .select("npc_character_id,created_at")
       .eq("location_id", locationId)
       .order("created_at"),
-    context.client
+    context.dataClient
       .from("character_world_state")
       .select("character_id,campaign_day,day_period,updated_at")
       .eq("campaign_id", context.campaignId)
@@ -748,14 +751,14 @@ async function readLocation(
       p_location_id: locationId,
     }),
     context.canManage
-      ? context.client
+      ? context.dataClient
           .from("character_location_discoveries")
           .select("character_id,discovered_at,source")
           .eq("location_id", locationId)
           .order("discovered_at")
       : emptyRows,
     context.canManage
-      ? context.client
+      ? context.dataClient
           .from("location_secrets")
           .select("id,secret_key,secret_type,title,secret_text,ai_directive,reveal_text,status,importance,tags,metadata,resolution_note,resolved_at,created_at,updated_at")
           .eq("location_id", locationId)
@@ -784,7 +787,7 @@ async function readLocation(
   let links: Array<Record<string, unknown>> = []
 
   if (sectionIds.length) {
-    const { data, error } = await context.client
+    const { data, error } = await context.dataClient
       .from("location_links")
       .select("id,section_id,target_location_id,label,sort_order,visibility_mode,created_at")
       .in("section_id", sectionIds)
@@ -802,7 +805,7 @@ async function readLocation(
   let targets: Array<Record<string, unknown>> = []
 
   if (targetIds.length) {
-    const { data, error } = await context.client
+    const { data, error } = await context.dataClient
       .from("locations")
       .select("id,name,summary,visibility_mode,lifecycle_state")
       .eq("campaign_id", context.campaignId)
@@ -826,13 +829,13 @@ async function readLocation(
 
   if (relatedCharacterIds.length) {
     const [charactersResult, profilesResult] = await Promise.all([
-      context.client
+      context.dataClient
         .from("characters")
         .select("id,name,character_class,level,character_type,life_state,visibility_mode,publication_state")
         .eq("campaign_id", context.campaignId)
         .in("id", relatedCharacterIds),
       context.canManage
-        ? context.client
+        ? context.dataClient
             .from("npc_profiles")
             .select("character_id,role,species,creature_type,occupation,faction,public_notes,tags")
             .eq("campaign_id", context.campaignId)
@@ -852,7 +855,7 @@ async function readLocation(
   let transitionDiscoveryRows: Array<Record<string, unknown>> = []
 
   if (context.canManage && linkIds.length) {
-    const { data, error } = await context.client
+    const { data, error } = await context.dataClient
       .from("character_location_link_discoveries")
       .select("character_id,location_link_id,discovered_at,source")
       .in("location_link_id", linkIds)
@@ -871,7 +874,7 @@ async function readLocation(
     )]
 
     if (missingCharacterIds.length) {
-      const { data: extraCharacters, error: extraError } = await context.client
+      const { data: extraCharacters, error: extraError } = await context.dataClient
         .from("characters")
         .select("id,name,character_class,level,character_type,life_state,visibility_mode,publication_state")
         .eq("campaign_id", context.campaignId)
@@ -937,7 +940,7 @@ async function readLocation(
   let revisionRows: Array<Record<string, unknown>> = []
 
   if (context.canManage && secretIds.length) {
-    const { data, error } = await context.client
+    const { data, error } = await context.dataClient
       .from("location_secret_revisions")
       .select("id,secret_id,revision,change_kind,snapshot,changed_by,created_at")
       .in("secret_id", secretIds)
@@ -986,7 +989,7 @@ async function readRuleTemplate(
   const templateId = typeof args.template_id === "string" ? args.template_id : ""
   if (!templateId) return { error: "template_id is required" }
 
-  const { data: template, error } = await context.client
+  const { data: template, error } = await context.dataClient
     .from("rule_templates")
     .select("id,campaign_id,kind,slug,name,description,version,mechanics,choices,parent_template_id,unlock_level,catalog_key,catalog_revision,source_kind,source_label,is_builtin,mechanical_summary,author_description,author_comment,rules_meta,is_active,updated_at")
     .eq("campaign_id", context.campaignId)
@@ -998,14 +1001,14 @@ async function readRuleTemplate(
 
   const [parentResult, childrenResult] = await Promise.all([
     template.parent_template_id
-      ? context.client
+      ? context.dataClient
           .from("rule_templates")
           .select("id,kind,slug,name,description,unlock_level,mechanical_summary,is_active")
           .eq("campaign_id", context.campaignId)
           .eq("id", template.parent_template_id)
           .maybeSingle()
       : Promise.resolve({ data: null, error: null }),
-    context.client
+    context.dataClient
       .from("rule_templates")
       .select("id,kind,slug,name,description,unlock_level,mechanical_summary,is_active")
       .eq("campaign_id", context.campaignId)
@@ -1032,7 +1035,7 @@ async function readReferenceDefinition(
     typeof args.definition_id === "string" ? args.definition_id : ""
   if (!definitionId) return { error: "definition_id is required" }
 
-  const { data: definition, error } = await context.client
+  const { data: definition, error } = await context.dataClient
     .from("reference_definitions")
     .select("id,kind,scope,campaign_id,slug,visibility,status,source_kind,source_label,external_id,current_revision,created_at,updated_at")
     .eq("id", definitionId)
@@ -1048,7 +1051,7 @@ async function readReferenceDefinition(
     return { not_found: true }
   }
 
-  const { data: revision, error: revisionError } = await context.client
+  const { data: revision, error: revisionError } = await context.dataClient
     .from("reference_definition_revisions")
     .select("definition_id,revision,name,summary,rules_text,mechanics,data,created_at")
     .eq("definition_id", definitionId)
@@ -1070,7 +1073,7 @@ async function readWorldArticle(
   const articleId = typeof args.article_id === "string" ? args.article_id : ""
   if (!articleId) return { error: "article_id is required" }
 
-  const { data, error } = await context.client
+  const { data, error } = await context.dataClient
     .from("world_articles")
     .select("id,campaign_id,section_id,title,summary,body,sort_order,created_at,updated_at")
     .eq("campaign_id", context.campaignId)
@@ -1090,7 +1093,7 @@ async function readWorkspaceFile(
   const fileId = typeof args.file_id === "string" ? args.file_id : ""
   if (!fileId) return { error: "file_id is required" }
 
-  const { data, error } = await context.client
+  const { data, error } = await context.dataClient
     .from("gm_workspace_files")
     .select("id,campaign_id,workspace_user_id,folder_id,kind,title,body,original_name,mime_type,created_at,updated_at")
     .eq("campaign_id", context.campaignId)
@@ -1121,50 +1124,50 @@ async function readCampaignOverview(
     art,
     templates,
   ] = await Promise.all([
-    context.client
+    context.dataClient
       .from("characters")
       .select("id,name,character_class,level,character_type,life_state,publication_state,visibility_mode")
       .eq("campaign_id", context.campaignId)
       .order("name")
       .limit(limit),
-    context.client
+    context.dataClient
       .from("locations")
       .select("id,name,summary,parent_location_id,visibility_mode,lifecycle_state")
       .eq("campaign_id", context.campaignId)
       .order("sort_order")
       .order("name")
       .limit(limit),
-    context.client
+    context.dataClient
       .from("chat_rooms")
       .select("id,slug,title,category,room_type,character_id,location_id,room_state,scene_state,campaign_day,day_period,updated_at")
       .eq("campaign_id", context.campaignId)
       .order("updated_at", { ascending: false })
       .limit(limit),
-    context.client
+    context.dataClient
       .from("world_articles")
       .select("id,title,summary,section_id,updated_at")
       .eq("campaign_id", context.campaignId)
       .order("updated_at", { ascending: false })
       .limit(limit),
-    context.client
+    context.dataClient
       .from("achievements")
       .select("id,character_id,title,description,awarded_at")
       .eq("campaign_id", context.campaignId)
       .order("awarded_at", { ascending: false })
       .limit(limit),
-    context.client
+    context.dataClient
       .from("feed_items")
       .select("id,source_type,source_id,character_id,title,body,published_at")
       .eq("campaign_id", context.campaignId)
       .order("published_at", { ascending: false })
       .limit(limit),
-    context.client
+    context.dataClient
       .from("campaign_art_items")
       .select("id,character_id,title,caption,kind,created_at")
       .eq("campaign_id", context.campaignId)
       .order("created_at", { ascending: false })
       .limit(limit),
-    context.client
+    context.dataClient
       .from("rule_templates")
       .select("id,kind,slug,name,description,parent_template_id,unlock_level,is_active")
       .eq("campaign_id", context.campaignId)
@@ -1206,7 +1209,7 @@ async function readChatRoom(
   if (!roomId) return { error: "room_id is required" }
   const limit = Math.max(1, Math.min(60, Number(args.limit) || 30))
 
-  const { data: room, error: roomError } = await context.client
+  const { data: room, error: roomError } = await context.dataClient
     .from("chat_rooms")
     .select("id,campaign_id,slug,title,category,room_type,character_id,location_id,room_state,scene_state,campaign_day,day_period,updated_at")
     .eq("campaign_id", context.campaignId)
@@ -1215,7 +1218,7 @@ async function readChatRoom(
   if (roomError) return { error: roomError.message }
   if (!room) return { not_found: true }
 
-  const { data: messages, error: messageError } = await context.client
+  const { data: messages, error: messageError } = await context.dataClient
     .from("chat_messages")
     .select("id,room_id,author_name,body,user_id,character_id,attachment_kind,event_kind,event_payload,created_at,edited_at")
     .eq("room_id", roomId)
@@ -1237,7 +1240,7 @@ async function searchChatMessages(
   if (!query) return { error: "search query is empty" }
   const limit = Math.max(1, Math.min(30, Number(args.limit) || 16))
 
-  const { data: rooms, error: roomError } = await context.client
+  const { data: rooms, error: roomError } = await context.dataClient
     .from("chat_rooms")
     .select("id,title")
     .eq("campaign_id", context.campaignId)
@@ -1253,7 +1256,7 @@ async function searchChatMessages(
   const roomIds = roomRows.map((room) => room.id)
   if (!roomIds.length) return { query, messages: [] }
 
-  const { data: messages, error } = await context.client
+  const { data: messages, error } = await context.dataClient
     .from("chat_messages")
     .select("id,room_id,author_name,body,user_id,character_id,event_kind,event_payload,created_at")
     .in("room_id", roomIds)
