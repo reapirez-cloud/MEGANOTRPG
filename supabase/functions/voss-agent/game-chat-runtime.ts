@@ -714,6 +714,140 @@ async function runWorldMaterializer({
   }
 }
 
+async function runPostTurnCommitJob({
+  admin,
+  campaignId,
+  postJobId,
+}: {
+  admin: SupabaseClient
+  campaignId: string
+  postJobId: string
+}) {
+  const { data: job, error } = await admin
+    .from("agent_jobs")
+    .select("id,status,input")
+    .eq("id", postJobId)
+    .eq("job_type", "ai_gm_post_turn_commit")
+    .maybeSingle()
+  if (error) throw new Error(error.message)
+  if (!job?.id || job.status === "completed") return
+  if (job.status !== "queued" && job.status !== "running") return
+
+  const input = jsonRecord(job.input)
+  const roomId = typeof input.room_id === "string" ? input.room_id : ""
+  const managerUserId = typeof input.manager_user_id === "string" ? input.manager_user_id : ""
+  const sourceMessageId = Number(input.source_chat_message_id || 0)
+  const publishedAnswer = typeof input.published_answer === "string" ? input.published_answer : ""
+  const intents = Array.isArray(input.post_turn_intents) ? input.post_turn_intents : []
+  if (!roomId || !managerUserId || !sourceMessageId || !publishedAnswer) {
+    throw new Error("stage18_post_turn_input_invalid")
+  }
+
+  const claimed = await admin
+    .from("agent_jobs")
+    .update({
+      status: "running",
+      started_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", postJobId)
+    .eq("status", "queued")
+    .select("id")
+    .maybeSingle()
+  if (claimed.error) throw new Error(claimed.error.message)
+  if (!claimed.data?.id) return
+
+  let lastError = ""
+  for (let attempt = 1; attempt <= 3; attempt += 1) {
+    try {
+      const context = await buildGameChatContextV2({
+        admin,
+        campaignId,
+        jobInput: {
+          room_id: roomId,
+          source_chat_message_id: String(sourceMessageId),
+          source_character_id: String(input.source_character_id || ""),
+          original_message: String(input.original_message || ""),
+        },
+      })
+      const route = await resolveCampaignGmModel(admin, { campaignId })
+      const commit = await runWorldMaterializer({
+        admin,
+        campaignId,
+        managerUserId,
+        context,
+        originalMessage: publishedAnswer,
+        materializationTask:
+          "POST-TURN COMMIT. Выполни ТОЛЬКО эти уже установленные факты и ничего сверх них:\n" +
+          JSON.stringify(intents),
+        fallbackModel: route.model,
+        allowSourceBootstrap: false,
+        systemOverride: STAGE18_POST_TURN_WORKER_SYSTEM + "\n\n" + WORLD_MATERIALIZER_SYSTEM,
+      })
+      const now = new Date().toISOString()
+      await admin
+        .from("agent_jobs")
+        .update({
+          status: "completed",
+          completed_outputs: 1,
+          result: {
+            runtime_stage: 18,
+            changed: commit.changed,
+            model_key: commit.modelKey || null,
+            post_turn_intents: intents,
+            tool_runs: commit.toolRuns,
+            commit_receipt: {
+              committed_at: now,
+              attempt,
+              intent_count: intents.length,
+            },
+          },
+          completed_at: now,
+          updated_at: now,
+          error_code: null,
+          error_message: null,
+        })
+        .eq("id", postJobId)
+        .eq("status", "running")
+
+      await admin
+        .from("ai_gm_turn_commit_gates")
+        .update({
+          state: "completed",
+          last_error: null,
+          committed_at: now,
+          updated_at: now,
+        })
+        .eq("post_job_id", postJobId)
+      return
+    } catch (error) {
+      lastError = error instanceof Error ? error.message : String(error)
+      if (attempt < 3) await new Promise((resolve) => setTimeout(resolve, 350 * attempt))
+    }
+  }
+
+  const now = new Date().toISOString()
+  await admin
+    .from("agent_jobs")
+    .update({
+      status: "failed",
+      error_code: "stage18_post_turn_commit_failed",
+      error_message: lastError.slice(0, 500),
+      completed_at: now,
+      updated_at: now,
+    })
+    .eq("id", postJobId)
+    .eq("status", "running")
+  await admin
+    .from("ai_gm_turn_commit_gates")
+    .update({
+      state: "failed",
+      last_error: lastError.slice(0, 500),
+      updated_at: now,
+    })
+    .eq("post_job_id", postJobId)
+}
+
 function fitChatBody(value: string) {
   const text = value.replace(/\r\n/g, "\n").trim()
   if (text.length <= 4000) return text
