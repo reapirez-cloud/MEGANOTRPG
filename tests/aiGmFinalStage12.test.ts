@@ -36,7 +36,7 @@ test("Stage 12 keeps exactly the latest 50 AI context messages from the persiste
   assert.match(context, /const CHAT_CONTEXT_LIMIT = 50/)
   assert.match(
     context,
-    /from\("chat_messages"\)[\s\S]*\.eq\("room_id", roomId\)[\s\S]*\.limit\(CHAT_CONTEXT_LIMIT\)/,
+    /read_ai_gm_recent_chat_context_v1[\s\S]*p_room_id: roomId[\s\S]*p_limit: CHAT_CONTEXT_LIMIT/,
   )
   assert.match(
     context,
@@ -123,8 +123,8 @@ test("Stage 12 NPC text inventory stays lightweight until explicit materializati
 
 test("Stage 12 memory keeps game-time provenance and ages facts by campaign day", () => {
   assert.match(context, /game_age_days/)
-  assert.match(context, /campaign_day: time\.campaignDay/)
-  assert.match(context, /day_period: time\.dayPeriod/)
+  const temporal = read("supabase/functions/voss-agent/temporal-overlay.ts")\n  assert.match(temporal, /campaign_day: time\.campaignDay/)
+  assert.match(temporal, /day_period: time\.dayPeriod/)
   assert.match(maintenance, /range_start_message_id/)
   assert.match(maintenance, /range_end_message_id/)
   assert.match(maintenance, /source_event_ids/)
@@ -149,7 +149,7 @@ test("Stage 12 exposes durable GM turn status in chat", () => {
   assert.match(migration, /generating_art/)
   assert.match(runtime, /runtime_phase: phase/)
   assert.match(runtime, /setRuntimePhase/)
-  assert.match(statusUi, /get_ai_gm_room_status_v1/)
+  assert.match(statusUi, /get_ai_gm_room_status_v3/)
   assert.match(statusUi, /window\.setInterval/)
   assert.match(statusUi, /role="status"/)
   assert.match(statusMigration, /ИИ-ГМ ждёт очередь общей сцены/)
