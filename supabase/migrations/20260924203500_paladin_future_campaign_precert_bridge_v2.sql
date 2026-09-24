@@ -1,3 +1,4 @@
+-- CLASS_MIGRATION_SCOPE: infrastructure
 -- Correct the future-campaign Paladin bridge introduced by v1.
 --
 -- The bridge must run before final certification, therefore it must not require
