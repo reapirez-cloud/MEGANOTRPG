@@ -29,7 +29,8 @@ test("primary AI GM receives real scene-actor provider tools", () => {
   ]) {
     assert.match(runtime, new RegExp(`name: "${name}"`))
   }
-  assert.match(runtime, /tools: PRIMARY_GM_SCENE_ACTOR_TOOLS/)
+  assert.match(runtime, /const primaryTools = runtimeSettings\.npcIdentity/)
+  assert.match(runtime, /tools: primaryTools/)
   assert.match(runtime, /toolChoice: "auto"/)
 })
 
