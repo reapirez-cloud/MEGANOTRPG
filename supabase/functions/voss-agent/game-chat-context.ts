@@ -193,6 +193,33 @@ export function projectStage19ChatMessage(
     ? compactMechanicalEvent(eventKind, message.event_payload)
     : null
   const body = boundedText(message.body, 4000)
+  const payload = record(message.event_payload)
+  const playerTurnPlan = record(payload.player_turn_plan)
+  const projectedTurnPlan = nullableString(playerTurnPlan.draft_id)
+    ? {
+        draft_id: nullableString(playerTurnPlan.draft_id),
+        turn_command_id: nullableString(playerTurnPlan.turn_command_id),
+        execution_state: nullableString(playerTurnPlan.execution_state),
+        execution_cursor: optionalNumber(playerTurnPlan.execution_cursor) || 0,
+        entries: rows(playerTurnPlan.entries).slice(0, 64).map((entry) => ({
+          command_id: nullableString(entry.command_id),
+          kind: nullableString(entry.kind),
+          label: boundedText(entry.label, 240),
+          economy: nullableString(entry.economy),
+          description: boundedText(entry.description, 1000),
+          trigger_condition: boundedText(entry.trigger_condition, 600),
+        })),
+        executed_message_ids: Array.isArray(playerTurnPlan.executed_message_ids)
+          ? playerTurnPlan.executed_message_ids.slice(0, 80)
+          : [],
+        executed_reaction_command_ids:
+          strings(playerTurnPlan.executed_reaction_command_ids).slice(0, 8),
+        interruption_reason: boundedText(
+          playerTurnPlan.interruption_reason,
+          600,
+        ),
+      }
+    : null
 
   return {
     id: message.id,
@@ -200,6 +227,7 @@ export function projectStage19ChatMessage(
     character_id: nullableString(message.character_id),
     ...(body ? { body } : {}),
     ...(mechanic ? { mechanic } : {}),
+    ...(projectedTurnPlan ? { player_turn_plan: projectedTurnPlan } : {}),
     ...(message.attachment_kind === "image" ? { attachment: "image" } : {}),
     audience_scope:
       nullableString(message.audience_scope) === "direct_pc"
