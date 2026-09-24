@@ -16,6 +16,9 @@ const workspace = read("src/ui-v1-isolated/Workspace.tsx")
 const controlMigration = read(
   "supabase/migrations/20260925024500_ai_gm_control_panel_v1.sql",
 )
+const runtimeSettingsMigration = read(
+  "supabase/migrations/20260925041000_ai_gm_control_panel_runtime_settings_v2.sql",
+)
 const migration = read(
   "supabase/migrations/20260925013000_ai_gm_runtime_entity_authority_and_output_fix_v1.sql",
 )
@@ -76,7 +79,7 @@ test("dedicated AI button routes managers to the AI GM control page while Freddy
   assert.match(shell, /setOpen\(\(value\) => !value\)/)
 })
 
-test("AI GM control loads one complete panel and writes through canonical settings RPCs", () => {
+test("AI GM control exposes direct senior/junior selectors and real runtime switches", () => {
   assert.match(control, /read_ai_gm_control_panel_v1/)
   for (const rpc of [
     "set_campaign_gm_model_v1",
@@ -84,16 +87,23 @@ test("AI GM control loads one complete panel and writes through canonical settin
     "set_campaign_ai_gm_behavior_profile_v1",
     "set_my_ai_director_preferences_v1",
     "set_campaign_ai_gm_content_profile_v1",
+    "set_campaign_ai_gm_runtime_feature_v1",
   ]) {
     assert.match(control, new RegExp(rpc))
   }
+
+  assert.match(control, /Старший ИИ/)
+  assert.match(control, /Младший ИИ/)
+  assert.match(control, /<select/)
+  assert.match(control, /className="u1-ai-gm-switch"/)
+  assert.match(control, /aria-pressed=\{feature\.enabled\}/)
+
   for (const section of [
-    "01 · ГЛАВНЫЙ ИИ",
-    "02 · МЛАДШИЙ ИИ",
-    "03 · РЕЖИМ МАСТЕРА",
-    "04 · ДИРЕКТОР",
-    "05 · КОНТЕНТ-ПРОФИЛЬ",
-    "06 · ФУНКЦИИ МИРА",
+    "01 · МОДЕЛИ ИИ",
+    "02 · РЕЖИМ МАСТЕРА",
+    "03 · ДИРЕКТОР",
+    "04 · КОНТЕНТ-ПРОФИЛЬ",
+    "05 · ФУНКЦИИ ИИ-МИРА",
   ]) {
     assert.match(control, new RegExp(section))
   }
@@ -118,4 +128,40 @@ test("server AI GM control panel bundles models, gameplay profiles and core runt
   ]) {
     assert.match(controlMigration, new RegExp(feature))
   }
+})
+
+
+test("AI GM runtime settings are persisted and optional systems are actually gated", () => {
+  for (const key of [
+    "junior_commit",
+    "world_materialization",
+    "background_world",
+    "npc_identity",
+    "quest_updates",
+    "maintenance",
+    "media_pipeline",
+  ]) {
+    assert.match(runtimeSettingsMigration, new RegExp("'" + key + "'"))
+  }
+
+  assert.match(runtimeSettingsMigration, /set_campaign_ai_gm_runtime_feature_v1/)
+  assert.match(runtimeSettingsMigration, /ai_gm_runtime_feature_enabled_v1/)
+  assert.match(runtimeSettingsMigration, /dispatch_ai_background_daily_run_v1/)
+  assert.match(runtimeSettingsMigration, /dispatch_ai_gm_maintenance_job_v1/)
+  assert.match(runtimeSettingsMigration, /dispatch_ai_gm_media_job_v1/)
+  assert.match(runtime, /loadAiGmRuntimeSettings/)
+  assert.match(runtime, /runtimeSettings\.worldMaterialization/)
+  assert.match(runtime, /runtimeSettings\.npcIdentity/)
+  assert.match(runtime, /settings\.juniorCommit/)
+  assert.match(runtime, /settings\.questUpdates/)
+})
+
+test("junior model selector accepts every compatible campaign tool model", () => {
+  const router = read("supabase/functions/voss-agent/model-router.ts")
+
+  assert.doesNotMatch(router, /const allowedKeys =/)
+  assert.doesNotMatch(router, /\.in\("model_key", allowedKeys\)/)
+  assert.match(runtimeSettingsMigration, /supports_tools=true/)
+  assert.match(runtimeSettingsMigration, /supports_json=true/)
+  assert.match(runtimeSettingsMigration, /list_campaign_ai_junior_models_v1/)
 })
