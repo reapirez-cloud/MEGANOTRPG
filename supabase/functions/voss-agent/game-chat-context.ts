@@ -1838,6 +1838,15 @@ export function npcDialogueContextForPrompt(
       character_class: npc.character_class,
       level: npc.level,
       profile: safeProfile,
+      identity_fingerprint: identity
+        ? {
+            version: identity.version,
+            bootstrap_state: identity.bootstrap_state,
+            fingerprint_hash: identity.fingerprint_hash,
+            core: record(identity.core),
+            last_major_event_id: identity.last_major_event_id || null,
+          }
+        : null,
       sheet,
       resource_states: context.resourceStates.filter(
         (item) => String(item.character_id) === npcCharacterId,
