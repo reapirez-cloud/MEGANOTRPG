@@ -6,6 +6,7 @@ import {
   stage2ContextForPrompt,
   stage19ContextTelemetry,
   stage21BehaviorProfileTelemetry,
+  stage22DirectorPreferenceTelemetry,
   type Stage2GameChatContext,
 } from "./game-chat-context.ts"
 import {
@@ -447,6 +448,13 @@ const STAGE12_GAME_MASTER_SYSTEM = [
   "sims/Симс: снижай плотность немотивированной смертельной эскалации и давай больше места быту, работе, жилью, деньгам, хобби, дружбе, свиданиям, семье и социалке. Это НЕ wish fulfillment: NPC могут отказать, отношения требуют причин, а реально смертельные действия остаются смертельными.",
   "dimensions — нормализованные 0..5 bias-параметры. Используй их только как вес предпочтения между одинаково допустимыми ветвями; не превращай числа в бонусы к броскам, DC или скрытые модификаторы.",
   "consequence_persistence действует во всех режимах: уже установленные последствия нельзя забыть потому, что профиль мягче. recoverable_complication_preference не разрешает спасение там, где канон/механика уже определили необратимый исход.",
+  "player_director_preferences — Stage 22 пожелания реально участвующих в ЭТОЙ физической сцене игроков о БУДУЩИХ возможностях и темпе. Это guidance, а не канон, приказ или скрытый бонус.",
+  "Используй director preferences только когда выбираешь между несколькими уже правдоподобными будущими возможностями: какие hooks, темы, типы сцен и темп чаще предлагать дальше. Они не меняют уже существующий факт, уже начавшуюся засаду, DC, результат куба, ресурсы, relationship score, identity fingerprint, hard red_lines или правила.",
+  "Желание romance означает чаще оставлять логичные возможности для знакомства/близости, но НЕ означает симпатию конкретного NPC, согласие, consent или автоматический успех social check. NPC всегда действует из собственного fingerprint, отношений и обстоятельств.",
+  "Низкий combat может уменьшать частоту будущих гибких боевых hooks, но не отменяет бой, который уже канонически начался или логически неизбежен. Высокий combat не разрешает создавать врагов из воздуха.",
+  "Для co-op dimensions.mean — равновесная средняя предпочтений настроивших их участников; min/max/spread показывают конфликт. При большом spread НЕ выбирай молча одного победителя: чередуй/комбинируй правдоподобные будущие возможности так, чтобы разные предпочтения получали пространство со временем.",
+  "participants содержит только физически участвующих здесь PC с их текущей версией и bounded free_text. Предпочтения игроков из другой локации сюда не попадают и не должны влиять на сцену.",
+  "free_text интерпретируй как долгосрочное режиссёрское пожелание. Фраза игрока вроде 'хочу дом и лавку' разрешает предлагать логичные пути к этому, но не создаёт дом, деньги, продавца, право собственности или успешную сделку без канонической причины.",
   "Если нужен бросок игрока, используй только request_player_roll. Ты решаешь смысл проверки и логическую сложность как настольный GM; точный app mechanic, modifier и вызов реального d20 сделает младший mechanic worker + сервер.",
   "Не проси косметический бросок. Если канон/физика уже гарантируют успех или провал, не используй request_player_roll. Верни обычную narration/environment и добавь intent_adjudication с mode=deterministic_success или deterministic_failure.",
   "Обычные semantic checks не ограничены кнопками: крепкий алкоголь может требовать Constitution check/save; подъём/плавание/рывок под давлением Athletics/Strength; чтение поведения NPC Insight; выслеживание Survival; скрытая деталь Perception; тщательный поиск Investigation; правдоподобное знание соответствующий Intelligence check.",
@@ -1165,6 +1173,7 @@ async function finalizeStage18VisibleAnswer({
     dialogue_message_kinds: messages.map((item) => item.kind),
     ...stage19ContextTelemetry(context),
     ...stage21BehaviorProfileTelemetry(context),
+        ...stage22DirectorPreferenceTelemetry(context),
     source_location_id: context.sourceLocation?.id || null,
     player_location_count: new Set(
       context.players.map((player) => player.location_id).filter(Boolean),
@@ -2334,6 +2343,7 @@ async function completeWithoutChatMessage({
         reaction_reason: reaction.reason,
         ...stage19ContextTelemetry(context),
         ...stage21BehaviorProfileTelemetry(context),
+        ...stage22DirectorPreferenceTelemetry(context),
         source_location_id: context.sourceLocation?.id || null,
         player_location_count: new Set(
           context.players.map((player) => player.location_id).filter(Boolean),
@@ -2393,6 +2403,7 @@ async function completeWithGameplayMessage({
         mechanic_result: mechanicResult,
         ...stage19ContextTelemetry(context),
         ...stage21BehaviorProfileTelemetry(context),
+        ...stage22DirectorPreferenceTelemetry(context),
         source_location_id: context.sourceLocation?.id || null,
         player_location_count: new Set(
           context.players.map((player) => player.location_id).filter(Boolean),
@@ -2519,6 +2530,7 @@ function primaryGmContextForPrompt(context: Stage2GameChatContext) {
   return JSON.stringify({
     ...canonical,
     gm_behavior_profile: context.gmBehaviorProfile,
+    player_director_preferences: context.directorPreferences,
   })
 }
 
@@ -3414,6 +3426,7 @@ export async function runGameChatTurn(
             stage17_mechanic_worker_model_key: normalized.workerModelKey,
             ...stage19ContextTelemetry(context),
             ...stage21BehaviorProfileTelemetry(context),
+        ...stage22DirectorPreferenceTelemetry(context),
             model_id: route.model.id,
             model_key: route.model.model_key,
             model_name: route.model.display_name,
