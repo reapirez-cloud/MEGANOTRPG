@@ -510,10 +510,253 @@ grant execute on function public.create_ai_gm_player_roll_request_v3(
   uuid,uuid,text,text,text,text,text,text,text,text,text,jsonb,jsonb,jsonb,text,text,text,text,text,text,text
 ) to service_role;
 
--- Requested player rolls are server-owned interactions and must be allowed
--- through later free-form chat gates while this resolver is executing.
-alter function public.resolve_player_roll_request_v1(uuid)
-  set meganot.ai_gm_runtime = 'on';
+-- Requested player rolls are server-owned interactions. The resolver marks
+-- only its transaction as AI runtime before send_chat_roll_v4(), preserving the
+-- free-form turn gate while allowing the requested d20.
+create or replace function public.resolve_player_roll_request_v1(p_request_id uuid)
+returns jsonb
+language plpgsql
+security definer
+set search_path = ''
+as $
+declare
+  v_request public.pending_player_roll_requests%rowtype;
+  v_adjudication public.ai_player_intent_adjudications%rowtype;
+  v_modifier integer;
+  v_roll_message_id bigint;
+  v_roll_payload jsonb;
+  v_public_result jsonb;
+  v_private_result jsonb;
+  v_job public.agent_jobs%rowtype;
+  v_total integer;
+  v_d20_raw integer;
+  v_dc_passed boolean;
+  v_outcome_class text;
+  v_outcome_envelope text;
+begin
+  if auth.uid() is null then
+    raise exception 'Authentication required';
+  end if;
+  if coalesce((auth.jwt()->>'is_anonymous')::boolean,false) then
+    raise exception 'Anonymous accounts cannot resolve player rolls';
+  end if;
+
+  select * into v_request
+  from public.pending_player_roll_requests
+  where id = p_request_id
+  for update;
+
+  if v_request.id is null then
+    raise exception 'roll_request_not_found';
+  end if;
+
+  if not exists(
+    select 1
+    from public.characters c
+    where c.id = v_request.character_id
+      and c.assigned_user_id = auth.uid()
+      and c.life_state = 'alive'
+  ) then
+    raise exception 'roll_request_belongs_to_another_player';
+  end if;
+
+  if v_request.status = 'resolved' and v_request.roll_message_id is not null then
+    v_public_result := coalesce(v_request.result,'{}'::jsonb)
+      - 'outcomeEnvelope'
+      - 'successEnvelope'
+      - 'failureEnvelope'
+      - 'partialSuccessEnvelope'
+      - 'exactGoal'
+      - 'semanticMechanicRequest'
+      - 'evidenceFingerprint'
+      - 'sourceIntentFingerprint'
+      - 'receiptFingerprint';
+    return v_public_result;
+  end if;
+
+  if v_request.status <> 'pending' then
+    raise exception 'roll_request_not_pending';
+  end if;
+
+  select * into v_job
+  from public.agent_jobs
+  where id = v_request.gm_job_id
+  for update;
+
+  if v_job.id is null or v_job.status <> 'waiting_for_user' then
+    raise exception 'gm_turn_not_waiting_for_roll';
+  end if;
+
+  if v_request.adjudication_id is not null then
+    select * into v_adjudication
+    from public.ai_player_intent_adjudications
+    where id = v_request.adjudication_id;
+
+    if v_adjudication.id is null then
+      raise exception 'stage17_adjudication_missing';
+    end if;
+  end if;
+
+  update public.pending_player_roll_requests
+  set status = 'resolving'
+  where id = v_request.id;
+
+  v_modifier := private.resolve_player_roll_modifier_v1(
+    v_request.character_id,
+    v_request.request_type,
+    v_request.ability_key,
+    v_request.skill_key,
+    v_request.attack_kind
+  );
+
+  -- This is the one player interaction explicitly authorized while the GM job
+  -- is waiting_for_user. Mark only this transaction as AI-runtime traffic so
+  -- free-form chat gates cannot reject the server-owned requested roll.
+  perform set_config('meganot.ai_gm_runtime','on',true);
+
+  v_roll_message_id := public.send_chat_roll_v4(
+    v_request.room_id,
+    v_request.character_id,
+    v_request.label,
+    case
+      when v_request.request_type = 'skill' then 'skill'
+      when v_request.request_type = 'save' then 'save'
+      when v_request.request_type = 'attack' then 'attack'
+      when v_request.request_type = 'ability' then 'check'
+      else 'custom'
+    end,
+    v_modifier,
+    true,
+    0,0,0,1,
+    '[]'::jsonb
+  );
+
+  select event_payload into v_roll_payload
+  from public.chat_messages
+  where id = v_roll_message_id;
+
+  update public.chat_messages
+  set event_payload = coalesce(event_payload,'{}'::jsonb) || jsonb_build_object(
+    'playerRollRequestId', v_request.id,
+    'gmJobId', v_request.gm_job_id
+  )
+  where id = v_roll_message_id;
+
+  update public.chat_messages
+  set event_payload = coalesce(event_payload,'{}'::jsonb) || jsonb_build_object(
+    'status','resolved',
+    'rollMessageId',v_roll_message_id
+  )
+  where id = v_request.request_message_id;
+
+  v_total := coalesce((v_roll_payload ->> 'total')::integer,0);
+  v_d20_raw := coalesce((v_roll_payload ->> 'd20Raw')::integer,0);
+  v_dc_passed := case
+    when v_request.dc is null then null
+    else v_total >= v_request.dc
+  end;
+
+  if v_adjudication.id is not null then
+    if v_adjudication.adjudication_mode = 'check' then
+      if v_dc_passed is true then
+        v_outcome_class := 'success';
+        v_outcome_envelope := v_adjudication.success_envelope;
+      else
+        v_outcome_class := 'failure';
+        v_outcome_envelope := v_adjudication.failure_envelope;
+      end if;
+    elsif v_adjudication.adjudication_mode = 'impossible_exact' then
+      if v_dc_passed is true then
+        v_outcome_class := 'partial_success';
+        v_outcome_envelope := v_adjudication.partial_success_envelope;
+      else
+        v_outcome_class := 'failure';
+        v_outcome_envelope := v_adjudication.failure_envelope;
+      end if;
+    else
+      raise exception 'stage17_roll_has_non_roll_adjudication';
+    end if;
+  else
+    v_outcome_class := case
+      when v_dc_passed is true then 'success'
+      when v_dc_passed is false then 'failure'
+      else 'rolled'
+    end;
+    v_outcome_envelope := '';
+  end if;
+
+  v_public_result := coalesce(v_roll_payload,'{}'::jsonb) || jsonb_build_object(
+    'requestId', v_request.id,
+    'requestType', v_request.request_type,
+    'resolvedModifier', v_modifier,
+    'rollMessageId', v_roll_message_id,
+    'dcPassed', v_dc_passed,
+    'outcomeClass', v_outcome_class
+  );
+
+  v_private_result := v_public_result;
+
+  if v_adjudication.id is not null then
+    v_private_result := v_private_result || jsonb_build_object(
+      'adjudicationId', v_adjudication.id,
+      'adjudicationMode', v_adjudication.adjudication_mode,
+      'exactGoal', v_adjudication.exact_goal,
+      'exactGoalAllowed', v_adjudication.exact_goal_allowed,
+      'semanticMechanicRequest', v_adjudication.semantic_mechanic_request,
+      'logicalDifficulty', v_adjudication.logical_difficulty,
+      'natural20Policy', v_adjudication.natural_20_policy,
+      'natural20', v_d20_raw = 20,
+      'outcomeEnvelope', v_outcome_envelope,
+      'successEnvelope', v_adjudication.success_envelope,
+      'failureEnvelope', v_adjudication.failure_envelope,
+      'partialSuccessEnvelope', v_adjudication.partial_success_envelope,
+      'sourceIntentFingerprint', v_adjudication.source_intent_fingerprint,
+      'evidenceFingerprint', v_adjudication.evidence_fingerprint,
+      'receiptFingerprint', v_adjudication.receipt_fingerprint
+    );
+  end if;
+
+  update public.pending_player_roll_requests
+  set status = 'resolved',
+      roll_message_id = v_roll_message_id,
+      resolved_modifier = v_modifier,
+      result = v_private_result,
+      resolved_at = now()
+  where id = v_request.id;
+
+  update public.agent_jobs
+  set status = 'queued',
+      input = coalesce(input,'{}'::jsonb) || jsonb_build_object(
+        'resume_chat_message_id', v_roll_message_id
+      ),
+      result = (coalesce(result,'{}'::jsonb) - 'pending_roll_request_id')
+        || jsonb_build_object(
+          'last_roll_request_id', v_request.id,
+          'last_roll_message_id', v_roll_message_id,
+          'last_roll_result', v_private_result,
+          'runtime_stage', case
+            when v_adjudication.id is not null then 17
+            else 5
+          end
+        ),
+      updated_at = now(),
+      error_code = null,
+      error_message = null
+  where id = v_request.gm_job_id
+    and status = 'waiting_for_user';
+
+  perform private.dispatch_ai_gm_roll_resume_v1(v_request.gm_job_id);
+
+  return v_public_result;
+end;
+$;
+
+
+
+revoke all on function public.resolve_player_roll_request_v1(uuid)
+  from public, anon;
+grant execute on function public.resolve_player_roll_request_v1(uuid)
+  to authenticated;
 
 comment on function public.create_ai_gm_player_roll_request_v3(
   uuid,uuid,text,text,text,text,text,text,text,text,text,jsonb,jsonb,jsonb,text,text,text,text,text,text,text
