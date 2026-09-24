@@ -1,5 +1,13 @@
 import type { SupabaseClient } from "npm:@supabase/supabase-js@2.112.3"
 
+import {
+  applyLocationTemporalOverlay,
+  effectiveNpcTemporalState,
+  eventVisibleAtGameDay,
+  gameTimeFromEvent,
+  withGameAge,
+} from "./temporal-overlay.ts"
+
 type JsonRecord = Record<string, unknown>
 
 export type Stage2GameChatContext = {
@@ -31,6 +39,7 @@ export type Stage2GameChatContext = {
     facts: JsonRecord[]
     summaries: JsonRecord[]
   }
+  background: JsonRecord
   recentMessages: JsonRecord[]
   mentionedPlayerCharacters: Array<{ id: string; name: string }>
 }
@@ -72,48 +81,6 @@ function lower(value: unknown) {
 
 function unique(values: Array<string | null | undefined>) {
   return [...new Set(values.filter((value): value is string => Boolean(value)))]
-}
-
-function gameTimeFromEvent(event: JsonRecord | undefined) {
-  const payload = record(event?.payload)
-  return {
-    campaignDay:
-      nullableNumber(payload.effective_game_day) ??
-      nullableNumber(payload.campaign_day),
-    dayPeriod: nullableString(payload.day_period),
-    sourceLocationId:
-      nullableString(event?.location_id) ||
-      nullableString(payload.location_snapshot),
-  }
-}
-
-function eventVisibleAtGameDay(
-  event: JsonRecord | undefined,
-  currentDay: number | null,
-) {
-  if (currentDay === null) return true
-  const eventDay = gameTimeFromEvent(event).campaignDay
-  return eventDay === null || eventDay <= currentDay
-}
-
-function withGameAge(
-  item: JsonRecord,
-  event: JsonRecord | undefined,
-  currentDay: number | null,
-) {
-  const time = gameTimeFromEvent(event)
-  return {
-    ...item,
-    campaign_day: time.campaignDay,
-    day_period: time.dayPeriod,
-    game_age_days:
-      currentDay !== null &&
-        time.campaignDay !== null &&
-        time.campaignDay <= currentDay
-        ? currentDay - time.campaignDay
-        : null,
-    source_location_id: time.sourceLocationId,
-  }
 }
 
 async function loadActiveQuestContext(
@@ -452,9 +419,52 @@ export async function buildGameChatContextV2({
   const locationById = new Map(
     locations.map((location) => [String(location.id), location]),
   )
-  const sourceLocation = sourceLocationId
+  const sourceLocationBase = sourceLocationId
     ? locationById.get(sourceLocationId) || null
     : null
+
+  const canonicalPresentNpcIds = characters
+    .filter((character) => {
+      if (character.character_type !== "npc") return false
+      if (!sourceLocationId) return false
+      return nullableString(
+        worldByCharacter.get(String(character.id))?.location_id,
+      ) === sourceLocationId
+    })
+    .map((character) => String(character.id))
+
+  const backgroundResult = currentDay !== null
+    ? await admin.rpc("read_ai_background_temporal_context_v1", {
+        p_campaign_id: campaignId,
+        p_scene_day: currentDay,
+        p_source_location_id: sourceLocationId,
+        p_relevant_npc_ids: canonicalPresentNpcIds,
+      })
+    : { data: {
+        enabled: false,
+        scene_day: null,
+        world_snapshot: null,
+        source_location_snapshot: null,
+        npc_snapshots: [],
+        high_importance_events: [],
+      }, error: null }
+
+  if (backgroundResult.error) {
+    throw new Error(backgroundResult.error.message)
+  }
+
+  const background = record(backgroundResult.data)
+  const backgroundNpcRows = rows(background.npc_snapshots)
+  const backgroundNpcSnapshotById = new Map(
+    backgroundNpcRows.map((item) => [
+      String(item.entity_id),
+      record(item.snapshot),
+    ]),
+  )
+  const sourceLocation = applyLocationTemporalOverlay(
+    sourceLocationBase,
+    background.source_location_snapshot,
+  )
 
   const sceneActorsResult = sourceLocationId
     ? await admin
@@ -575,15 +585,45 @@ export async function buildGameChatContextV2({
 
   const presentCharacters = characters
     .filter((character) => {
-      if (character.life_state !== "alive") return false
-      if (String(character.id) === sourceCharacterId) return true
+      const canonicalWorld = worldByCharacter.get(String(character.id)) || {}
+      const canonicalLocationId = nullableString(canonicalWorld.location_id)
+
+      if (String(character.id) === sourceCharacterId) {
+        return character.life_state === "alive"
+      }
+
+      if (character.character_type !== "npc") {
+        if (character.life_state !== "alive") return false
+        if (!sourceLocationId) return false
+        return canonicalLocationId === sourceLocationId
+      }
+
+      const effective = effectiveNpcTemporalState(
+        character,
+        canonicalLocationId,
+        backgroundNpcSnapshotById.get(String(character.id)),
+      )
+      if (effective.lifeState !== "alive") return false
       if (!sourceLocationId) return false
-      return nullableString(
-        worldByCharacter.get(String(character.id))?.location_id,
-      ) === sourceLocationId
+      return effective.locationId === sourceLocationId
     })
     .map((character) => {
       const world = worldByCharacter.get(String(character.id)) || {}
+      const canonicalLocationId = nullableString(world.location_id)
+      const effective = character.character_type === "npc"
+        ? effectiveNpcTemporalState(
+            character,
+            canonicalLocationId,
+            backgroundNpcSnapshotById.get(String(character.id)),
+          )
+        : {
+            lifeState: nullableString(character.life_state) || "alive",
+            locationId: canonicalLocationId,
+            status: null,
+            snapshot: null,
+            overlay: {},
+          }
+
       return {
         id: character.id,
         name: character.name,
@@ -591,7 +631,13 @@ export async function buildGameChatContextV2({
         character_class: character.character_class,
         level: character.level,
         bio: character.bio,
-        location_id: nullableString(world.location_id),
+        life_state: effective.lifeState,
+        base_life_state: character.life_state,
+        location_id: effective.locationId,
+        base_location_id: canonicalLocationId,
+        temporal_status: effective.status,
+        temporal_overlay: effective.overlay,
+        background_snapshot: effective.snapshot,
         campaign_day: nullableNumber(world.campaign_day),
         day_period: nullableString(world.day_period),
         world_state_updated_at: nullableString(world.updated_at),
@@ -913,6 +959,7 @@ export async function buildGameChatContextV2({
       facts: memoryFacts,
       summaries: memorySummaries,
     },
+    background,
     recentMessages,
     mentionedPlayerCharacters,
   }
@@ -950,6 +997,7 @@ export function stage2ContextForPrompt(context: Stage2GameChatContext) {
     faction_reputations: context.factionReputations,
     active_quest_context: context.activeQuestContext,
     relevant_long_term_memory: context.memory,
+    background_temporal_context: context.background,
     recent_chat_messages_all_authors: context.recentMessages,
     explicit_player_name_mentions: context.mentionedPlayerCharacters,
   })
@@ -1097,6 +1145,15 @@ export function npcDialogueContextForPrompt(
       location_id: context.room.location_id,
     },
     source_location: context.sourceLocation,
+    background_temporal_context: {
+      scene_day: context.background.scene_day ?? null,
+      world_snapshot: context.background.world_snapshot ?? null,
+      source_location_snapshot: context.background.source_location_snapshot ?? null,
+      npc_snapshot:
+        rows(context.background.npc_snapshots)
+          .find((item) => String(item.entity_id) === npcCharacterId)
+          ?.snapshot || null,
+    },
     npc: {
       id: npc.id,
       name: npc.name,
