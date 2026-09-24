@@ -6,6 +6,7 @@ const headerPath = new URL("../src/ui-v1-isolated/chat-room/ChatRoomHeader.tsx",
 const feedPath = new URL("../src/ui-v1-isolated/chat-room/ChatFeedItem.tsx", import.meta.url)
 const cardPath = new URL("../src/ui-v1-isolated/chat-room/ChatGameEventCard.tsx", import.meta.url)
 const cssPath = new URL("../src/ui-v1-isolated/chat-room/chat-room.css", import.meta.url)
+const viewportPath = new URL("../src/ui-v1-isolated/chat-room/useChatVisualViewport.ts", import.meta.url)
 
 test("chat header splits actor from stacked time and location", async () => {
   const [header, css] = await Promise.all([
@@ -56,5 +57,22 @@ test("speaker artwork fills its button", async () => {
   assert.match(
     css,
     /speaker-trigger > \.u1-chat-composer__speaker-avatar\[data-compact\][\s\S]*position: absolute;[\s\S]*inset: 0;[\s\S]*width: 100%;[\s\S]*height: 100%;/,
+  )
+})
+
+
+test("mobile composer follows Telegram and virtual-keyboard visible geometry", async () => {
+  const [viewport, css] = await Promise.all([
+    readFile(viewportPath, "utf8"),
+    readFile(cssPath, "utf8"),
+  ])
+
+  assert.match(viewport, /Telegram\?: \{ WebApp\?: TelegramWebAppLike \}/)
+  assert.match(viewport, /viewportChanged/)
+  assert.match(viewport, /virtualKeyboard/)
+  assert.match(viewport, /Math\.min\([\s\S]*telegramBottom[\s\S]*keyboardTop/)
+  assert.match(
+    css,
+    /\[data-keyboard-open\] \{[\s\S]*var\(--u1-chat-viewport-height[\s\S]*var\(--u1-content-safe-top/,
   )
 })
