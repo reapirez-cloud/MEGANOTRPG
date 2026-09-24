@@ -5,6 +5,16 @@ export type ChatVisualViewportMetrics = {
   keyboardOpen: boolean
 }
 
+type VirtualKeyboardLike = {
+  boundingRect?: {
+    y?: number
+    top?: number
+    height?: number
+  }
+  addEventListener?: (type: "geometrychange", listener: () => void) => void
+  removeEventListener?: (type: "geometrychange", listener: () => void) => void
+}
+
 function activeTextControl() {
   const active = document.activeElement
   return active instanceof HTMLTextAreaElement ||
@@ -20,31 +30,49 @@ export function useChatVisualViewport() {
 
   useEffect(() => {
     const viewport = window.visualViewport
-    if (!viewport) return
+    const virtualKeyboard = (
+      navigator as Navigator & { virtualKeyboard?: VirtualKeyboardLike }
+    ).virtualKeyboard
 
     let frame = 0
 
     const update = () => {
       window.cancelAnimationFrame(frame)
       frame = window.requestAnimationFrame(() => {
+        const offsetTop = Math.max(0, viewport?.offsetTop || 0)
+        const viewportHeight = Math.max(
+          1,
+          viewport?.height || window.innerHeight || document.documentElement.clientHeight,
+        )
+        const viewportBottom = offsetTop + viewportHeight
+        const innerBottom = offsetTop + Math.max(1, window.innerHeight || viewportHeight)
+
+        const keyboardRect = virtualKeyboard?.boundingRect
+        const keyboardHeight = Math.max(0, Number(keyboardRect?.height) || 0)
+        const keyboardTopRaw = Number(keyboardRect?.y ?? keyboardRect?.top)
+        const keyboardTop =
+          keyboardHeight >= 24 && Number.isFinite(keyboardTopRaw)
+            ? Math.max(0, keyboardTopRaw)
+            : Number.POSITIVE_INFINITY
+
+        // This value is a bottom coordinate in layout-viewport space, not just
+        // visualViewport.height. Android WebView can either resize, pan, or
+        // overlay the IME depending on Telegram/device settings. Use whichever
+        // boundary is highest so the composer never ends up behind the keyboard.
+        const visibleBottom = Math.max(
+          160,
+          Math.round(Math.min(viewportBottom, innerBottom, keyboardTop)),
+        )
         const layoutHeight = Math.max(
           document.documentElement.clientHeight,
           window.innerHeight,
+          viewportBottom,
         )
-        const rawHeight = Math.max(1, viewport.height)
-        const offsetTop = Math.max(0, viewport.offsetTop)
-        const shrink = Math.max(0, layoutHeight - rawHeight)
+        const shrink = Math.max(0, layoutHeight - visibleBottom)
         const keyboardOpen =
+          keyboardHeight >= 60 ||
           shrink >= 120 ||
           (activeTextControl() && shrink >= 60)
-
-        // Anchor the shell bottom to the actual visible viewport bottom.
-        // Do not clamp to the old 280px floor: on Android/Telegram the
-        // keyboard can legitimately leave less space than that.
-        const visibleBottom = Math.max(
-          160,
-          Math.round(rawHeight + offsetTop),
-        )
 
         setMetrics((current) =>
           current.height === visibleBottom &&
@@ -56,17 +84,21 @@ export function useChatVisualViewport() {
     }
 
     update()
-    viewport.addEventListener("resize", update)
-    viewport.addEventListener("scroll", update)
+    viewport?.addEventListener("resize", update)
+    viewport?.addEventListener("scroll", update)
+    virtualKeyboard?.addEventListener?.("geometrychange", update)
     window.addEventListener("resize", update)
+    window.addEventListener("orientationchange", update)
     document.addEventListener("focusin", update)
     document.addEventListener("focusout", update)
 
     return () => {
       window.cancelAnimationFrame(frame)
-      viewport.removeEventListener("resize", update)
-      viewport.removeEventListener("scroll", update)
+      viewport?.removeEventListener("resize", update)
+      viewport?.removeEventListener("scroll", update)
+      virtualKeyboard?.removeEventListener?.("geometrychange", update)
       window.removeEventListener("resize", update)
+      window.removeEventListener("orientationchange", update)
       document.removeEventListener("focusin", update)
       document.removeEventListener("focusout", update)
     }
