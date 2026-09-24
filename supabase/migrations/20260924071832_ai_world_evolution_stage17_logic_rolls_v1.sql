@@ -98,7 +98,8 @@ AS $function$
     when 'nearly_impossible' then 30
     else null
   end;
-$function$
+$function$;
+
 
 
 CREATE OR REPLACE FUNCTION private.enforce_stage17_player_roll_freeze_v1()
@@ -124,7 +125,8 @@ AS $function$begin
   end if;
 
   return new;
-end;$function$
+end;$function$;
+
 
 
 CREATE OR REPLACE FUNCTION private.reject_ai_player_intent_adjudication_update_v1()
@@ -135,7 +137,8 @@ AS $function$
 begin
   raise exception 'ai_player_intent_adjudication_is_immutable';
 end;
-$function$
+$function$;
+
 
 
 CREATE OR REPLACE FUNCTION private.stage17_validate_canonical_evidence_v1(p_campaign_id uuid, p_evidence jsonb)
@@ -260,7 +263,8 @@ begin
 
   return v_result;
 end;
-$function$
+$function$;
+
 
 
 CREATE OR REPLACE FUNCTION public.create_ai_gm_player_roll_request_v3(p_job_id uuid, p_character_id uuid, p_adjudication_mode text, p_uncertainty_scope text, p_exact_goal text, p_semantic_mechanic_request text, p_logical_difficulty text, p_dc_visibility text, p_success_envelope text, p_failure_envelope text, p_partial_success_envelope text, p_evidence_context jsonb, p_evidence_refs jsonb, p_canonical_evidence jsonb, p_resolver_decision_key text, p_request_type text, p_ability_key text, p_skill_key text, p_attack_kind text, p_label text, p_reason text)
@@ -551,7 +555,8 @@ begin
     'runtime_stage',17
   );
 end;
-$function$
+$function$;
+
 
 
 CREATE OR REPLACE FUNCTION public.record_ai_gm_deterministic_adjudication_v1(p_job_id uuid, p_character_id uuid, p_adjudication_mode text, p_uncertainty_scope text, p_exact_goal text, p_outcome_envelope text, p_evidence_context jsonb, p_evidence_refs jsonb, p_canonical_evidence jsonb, p_resolver_decision_key text, p_reason text)
@@ -791,7 +796,8 @@ begin
     'runtime_stage',17
   );
 end;
-$function$
+$function$;
+
 
 
 CREATE OR REPLACE FUNCTION public.resolve_player_roll_request_v1(p_request_id uuid)
