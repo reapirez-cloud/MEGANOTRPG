@@ -2396,6 +2396,7 @@ function enforceStage12Audience(
       npcRoll: null,
       recoveryRequest: null,
       dialogueOutputs: [],
+      postTurnIntents: [],
     }
   }
 
@@ -2410,6 +2411,7 @@ function enforceStage12Audience(
       npcRoll: null,
       recoveryRequest: null,
       dialogueOutputs: [],
+      postTurnIntents: [],
     }
   }
 
@@ -2434,6 +2436,7 @@ function enforceStage12Audience(
       npcRoll: null,
       recoveryRequest: null,
       dialogueOutputs: [],
+      postTurnIntents: [],
     }
   }
 
