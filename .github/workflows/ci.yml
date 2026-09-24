@@ -32,6 +32,14 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Setup Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: Check Supabase Edge functions
+        run: deno check supabase/functions/voss-agent/index.ts supabase/functions/gm-roll-resume/index.ts
+
       - name: Build
         run: npm run build
 
