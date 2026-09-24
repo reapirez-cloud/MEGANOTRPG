@@ -5,9 +5,11 @@ type JsonRecord = Record<string, unknown>
 
 export type VossQuestToolContext = {
   client: SupabaseClient
+  admin?: SupabaseClient
   campaignId: string
   userId: string
   authority: VossAuthority
+  internalService?: boolean
 }
 
 const CONDITION_TYPES = [
@@ -381,6 +383,24 @@ function canManage(context: VossQuestToolContext) {
   return context.authority === "gm" || context.authority === "admin"
 }
 
+async function canonicalQuestRpc(
+  context: VossQuestToolContext,
+  operation: string,
+  directArgs: JsonRecord,
+  internalArgs: JsonRecord,
+) {
+  if (context.internalService) {
+    const serviceClient = context.admin || context.client
+    return await serviceClient.rpc("ai_gm_invoke_as_manager_v1", {
+      p_actor_user_id: context.userId,
+      p_operation: operation,
+      p_args: internalArgs,
+    })
+  }
+
+  return await context.client.rpc(operation, directArgs)
+}
+
 function text(value: unknown, max: number) {
   return typeof value === "string" ? value.trim().slice(0, max) : ""
 }
@@ -541,9 +561,11 @@ async function readActiveQuestContext(
   const characterId = uuid(args.character_id)
   if (!characterId) return { error: "character_id_required" }
 
-  const { data, error } = await context.client.rpc(
+  const { data, error } = await canonicalQuestRpc(
+    context,
     "read_active_quest_context_v1",
     { p_character_id: characterId },
+    { character_id: characterId },
   )
   if (error) return { error: error.message }
 
@@ -555,9 +577,11 @@ async function readActiveQuestContext(
 }
 
 async function readPlan(context: VossQuestToolContext, questId: string) {
-  const { data, error } = await context.client.rpc(
+  const { data, error } = await canonicalQuestRpc(
+    context,
     "read_quest_plan_v1",
     { p_quest_id: questId },
+    { quest_id: questId },
   )
   if (error) return { error: error.message }
   return { quest_id: questId, plan: data }
@@ -649,11 +673,16 @@ async function createQuestPlan(
   if (!input.title) return { error: "quest_title_required" }
   if (!stages.length) return { error: "quest_stages_required" }
 
-  const { data, error } = await context.client.rpc(
+  const { data, error } = await canonicalQuestRpc(
+    context,
     "create_quest_plan_v1",
     {
       p_campaign_id: context.campaignId,
       p_input: input,
+    },
+    {
+      campaign_id: context.campaignId,
+      input,
     },
   )
 
@@ -681,9 +710,11 @@ async function activateQuest(
   const resolved = await resolveQuestId(context, args)
   if (resolved.error || !resolved.row) return { error: resolved.error }
 
-  const { data, error } = await context.client.rpc(
+  const { data, error } = await canonicalQuestRpc(
+    context,
     "activate_quest_v1",
     { p_quest_id: resolved.row.id },
+    { quest_id: resolved.row.id },
   )
   if (error) return { error: error.message }
 
@@ -786,12 +817,18 @@ async function materializeQuestTarget(
     return { error: "materialization_entity_required" }
   }
 
-  const { data, error } = await context.client.rpc(
+  const { data, error } = await canonicalQuestRpc(
+    context,
     "materialize_quest_target_v1",
     {
       p_quest_id: resolved.row.id,
       p_target_key: targetKey,
       p_input: entity,
+    },
+    {
+      quest_id: resolved.row.id,
+      target_key: targetKey,
+      input: entity,
     },
   )
 
@@ -810,12 +847,20 @@ async function resolveQuestCondition(
   const conditionId = uuid(args.condition_id)
   if (!conditionId) return { error: "condition_id_required" }
 
-  const { data, error } = await context.client.rpc(
+  const satisfied = args.satisfied === true
+  const note = text(args.note, 6000)
+  const { data, error } = await canonicalQuestRpc(
+    context,
     "set_quest_condition_resolution_ai_v1",
     {
       p_condition_id: conditionId,
-      p_satisfied: args.satisfied === true,
-      p_note: text(args.note, 6000),
+      p_satisfied: satisfied,
+      p_note: note,
+    },
+    {
+      condition_id: conditionId,
+      satisfied,
+      note,
     },
   )
   if (error) return { error: error.message }
@@ -833,9 +878,11 @@ async function runQuestResolver(
   const resolved = await resolveQuestId(context, args)
   if (resolved.error || !resolved.row) return { error: resolved.error }
 
-  const { data, error } = await context.client.rpc(
+  const { data, error } = await canonicalQuestRpc(
+    context,
     "resolve_quest_v1",
     { p_quest_id: resolved.row.id },
+    { quest_id: resolved.row.id },
   )
   if (error) return { error: error.message }
 
@@ -858,12 +905,19 @@ async function closeQuest(
     return { error: "quest_close_status_invalid" }
   }
 
-  const { data, error } = await context.client.rpc(
+  const note = text(args.note, 6000)
+  const { data, error } = await canonicalQuestRpc(
+    context,
     "close_quest_v1",
     {
       p_quest_id: resolved.row.id,
       p_status: status,
-      p_note: text(args.note, 6000),
+      p_note: note,
+    },
+    {
+      quest_id: resolved.row.id,
+      status,
+      note,
     },
   )
   if (error) return { error: error.message }
