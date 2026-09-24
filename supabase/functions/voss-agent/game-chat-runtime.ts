@@ -165,6 +165,18 @@ type PostTurnIntent = {
   evidence: string
 }
 
+type SocialLeverageAnalysis = {
+  targetNpcId: string
+  classification:
+    | "no_leverage"
+    | "weak_leverage"
+    | "credible_leverage"
+    | "decisive_leverage"
+    | "blocked_by_identity"
+  causalBasis: string
+  whyRollOrNoRoll: string
+}
+
 type GameMasterReaction = {
   mode: ReactionMode
   body: string
@@ -175,6 +187,7 @@ type GameMasterReaction = {
   npcAction: NpcActionRequest | null
   npcRoll: NpcRollRequest | null
   recoveryRequest: RecoveryRequest | null
+  socialLeverageAnalysis: SocialLeverageAnalysis | null
   dialogueOutputs: DialoguePlanOutput[]
   postTurnIntents: PostTurnIntent[]
   worldMaterializationRequested?: boolean
@@ -1659,6 +1672,7 @@ function parseReaction(
     npcAction: null,
     npcRoll: null,
     recoveryRequest: null,
+    socialLeverageAnalysis: null,
     dialogueOutputs: [],
     postTurnIntents: [],
     worldMaterializationRequested,
@@ -1767,6 +1781,41 @@ function parseReaction(
   const presentCharacterIds = new Set(
     context.presentCharacters.map((item) => String(item.id)),
   )
+
+  const rawLeverage = jsonRecord(parsed.social_leverage_analysis)
+  const leverageTargetNpcId =
+    typeof rawLeverage.target_npc_id === "string"
+      ? rawLeverage.target_npc_id.trim()
+      : ""
+  const leverageClassification =
+    rawLeverage.classification === "no_leverage" ||
+    rawLeverage.classification === "weak_leverage" ||
+    rawLeverage.classification === "credible_leverage" ||
+    rawLeverage.classification === "decisive_leverage" ||
+    rawLeverage.classification === "blocked_by_identity"
+      ? rawLeverage.classification
+      : null
+  const leverageCausalBasis =
+    typeof rawLeverage.causal_basis === "string"
+      ? rawLeverage.causal_basis.trim().slice(0, 1800)
+      : ""
+  const leverageRollReason =
+    typeof rawLeverage.why_roll_or_no_roll === "string"
+      ? rawLeverage.why_roll_or_no_roll.trim().slice(0, 1600)
+      : ""
+  const socialLeverageAnalysis: SocialLeverageAnalysis | null =
+    leverageClassification &&
+    leverageTargetNpcId &&
+    presentNpcIds.has(leverageTargetNpcId) &&
+    leverageCausalBasis &&
+    leverageRollReason
+      ? {
+          targetNpcId: leverageTargetNpcId,
+          classification: leverageClassification,
+          causalBasis: leverageCausalBasis,
+          whyRollOrNoRoll: leverageRollReason,
+        }
+      : null
   const rawRecovery = jsonRecord(parsed.recovery)
   const recoveryTrigger =
     rawRecovery.trigger === "short_rest" ||
@@ -2071,6 +2120,7 @@ function parseReaction(
       ? {
           ...empty(mode, reason || "stage8_recovery"),
           recoveryRequest,
+          socialLeverageAnalysis,
         }
       : empty("none", "invalid_recovery_request_rejected")
   }
@@ -2080,13 +2130,17 @@ function parseReaction(
       ? {
           ...empty(mode, reason || "stage7_dialogue_sequence"),
           dialogueOutputs,
+          socialLeverageAnalysis,
           postTurnIntents,
         }
       : empty("none", "empty_or_invalid_dialogue_sequence")
   }
 
   if (mode === "none") {
-    return empty("none", reason || "no_intervention_needed")
+    return {
+      ...empty("none", reason || "no_intervention_needed"),
+      socialLeverageAnalysis,
+    }
   }
 
   if (mode === "request_player_roll") {
@@ -2094,6 +2148,7 @@ function parseReaction(
       ? {
           ...empty(mode, reason || "player_roll_required"),
           rollRequest,
+          socialLeverageAnalysis,
         }
       : empty("none", "invalid_roll_request_rejected")
   }
@@ -2102,6 +2157,7 @@ function parseReaction(
     return npcAction
       ? {
           ...empty(mode, reason || "npc_canonical_action"),
+          socialLeverageAnalysis,
           npcCharacterId: npcAction.characterId,
           npcAction,
         }
@@ -2112,6 +2168,7 @@ function parseReaction(
     return npcRoll
       ? {
           ...empty(mode, reason || "npc_canonical_roll"),
+          socialLeverageAnalysis,
           npcCharacterId: npcRoll.characterId,
           npcRoll,
         }
@@ -2131,6 +2188,7 @@ function parseReaction(
         ),
         body,
         deterministicAdjudication,
+        socialLeverageAnalysis,
         postTurnIntents,
       }
     }
@@ -2141,6 +2199,7 @@ function parseReaction(
     body,
     npcCharacterId: mode === "npc_interjection" ? npcCharacterId : null,
     deterministicAdjudication,
+    socialLeverageAnalysis,
     postTurnIntents,
   }
 }
