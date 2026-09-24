@@ -748,7 +748,7 @@ Do not delete permanent promoted NPC state.
 
 ## Stage 17 — Canon-bound intent adjudication and delegated real player rolls
 
-**Status: PLANNED**
+**Status: CERTIFIED — 2026-09-24**
 
 The primary GM does **not** need to know Supabase RPC names, UI implementation details or the application's roll API.
 

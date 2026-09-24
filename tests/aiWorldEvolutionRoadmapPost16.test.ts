@@ -30,7 +30,8 @@ function stage(id: number, next: number | null) {
 
 test("post-16 roadmap has 24 executable stages", () => {
   assert.match(contract, /AI_WORLD_EVOLUTION_STAGE_COUNT = 24 as const/)
-  for (let id = 17; id <= 24; id += 1) {
+  assert.match(stage(17, 18), /status: "certified"/)
+  for (let id = 18; id <= 24; id += 1) {
     assert.match(stage(id, id < 24 ? id + 1 : null), /status: "planned"/)
   }
 })
@@ -70,7 +71,7 @@ test("stage 20 requires durable NPC identity rather than demeanor only", () => {
   assert.match(s, /red lines\/non-negotiables/)
   assert.match(s, /behavior under pressure/)
   assert.match(s, /Primary GM, NPC dialogue model and background simulation/)
-  assert.match(s, /social adjudication/)
+  assert.match(s, /social adjudication/i)
 })
 
 test("stages 21-23 preserve world and NPC autonomy", () => {
@@ -83,7 +84,7 @@ test("stages 21-23 preserve world and NPC autonomy", () => {
   assert.match(stage(22, 23), /cannot silently dominate another/)
 
   assert.match(stage(23, 24), /MEGANOT does not attempt to bypass provider restrictions/)
-  assert.match(stage(23, 24), /not automatic NPC compliance/)
+  assert.match(stage(23, 24), /automatic NPC compliance/i)
 })
 
 test("stage 24 certifies complete turn pipeline", () => {

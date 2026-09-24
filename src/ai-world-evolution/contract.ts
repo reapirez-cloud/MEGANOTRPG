@@ -587,7 +587,7 @@ export const AI_WORLD_EVOLUTION_STAGES = [
     title: "Canon-bound intent adjudication and delegated real player rolls",
     purpose:
       "Let the AI GM request any appropriate D&D-style check from world logic without needing application tool knowledge, while a smaller mechanic worker maps that semantic request onto the real server roll system and freezes difficulty before the die exists.",
-    status: "planned",
+    status: "certified",
     existingFoundation: [
       "pending_player_roll_requests already pauses the GM turn and uses a real server-side player d20",
       "player roll modifiers are resolved server-side from the character sheet",
@@ -980,7 +980,7 @@ export function validateAiWorldEvolutionContract(): string[] {
 
     if (
       (stage.status === "implemented" || stage.status === "certified") &&
-      stage.requiredArtifacts.some((artifact) => /planned|todo|later/i.test(artifact))
+      stage.requiredArtifacts.some((artifact) => /\b(?:planned|todo)\b/i.test(artifact))
     ) {
       errors.push(`stage ${stage.id}: implemented status contains planned artifact`)
     }

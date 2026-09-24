@@ -721,7 +721,7 @@ export async function buildGameChatContextV2({
     relevantCharacterIds.length
       ? admin
           .from("character_sheets")
-          .select("character_id,race,background,alignment,strength,dexterity,constitution,intelligence,wisdom,charisma,armor_class,initiative_bonus,speed,proficiency_bonus,max_hp,current_hp,temp_hp,passive_perception,spellcasting_enabled,spellcasting_ability,spell_save_dc,spell_attack_bonus,runtime_facts")
+          .select("character_id,race,background,alignment,strength,dexterity,constitution,intelligence,wisdom,charisma,armor_class,initiative_bonus,speed,proficiency_bonus,max_hp,current_hp,temp_hp,passive_perception,spellcasting_enabled,spellcasting_ability,spell_save_dc,spell_attack_bonus,skill_proficiencies,saving_throw_proficiencies,runtime_facts")
           .in("character_id", relevantCharacterIds)
       : Promise.resolve({ data: [], error: null }),
     relevantCharacterIds.length
