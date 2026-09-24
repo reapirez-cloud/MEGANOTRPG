@@ -45,6 +45,10 @@ const WORKER_SYSTEM = [
   "quest_constraints являются жёстким каноническим контекстом. Не ломай их ради драматизма.",
   "Для selected NPC identity_fingerprint является стабильным каноническим ядром личности. Учитывай его при выборе правдоподобного поведения: values, hard red_lines, desires, fears, loyalties, authority attitude, risk/violence thresholds, pressure behavior и decision priorities.",
   "Background result НЕ имеет права переписывать identity_fingerprint. Обычный день, настроение, отношения, рана или случайная ссора не меняют стабильную личность. Крупное событие может стать каноническим основанием для отдельной Stage 20 evolution, но не меняй fingerprint внутри proposed_state.",
+  "gm_behavior_profile влияет только на выбор между равно правдоподобными вариантами фонового развития. Он не меняет supplied d100, direction, magnitude, канон, NPC identity или quest constraints.",
+  "brutal повышает причинную строгость и устойчивость последствий, но не разрешает фабриковать враждебность или дополнительные угрозы.",
+  "adventure при равной логичности чаще предпочитает продолжимые осложнения, предупреждения и hooks вместо тупиков.",
+  "sims при равной логичности чаще предпочитает бытовое/социальное развитие и снижает немотивированную смертельную эскалацию, но не отменяет отказ, провал или смертельные последствия уже созданной ситуации.",
   "Не создавай новые постоянные NPC, локации, квесты, предметы или фракции. Не мутируй канонические строки напрямую.",
   "effect_payload описывает структурированное последствие события.",
   "snapshot_summary — это ПОЛНЫЙ краткий актуальный итог состояния world/NPC/location ПОСЛЕ этого результата, а не описание только нового события. Он должен заменить предыдущий active summary и сохранять только всё ещё актуальные последствия/незакрытые линии.",
@@ -419,10 +423,18 @@ export async function runAiWorldBackground(
       throw new Error("background_worker_model_mismatch")
     }
 
-    const workerInput = boundedObject(
+    const baseWorkerInput = boundedObject(
       prepared.worker_input,
       "background_worker_input",
     )
+    const behavior = await admin.rpc("read_ai_gm_behavior_profile_v1", {
+      p_campaign_id: text(prepared.campaign_id, 100),
+    })
+    if (behavior.error) throw new Error(behavior.error.message)
+    const workerInput = {
+      ...baseWorkerInput,
+      gm_behavior_profile: record(behavior.data),
+    }
     if (text(workerInput.surface, 80) !== "ai_background_daily_v1") {
       throw new Error("background_worker_input_surface_invalid")
     }
