@@ -96,7 +96,7 @@ test("Stage 4 correlates every emitted component with one turn command and inser
   assert.match(submit, /'trigger_message_id', v_trigger_message_id/)
 })
 
-test("Stage 4 client queues actions and spells instead of executing them immediately for players", () => {
+test("Stage 4 client builds an ordered declarative plan instead of executing selections immediately", () => {
   const host = read(
     "src/ui-v1-isolated/chat-room/ChatActionHost.tsx",
   )
@@ -117,18 +117,18 @@ test("Stage 4 client queues actions and spells instead of executing them immedia
 
   assert.match(composer, /savePlayerTurnDraft/)
   assert.match(composer, /submitPlayerTurnDraft/)
-  assert.match(composer, /Действие/)
-  assert.match(composer, /Бонус/)
-  assert.match(composer, /Движение/)
-  assert.doesNotMatch(composer, /moveTurnEntry/)
-  assert.match(composer, /clearTurnSlot/)
+  assert.match(composer, /План хода/)
+  assert.match(composer, /До «Отправить» ИИ не видит способности, броски и расход ресурсов/)
+  assert.match(composer, /moveTurnEntry/)
+  assert.match(composer, /clearTurnEntry/)
+  assert.match(composer, /updateReactionCondition/)
   assert.match(composer, /cancelTurn/)
 
   assert.match(queue, /get_player_turn_draft_v1/)
-  assert.match(queue, /save_player_turn_draft_v2/)
-  assert.match(queue, /p_component_order: componentOrder/)
-  assert.match(queue, /reorderPlayerTurnComponents/)
-  assert.match(queue, /submit_player_turn_stage12_v1/)
+  assert.match(queue, /save_player_turn_draft_v3/)
+  assert.match(queue, /p_plan_entries: planEntries/)
+  assert.match(queue, /reorderPlayerTurnEntries/)
+  assert.match(queue, /submit_player_turn_stage12_v2/)
 })
 
 test("Stage 4 AI GM starts only after atomic submit returns the final trigger message", () => {
@@ -156,7 +156,8 @@ test("Stage 4 keeps turn grouping in maintenance while Stage 19 strips worker bo
     "supabase/functions/voss-agent/world-maintenance.ts",
   )
 
-  assert.doesNotMatch(context, /turn_command_id/)
+  assert.match(context, /player_turn_plan/)
+  assert.match(context, /turn_command_id: nullableString\(playerTurnPlan\.turn_command_id\)/)
   assert.match(context, /worker_commands_are_not_narrative_memory: true/)
   assert.match(worker, /turn_command_id/)
   assert.match(worker, /turn_component/)
@@ -194,12 +195,14 @@ test("Stage 4 server revalidates canonical action economy and spell casting time
   assert.match(sql, /player_turn_entry_economy_v1/)
   assert.match(sql, /character_template_selected_action_definition_v1/)
   assert.match(sql, /from public\.spell_catalog/)
-  assert.match(sql, /Reaction is not part of the pending player turn/)
-  assert.match(sql, /Queued entry requires the bonus-action slot/)
-  assert.match(sql, /Queued entry requires the action slot/)
+  const hardening = read(
+    "supabase/migrations/20260924183500_ai_gm_interruptible_player_turn_and_npc_leverage_v1.sql",
+  )
+  assert.match(hardening, /p_component not in \('action','bonus_action','reaction'\)/)
+  assert.match(hardening, /Queued entry does not match its action economy/)
   assert.match(queue, /playerTurnSlotForSpell/)
   assert.match(queue, /\.from\("spell_catalog"\)/)
-  assert.match(queue, /Заклинание-реакция не входит в текущий ход/)
+  assert.match(queue, /return "reaction"/)
 })
 
 test("Stage 4 UI does not let players manually move mechanics between action slots", () => {
@@ -209,9 +212,9 @@ test("Stage 4 UI does not let players manually move mechanics between action slo
 
   assert.doesNotMatch(composer, /В бонус/)
   assert.doesNotMatch(composer, /В действие/)
-  assert.doesNotMatch(composer, /moveTurnEntry/)
-  assert.match(composer, /Убрать действие из хода/)
-  assert.match(composer, /Убрать бонусное действие из хода/)
+  assert.match(composer, /moveTurnEntry/)
+  assert.match(composer, /aria-label="Убрать из плана"/)
+  assert.match(composer, /turnEconomyLabel/)
 })
 
 
@@ -223,10 +226,14 @@ test("Stage 4 preserves mechanics slots while allowing execution order changes",
     "src/ui-v1-isolated/chat-room/ChatComposer.tsx",
   )
 
-  assert.match(sql, /Queued entry does not match its action economy/)
-  assert.match(sql, /Reaction cannot be submitted as a normal player turn/)
-  assert.match(sql, /component_order/)
-  assert.match(composer, /aria-label="Порядок компонентов хода"/)
+  const hardening = read(
+    "supabase/migrations/20260924183500_ai_gm_interruptible_player_turn_and_npc_leverage_v1.sql",
+  )
+  assert.match(hardening, /Queued entry does not match its action economy/)
+  assert.match(hardening, /player_turn_plan_must_be_array/)
+  assert.match(hardening, /jsonb_array_length\(v_entries\)>64/)
+  assert.match(composer, /aria-label="Порядок заявленных компонентов хода"/)
+  assert.match(composer, /Условие реакции/)
   assert.doesNotMatch(composer, /В бонус|В действие/)
 })
 
