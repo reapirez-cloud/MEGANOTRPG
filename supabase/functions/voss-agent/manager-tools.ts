@@ -889,7 +889,7 @@ async function createWorldNpc(
   if (!name) return { error: "npc_name_required" }
 
   const payload: JsonRecord = { ...args, name }
-  const { data, error } = await managerClient(context).rpc(
+  const { data, error } = await context.client.rpc(
     "create_world_npc_v1",
     {
       p_campaign_id: context.campaignId,
@@ -919,7 +919,7 @@ async function updateWorldNpc(
   const patch: JsonRecord = { ...args }
   delete patch.character_id
 
-  const { data, error } = await managerClient(context).rpc(
+  const { data, error } = await context.client.rpc(
     "update_world_npc_v1",
     {
       p_npc_character_id: characterId,
@@ -947,7 +947,7 @@ async function upsertFaction(
   if (factionId) payload.faction_id = factionId
   if (name) payload.name = name
 
-  const { data, error } = await managerClient(context).rpc(
+  const { data, error } = await context.client.rpc(
     "upsert_faction_v1",
     {
       p_campaign_id: context.campaignId,
@@ -972,7 +972,7 @@ async function setFactionMembership(
   delete payload.character_id
   delete payload.faction_id
 
-  const { data, error } = await managerClient(context).rpc(
+  const { data, error } = await context.client.rpc(
     "set_faction_membership_v1",
     {
       p_character_id: characterId,
@@ -998,7 +998,7 @@ async function setCharacterFactionReputation(
   delete payload.character_id
   delete payload.faction_id
 
-  const { data, error } = await managerClient(context).rpc(
+  const { data, error } = await context.client.rpc(
     "set_character_faction_reputation_v1",
     {
       p_character_id: characterId,
@@ -1020,7 +1020,7 @@ async function moveCharacterWorld(
   if (!characterId) return { error: "character_id_required" }
   if (!locationId) return { error: "location_id_required" }
 
-  const { data, error } = await managerClient(context).rpc(
+  const { data, error } = await context.client.rpc(
     "move_character_world_v1",
     {
       p_character_id: characterId,
@@ -1053,7 +1053,7 @@ async function setWorldDiscovery(
   if (!entityId) return { error: "entity_id_required" }
   if (!entityType) return { error: "entity_type_invalid" }
 
-  const { data, error } = await managerClient(context).rpc(
+  const { data, error } = await context.client.rpc(
     "manage_world_discovery_v1",
     {
       p_character_id: characterId,
@@ -1078,7 +1078,7 @@ async function setNpcHabitat(
   if (!locationId) return { error: "location_id_required" }
 
   const attached = args.attached !== false
-  const { error } = await managerClient(context).rpc(
+  const { error } = await context.client.rpc(
     "set_npc_zone_habitat",
     {
       p_npc_character_id: npcCharacterId,
@@ -1123,7 +1123,7 @@ async function upsertLocationTransition(
     input.sort_order = Number(args.sort_order)
   }
 
-  const { data, error } = await managerClient(context).rpc(
+  const { data, error } = await context.client.rpc(
     "upsert_location_transition_v1",
     {
       p_source_location_id: sourceLocationId,
@@ -1143,7 +1143,7 @@ async function deleteLocationTransition(
   const linkId = uuid(args.link_id)
   if (!linkId) return { error: "link_id_required" }
 
-  const { data, error } = await managerClient(context).rpc(
+  const { data, error } = await context.client.rpc(
     "delete_location_transition_v1",
     { p_link_id: linkId },
   )
@@ -1179,7 +1179,7 @@ async function upsertLocationSecret(
     input.resolution_note = text(args.resolution_note, 12000)
   }
 
-  const { data, error } = await managerClient(context).rpc(
+  const { data, error } = await context.client.rpc(
     "upsert_location_secret_v1",
     {
       p_location_id: locationId,
@@ -1205,7 +1205,7 @@ async function setLocationSecretState(
       : ""
   if (!status) return { error: "location_secret_status_invalid" }
 
-  const { data, error } = await managerClient(context).rpc(
+  const { data, error } = await context.client.rpc(
     "set_location_secret_state_v1",
     {
       p_secret_id: secretId,
