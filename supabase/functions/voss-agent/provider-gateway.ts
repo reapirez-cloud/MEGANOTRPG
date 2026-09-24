@@ -189,7 +189,7 @@ export async function requestChatCompletion(input: ChatRequest) {
     input.allowOwnerOverride === true,
   )
 
-  const timeoutMs = Math.max(5_000, Math.min(input.timeoutMs ?? 45_000, 90_000))
+  const timeoutMs = Math.max(5_000, Math.min(input.timeoutMs ?? 45_000, 130_000))
   const retryCount = Math.max(0, Math.min(input.retryCount ?? 1, 1))
   const reasoningEffort =
     input.disableReasoningEffort === true
@@ -239,7 +239,7 @@ export async function requestChatCompletion(input: ChatRequest) {
       }
 
       throw new ProviderGatewayError(
-        timedOut ? "AI provider request timed out" : "AI provider request failed",
+        timedOut ? `AI provider request timed out after ${Math.round(timeoutMs / 1000)}s` : "AI provider request failed",
         {
           code: timedOut ? "ai_provider_timeout" : "ai_provider_request_failed",
           status: timedOut ? 504 : 502,
