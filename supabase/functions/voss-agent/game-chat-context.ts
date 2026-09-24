@@ -50,6 +50,41 @@ const MAX_MEMORY_FACTS = 24
 const MAX_MEMORY_SUMMARIES = 8
 const MAX_COMPACT_EVENT_PAYLOAD_BYTES = 1600
 
+function record(value: unknown): JsonRecord {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? value as JsonRecord
+    : {}
+}
+
+function rows(value: unknown): JsonRecord[] {
+  return Array.isArray(value) ? value.map(record) : []
+}
+
+function strings(value: unknown): string[] {
+  return Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === "string")
+    : []
+}
+
+function nullableString(value: unknown) {
+  return typeof value === "string" && value.trim() ? value.trim() : null
+}
+
+function nullableNumber(value: unknown) {
+  const parsed = Number(value)
+  return Number.isFinite(parsed) ? parsed : null
+}
+
+function lower(value: unknown) {
+  return typeof value === "string"
+    ? value.toLocaleLowerCase("ru-RU")
+    : ""
+}
+
+function unique(values: Array<string | null | undefined>) {
+  return [...new Set(values.filter((value): value is string => Boolean(value)))]
+}
+
 const INTERNAL_TURN_COMPONENTS = new Set([
   "worker",
   "junior_worker",
@@ -101,7 +136,15 @@ function compactMechanicalPayload(value: unknown): JsonRecord | null {
     ) compact[key] = item
   }
 
-  return Object.keys(compact).length ? compact : null
+  if (!Object.keys(compact).length) return null
+  const serialized = JSON.stringify(compact)
+  if (utf8Bytes(serialized) <= MAX_COMPACT_EVENT_PAYLOAD_BYTES) return compact
+
+  return {
+    label: compact.label || compact.action_label || null,
+    total: compact.total ?? compact.damage_total ?? compact.healing_total ?? null,
+    outcome_class: compact.outcome_class || compact.outcome || null,
+  }
 }
 
 function normalizeNarrativeMessage(message: JsonRecord): JsonRecord | null {
@@ -110,7 +153,7 @@ function normalizeNarrativeMessage(message: JsonRecord): JsonRecord | null {
 
   const eventKind = nullableString(message.event_kind)
   const body = nullableString(message.body)
-  const mechanical = eventKind && /roll|check|save|attack|damage|heal|action/i.test(eventKind)
+  const mechanical = Boolean(eventKind && /roll|check|save|attack|damage|heal|action/i.test(eventKind))
   const compactPayload = mechanical ? compactMechanicalPayload(message.event_payload) : null
 
   if (!body && !compactPayload) return null
@@ -127,43 +170,7 @@ function normalizeNarrativeMessage(message: JsonRecord): JsonRecord | null {
   }
 
   if (compactPayload) normalized.event_payload = compactPayload
-
   return normalized
-}
-
-function record(value: unknown): JsonRecord {
-  return value && typeof value === "object" && !Array.isArray(value)
-    ? value as JsonRecord
-    : {}
-}
-
-function rows(value: unknown): JsonRecord[] {
-  return Array.isArray(value) ? value.map(record) : []
-}
-
-function strings(value: unknown): string[] {
-  return Array.isArray(value)
-    ? value.filter((item): item is string => typeof item === "string")
-    : []
-}
-
-function nullableString(value: unknown) {
-  return typeof value === "string" && value.trim() ? value.trim() : null
-}
-
-function nullableNumber(value: unknown) {
-  const parsed = Number(value)
-  return Number.isFinite(parsed) ? parsed : null
-}
-
-function lower(value: unknown) {
-  return typeof value === "string"
-    ? value.toLocaleLowerCase("ru-RU")
-    : ""
-}
-
-function unique(values: Array<string | null | undefined>) {
-  return [...new Set(values.filter((value): value is string => Boolean(value)))]
 }
 
 async function loadActiveQuestContext(
