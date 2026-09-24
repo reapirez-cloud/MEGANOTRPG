@@ -315,10 +315,10 @@ async function loadSpellDetail(
   return {
     title: row.name_ru?.trim() || presentation.title,
     description:
-      row.author_description ||
-      row.effect_summary ||
       row.rules_text ||
-      payloadDescription(event),
+      row.effect_summary ||
+      payloadDescription(event) ||
+      row.author_description,
     meta: [
       ...(row.casting_time
         ? [{ label: "Сотворение", value: row.casting_time }]
@@ -351,7 +351,9 @@ type ReferenceFeatureRevisionRow = {
 async function loadReferenceFeatureDetail(
   presentation: GameCardPresentation,
 ): Promise<Pick<DetailState, "title" | "description" | "meta"> | null> {
-  const title = presentation.title.trim()
+  const title = presentation.title
+    .replace(/^Воззвание:\s*/u, "")
+    .trim()
   if (!title) return null
 
   const { data, error } = await supabase
@@ -541,21 +543,30 @@ async function loadAbilityDetail(
         )
       : null
 
-  if (sourceDescription || fallback) {
+  if (sourceDescription) {
     return {
       title: presentation.title,
-      description: sourceDescription || fallback || null,
+      description: sourceDescription,
       meta: [],
     }
   }
 
-  return (
-    (await loadReferenceFeatureDetail(presentation)) || {
+  const reference = await loadReferenceFeatureDetail(presentation)
+  if (reference) return reference
+
+  if (fallback) {
+    return {
       title: presentation.title,
-      description: null,
+      description: fallback,
       meta: [],
     }
-  )
+  }
+
+  return {
+    title: presentation.title,
+    description: null,
+    meta: [],
+  }
 }
 
 async function loadDetail(
