@@ -774,7 +774,7 @@ export const AI_WORLD_EVOLUTION_STAGES = [
     title: "GM behavior profiles",
     purpose:
       "Let the player choose the kind of campaign pressure they want without changing the underlying truth of the world, NPC autonomy or game mechanics.",
-    status: "planned",
+    status: "implemented",
     existingFoundation: [
       "AI GM system prompt and model routing already exist",
       "Stages 17 and 20 provide logical rolls and autonomous NPC identity",
