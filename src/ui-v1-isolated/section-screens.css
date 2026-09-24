@@ -2135,6 +2135,198 @@
   white-space: pre-wrap;
 }
 
+
+.u1-npc-identity {
+  display: grid;
+  gap: 12px;
+}
+
+.u1-npc-identity > header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.u1-npc-identity > header strong {
+  color: var(--u1-text);
+  font-family: "IBM Plex Sans Condensed", "Arial Narrow", sans-serif;
+  font-size: 17px;
+  line-height: 1;
+  font-weight: 620;
+}
+
+.u1-npc-identity > header small,
+.u1-npc-identity > footer small {
+  color: var(--u1-text-faint);
+  font-size: 8px;
+  line-height: 1.25;
+}
+
+.u1-npc-identity__group {
+  display: grid;
+  gap: 6px;
+}
+
+.u1-npc-identity__group > b,
+.u1-npc-identity__columns b {
+  color: var(--u1-text-faint);
+  font-size: 8px;
+  line-height: 1;
+  font-weight: 760;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.u1-npc-identity__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.u1-npc-identity__chips i {
+  padding: 5px 7px;
+  border: 1px solid var(--u1-line-soft);
+  border-radius: 999px;
+  background: rgba(255,255,255,.025);
+  color: var(--u1-text-soft);
+  font-size: 9px;
+  line-height: 1.1;
+  font-style: normal;
+}
+
+.u1-npc-identity__ranked,
+.u1-npc-identity__red-lines {
+  display: grid;
+  gap: 6px;
+}
+
+.u1-npc-identity__ranked > span,
+.u1-npc-identity__red-lines > span {
+  padding: 8px 9px;
+  border: 1px solid var(--u1-line-soft);
+  border-radius: 7px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 3px 8px;
+  background: rgba(255,255,255,.015);
+}
+
+.u1-npc-identity__ranked strong,
+.u1-npc-identity__red-lines strong {
+  color: var(--u1-text-soft);
+  font-size: 10px;
+  font-weight: 650;
+}
+
+.u1-npc-identity__ranked small,
+.u1-npc-identity__red-lines small {
+  color: var(--u1-text-faint);
+  font-size: 8px;
+}
+
+.u1-npc-identity__ranked em,
+.u1-npc-identity__red-lines em {
+  grid-column: 1 / -1;
+  color: var(--u1-text-muted);
+  font-size: 9px;
+  line-height: 1.4;
+  font-style: normal;
+}
+
+.u1-npc-identity__red-lines > span[data-hard] {
+  border-color: rgba(184, 107, 107, .30);
+  background: rgba(148, 80, 80, .055);
+}
+
+.u1-npc-identity__columns {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.u1-npc-identity__columns > span {
+  min-width: 0;
+  padding: 8px;
+  border: 1px solid var(--u1-line-soft);
+  border-radius: 7px;
+  display: grid;
+  align-content: start;
+  gap: 5px;
+}
+
+.u1-npc-identity__columns small {
+  color: var(--u1-text-muted);
+  font-size: 9px;
+  line-height: 1.35;
+}
+
+.u1-npc-identity__axes {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) repeat(2, minmax(64px, .7fr));
+  gap: 6px;
+}
+
+.u1-npc-identity__axes > span {
+  padding: 8px;
+  border: 1px solid var(--u1-line-soft);
+  border-radius: 7px;
+  display: grid;
+  gap: 3px;
+}
+
+.u1-npc-identity__axes small {
+  color: var(--u1-text-faint);
+  font-size: 7px;
+  font-weight: 720;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+
+.u1-npc-identity__axes strong {
+  color: var(--u1-text-soft);
+  font-size: 10px;
+}
+
+.u1-npc-identity__axes em {
+  color: var(--u1-text-muted);
+  font-size: 9px;
+  line-height: 1.35;
+  font-style: normal;
+}
+
+.u1-npc-identity__group ol {
+  margin: 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 4px;
+}
+
+.u1-npc-identity__group li {
+  padding-left: 2px;
+  color: var(--u1-text-muted);
+  font-size: 10px;
+  line-height: 1.4;
+}
+
+.u1-npc-identity__empty {
+  margin: 0 !important;
+  padding: 9px;
+  border: 1px dashed var(--u1-line-soft);
+  border-radius: 7px;
+  color: var(--u1-text-faint) !important;
+  font-size: 9px !important;
+}
+
+.u1-npc-identity > footer {
+  padding-top: 8px;
+  border-top: 1px solid var(--u1-line-soft);
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 6px 10px;
+}
+
 .u1-npc-gm__relations {
   margin-top: 8px;
   display: grid;
@@ -2187,5 +2379,10 @@
 
   .u1-npc-abilities > span:nth-child(-n + 3) {
     border-bottom: 1px solid var(--u1-line-soft);
+  }
+
+  .u1-npc-identity__columns,
+  .u1-npc-identity__axes {
+    grid-template-columns: 1fr;
   }
 }
