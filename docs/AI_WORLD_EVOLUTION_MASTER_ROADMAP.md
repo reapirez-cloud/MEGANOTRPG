@@ -814,7 +814,7 @@ Detailed spec:
 
 ## Stage 18 — Post-response junior world commit and turn gate
 
-**Status: CERTIFIED — 2026-09-24**
+**Status: IN PROGRESS — REBUILD AUDIT 2026-09-24**
 
 This changes the current ordering.
 
@@ -918,17 +918,7 @@ If junior work fails:
 
 ### Certification result
 
-Certified on the audited Stage 17 boundary with:
-- one atomic server finalizer for visible GM/NPC output + hidden post-turn receipts;
-- dedicated `ai_gm_post_turn_commits` / intent receipts instead of an unsupported `agent_jobs` job type;
-- strict DeepSeek V4.1 Flash post-turn worker, one immutable intent and at most one canonical mutation per receipt;
-- lease-based bounded automatic retry, terminal fail-closed state and GM/admin recovery;
-- server-side free-form send gate plus distinct roll-wait handling;
-- v2 status/wake UI with `Младший шуршит…`;
-- transactional Supabase regression covering publish/gate/claim/complete/idempotent replay and three-failure recovery;
-- live migration applied and old Stage 18 v1 gate/table/RPC removed;
-- live `voss-agent` updated to the certified runtime.
-
+Pending hardened v3 verification. Previous certification revoked after audit.
 
 ---
 
