@@ -11,9 +11,9 @@ test("AI GM Stage 2 reads the last 50 canonical chat messages from every author"
   )
 
   assert.match(context, /const CHAT_CONTEXT_LIMIT = 50/)
-  assert.match(context, /from\("chat_messages"\)/)
-  assert.match(context, /\.lte\("id", sourceMessageId\)/)
-  assert.match(context, /\.limit\(CHAT_CONTEXT_LIMIT\)/)
+  assert.match(context, /read_ai_gm_recent_chat_context_v1/)
+  assert.match(context, /p_source_message_id: sourceMessageId/)
+  assert.match(context, /p_limit: CHAT_CONTEXT_LIMIT/)
   assert.doesNotMatch(
     context,
     /from\("chat_messages"\)[\s\S]{0,500}\.eq\("user_id"/,
@@ -104,7 +104,7 @@ test("NPC interjection is canonical, service-only and physically co-located", ()
     migration,
     /grant execute[\s\S]*publish_ai_gm_npc_message_v2[\s\S]*to service_role/i,
   )
-  assert.match(runtime, /publish_ai_gm_npc_message_v2/)
+  assert.match(runtime, /publishDialogueSequence/)
   assert.match(runtime, /invalid_or_absent_npc_downgraded_to_environment/)
 })
 
