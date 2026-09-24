@@ -189,9 +189,9 @@ export async function requestChatCompletion(input: ChatRequest) {
     input.allowOwnerOverride === true,
   )
 
-  // Provider thinking is intentionally not capped by an application timer.
-  // Hosted runtime/provider limits still apply, but MEGANOT must not abort a
-  // long-reasoning GM response on its own.
+  // Keep every upstream request comfortably below the hosted Edge wall-clock
+  // ceiling. Long GM turns continue as a durable job in a fresh Edge execution.
+  const timeoutMs = Math.max(5_000, Math.min(input.timeoutMs ?? 60_000, 95_000))
   const retryCount = Math.max(0, Math.min(input.retryCount ?? 1, 1))
   const reasoningEffort =
     input.disableReasoningEffort === true
@@ -199,10 +199,14 @@ export async function requestChatCompletion(input: ChatRequest) {
       : reasoningEffortForModel(input.model)
 
   for (let attempt = 0; attempt <= retryCount; attempt += 1) {
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), timeoutMs)
+
     let response: Response
     try {
       response = await fetch(apiBase + "/chat/completions", {
         method: "POST",
+        signal: controller.signal,
         headers: {
           "Authorization": "Bearer " + apiKey,
           "Content-Type": "application/json",
@@ -226,28 +230,51 @@ export async function requestChatCompletion(input: ChatRequest) {
         }),
       })
     } catch (error) {
-      if (attempt < retryCount) {
+      clearTimeout(timeout)
+
+      const timedOut =
+        error instanceof DOMException && error.name === "AbortError"
+
+      // A timed-out model call must never retry inside the same Edge execution.
+      // The game-chat runtime persists a checkpoint and wakes the same durable
+      // job in a fresh worker instead.
+      if (!timedOut && attempt < retryCount) {
         await new Promise((resolve) => setTimeout(resolve, 250))
         continue
       }
 
       throw new ProviderGatewayError(
-        "AI provider request failed",
+        timedOut
+          ? `AI provider request timed out after ${Math.round(timeoutMs / 1000)}s`
+          : "AI provider request failed",
         {
-          code: "ai_provider_request_failed",
-          status: 502,
+          code: timedOut ? "ai_provider_timeout" : "ai_provider_request_failed",
+          status: timedOut ? 504 : 502,
           detail: error instanceof Error ? error.message : String(error),
         },
       )
+    } finally {
+      clearTimeout(timeout)
     }
 
     if (!response.ok) {
       const detail = (await response.text()).slice(0, 1200)
+      const providerTimedOut =
+        response.status === 504 || response.status === 524
+
+      if (providerTimedOut) {
+        throw new ProviderGatewayError("AI provider timed out upstream", {
+          code: "ai_provider_timeout",
+          status: 504,
+          providerStatus: response.status,
+          detail,
+        })
+      }
+
       const retryable =
         response.status === 429 ||
         response.status === 502 ||
-        response.status === 503 ||
-        response.status === 504
+        response.status === 503
 
       if (retryable && attempt < retryCount) {
         await new Promise((resolve) => setTimeout(resolve, 350))
