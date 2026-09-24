@@ -120,7 +120,7 @@ export default function ChatSpellDetailSheet({ spellKey, label, onClose }: Props
 
           {spell.material && <section className="chat-spell-detail__block"><small>Материал</small><p>{spell.material}</p></section>}
           {spell.effect_summary && <section className="chat-spell-detail__block"><small>Коротко</small><p>{spell.effect_summary}</p></section>}
-          <section className="chat-spell-detail__block chat-spell-detail__rules"><small>Правило</small><p>{spell.effect_summary || spell.author_description || spell.rules_text || "Описание ещё не заполнено в каталоге."}</p></section>
+          <section className="chat-spell-detail__block chat-spell-detail__rules"><small>Полное правило</small><p>{spell.effect_summary || spell.author_description || spell.rules_text || "Описание ещё не заполнено в каталоге."}</p></section>
           {spell.upcast && <section className="chat-spell-detail__block"><small>На больших ячейках</small><p>{spell.upcast}</p></section>}
           {spell.notes && <section className="chat-spell-detail__block"><small>Нюансы</small><p>{spell.notes}</p></section>}
           {spell.author_comment && <section className="chat-spell-detail__comment"><small>Заметка Восса</small><p>{spell.author_comment}</p></section>}
