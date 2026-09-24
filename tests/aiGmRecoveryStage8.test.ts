@@ -94,7 +94,7 @@ test("Stage 8 preserves Stage 7 multi-message output-count contract", () => {
   const end = runtime.indexOf("export async function runGameChatTurn", start)
   assert.ok(start >= 0 && end > start)
   const helper = runtime.slice(start, end)
-  assert.match(helper, /completed_outputs: 1/)
+  assert.match(helper, /finalizeStage18VisibleAnswer/)
   assert.doesNotMatch(helper, /completed_outputs: messageIds\.length/)
 })
 
