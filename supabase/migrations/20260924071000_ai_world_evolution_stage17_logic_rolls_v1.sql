@@ -141,6 +141,41 @@ create unique index if not exists pending_player_roll_requests_adjudication_uniq
   on public.pending_player_roll_requests (adjudication_id)
   where adjudication_id is not null;
 
+create or replace function private.enforce_stage17_player_roll_freeze_v1()
+returns trigger
+language plpgsql
+set search_path = ''
+as $
+begin
+  if old.adjudication_id is null then
+    return new;
+  end if;
+
+  if new.adjudication_id is distinct from old.adjudication_id
+     or new.gm_job_id is distinct from old.gm_job_id
+     or new.character_id is distinct from old.character_id
+     or new.request_type is distinct from old.request_type
+     or new.ability_key is distinct from old.ability_key
+     or new.skill_key is distinct from old.skill_key
+     or new.attack_kind is distinct from old.attack_kind
+     or new.dc is distinct from old.dc
+     or new.dc_visibility is distinct from old.dc_visibility
+  then
+    raise exception 'stage17_player_roll_contract_is_frozen';
+  end if;
+
+  return new;
+end;
+$;
+
+drop trigger if exists pending_player_roll_requests_stage17_freeze
+  on public.pending_player_roll_requests;
+
+create trigger pending_player_roll_requests_stage17_freeze
+before update on public.pending_player_roll_requests
+for each row
+execute function private.enforce_stage17_player_roll_freeze_v1();
+
 create or replace function private.ai_gm_difficulty_dc_v1(p_difficulty text)
 returns integer
 language sql
