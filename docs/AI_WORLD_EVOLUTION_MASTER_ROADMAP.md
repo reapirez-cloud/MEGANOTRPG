@@ -748,7 +748,7 @@ Do not delete permanent promoted NPC state.
 
 ## Stage 17 — Canon-bound intent adjudication and delegated real player rolls
 
-**Status: PLANNED**
+**Status: IMPLEMENTED — 2026-09-24**
 
 The primary GM does **not** need to know Supabase RPC names, UI implementation details or the application's roll API.
 
@@ -804,6 +804,10 @@ Before the player sees the roll request, persist:
 - success/failure/partial envelopes.
 
 After the d20 exists, these fields are immutable.
+
+**Implementation closure — 2026-09-24:** Stage 17 now uses the service-only `create_ai_gm_player_roll_request_v4` and `record_ai_gm_deterministic_adjudication_v2` entrypoints. World-discovery canonical evidence is server-checked against the current source scene/context instead of accepting any campaign UUID. Catalog-only item definitions cannot prove physical scene existence. Pending-roll replay must match the already frozen adjudication contract exactly or fails closed. Legacy v1/v3 roll entrypoints and deterministic v1 are no longer executable by `service_role`.
+
+**Certification note:** Stage 17 itself is implemented. Full real-roll E2E certification is intentionally deferred until Stage 18 is rebuilt from zero, because the currently rejected Stage 18 turn-gate implementation blocks the requested roll event. Do not patch Stage 18 to make this test pass; delete/rebuild Stage 18, then run the Stage 17+18 state-machine certification.
 
 **Done when:** the GM can ask for any sensible D&D-style check from fiction, a junior mechanic worker creates the real app check, and neither the model nor the roll can invent canon or move the DC after seeing the result.
 
