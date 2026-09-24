@@ -1449,7 +1449,6 @@ export function stage2ContextForPrompt(context: Stage2GameChatContext) {
       worker_commands_are_not_narrative_memory: true,
     },
     current_game_time: context.currentGameTime,
-    gm_behavior_profile: context.gmBehaviorProfile,
     source_audience: context.sourceAudience,
     room: {
       id: context.room.id,
