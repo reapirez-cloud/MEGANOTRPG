@@ -1,6 +1,6 @@
 # Stage 17 — Canon-bound intent adjudication and real player rolls
 
-Status: IMPLEMENTED — 2026-09-24
+Status: CERTIFIED — 2026-09-24
 
 This stage exists because a player d20 answers **how well the character performs an action**. It does not get to decide whether an unstated world fact suddenly exists.
 
@@ -174,4 +174,4 @@ World-discovery evidence is now bound to the current scene. A real UUID elsewher
 
 A replay while a roll is already pending must reproduce the frozen Stage 17 contract. A changed target, mode, scope, mechanic, DC/difficulty, envelope, evidence set or Resolver decision key fails closed with `stage17_pending_roll_replay_contract_mismatch`.
 
-Full end-to-end certification remains coupled to the Stage 18 rebuild because the rejected Stage 18 gate currently blocks the requested player-roll event. Stage 18 must be deleted/rebuilt rather than patched around this dependency.
+The clean Stage 18 rebuild removed the final certification blocker. A rollback-only integration smoke created a real Constitution check through `create_ai_gm_player_roll_request_v4`, resolved the real server d20 through `resolve_player_roll_request_v1`, inserted the roll message through the Stage 18 v3 gate, resolved the pending request and returned the same GM job to `queued` with `resume_chat_message_id`.
