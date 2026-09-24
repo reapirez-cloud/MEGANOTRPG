@@ -642,7 +642,7 @@ export const AI_WORLD_EVOLUTION_STAGES = [
     title: "Post-response junior world commit and turn gate",
     purpose:
       "Publish the GM answer first, then let a smaller worker materialize the world changes implied by that answer while the player reads it, without allowing the next player turn to race ahead of canonical state.",
-    status: "certified",
+    status: "planned",
     existingFoundation: [
       "world materializer and manager/quest tools already exist",
       "agent_jobs already provides durable job state",
