@@ -35,6 +35,16 @@ test("turn draft accepts a long ordered plan but spends nothing before final Sen
   assert.doesNotMatch(save, /consume_character_resource_costs/)
 })
 
+test("linked mechanics cannot wake the GM until the player writes final text", () => {
+  const gate = read(
+    "supabase/migrations/20260924192000_ai_gm_player_turn_final_text_gate_v5.sql",
+  )
+  assert.match(gate, /btrim\(coalesce\(new\.description,''\)\)=''/)
+  assert.match(gate, /player_turn_text_required/)
+  assert.match(composer, /if \(queuePlayerTurn && !body\) return/)
+  assert.match(composer, /disabled=\{!canCompose \|\| sending \|\| !text\.trim\(\)\}/)
+})
+
 test("final Send seals one declaration and does not execute abilities or rolls", () => {
   const submit = block(
     migration,
