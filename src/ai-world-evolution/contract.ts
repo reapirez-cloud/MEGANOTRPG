@@ -689,7 +689,7 @@ export const AI_WORLD_EVOLUTION_STAGES = [
     title: "Bounded clean GM context envelope",
     purpose:
       "Keep every primary GM turn focused and cheap by sending only the recent player-visible scene history plus compact relevant canon, never raw junior-worker/tool chatter or the entire campaign database.",
-    status: "planned",
+    status: "certified",
     existingFoundation: [
       "CHAT_CONTEXT_LIMIT is already 50",
       "memory facts and summaries are already bounded separately",
