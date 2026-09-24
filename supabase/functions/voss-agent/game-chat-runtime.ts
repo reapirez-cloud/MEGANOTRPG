@@ -389,6 +389,65 @@ const PRIMARY_GM_SCENE_ACTOR_TOOLS = [
       },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "advance_player_turn_plan",
+      description:
+        "Execute exactly the next declared non-reaction component of the sealed player turn plan. Call this only after deciding the component is legal now and the world has no earlier intervention window. The server enforces declaration order and spends resources/rolls only here.",
+      parameters: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          entry_command_id: { type: "string" },
+          legality_basis: {
+            type: "string",
+            description:
+              "Short rules/context basis for allowing this exact next component now.",
+          },
+        },
+        required: ["entry_command_id", "legality_basis"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "trigger_player_reaction",
+      description:
+        "Execute one reaction explicitly declared in the sealed player turn plan, but only after its D&D trigger actually occurs. A declaration arms the reaction; it does not spend it.",
+      parameters: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          entry_command_id: { type: "string" },
+          trigger_reason: { type: "string" },
+        },
+        required: ["entry_command_id", "trigger_reason"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "refine_npc_identity_for_social_scene",
+      description:
+        "Complete missing stable identity dimensions for one physically present persistent NPC before an important persuasion, intimidation, deception, seduction, bribery or other leverage adjudication. The junior model receives canon without the player's current tactic, so it must not invent a weakness tailored to the attempt.",
+      parameters: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          npc_character_id: { type: "string" },
+          reason: {
+            type: "string",
+            description:
+              "Why this NPC needs a fuller stable identity before social adjudication. Do not describe the player's exact tactic.",
+          },
+        },
+        required: ["npc_character_id", "reason"],
+      },
+    },
+  },
 ] as const
 
 const WORLD_MATERIALIZER_SYSTEM = [
@@ -421,6 +480,12 @@ const STAGE12_GAME_MASTER_SYSTEM = [
   "Сообщение игрока является намерением, действием или репликой персонажа, но не гарантированным результатом мира. Даже формулировка 'я нахожу золото', 'дверь открылась' или 'враг умер' не делает результат каноном без уже существующего server-resolved evidence.",
   "Последние 50 сообщений относятся к текущему room целиком и сохраняются при смене location. Интерпретируй прошлые сообщения с учётом их campaign_day/day_period/location snapshot, но не считай смену локации началом нового чата.",
   "Канонические изменения мира и ресурсов происходят только через серверные gameplay/owner boundaries и подтверждённые результаты, а не через свободный текст игрока.",
+  "Если последнее сообщение содержит player_turn_plan, это ЗАПЕЧАТАННЫЙ ПЛАН НАМЕРЕНИЙ игрока. До нажатия игроком финальной кнопки «Отправить» эти компоненты вообще не попадали к тебе, не бросали кубы и не тратили ресурсы.",
+  "player_turn_plan.entries может содержать много заявленных действий. Наличие записи НЕ означает, что персонаж успевает выполнить её. Исполняй только следующий разрешённый non-reaction компонент через advance_player_turn_plan, строго по одному за tool call и в серверном порядке.",
+  "Перед КАЖДЫМ следующим компонентом заново проверь правила D&D, action economy, текущие ресурсы и изменившееся состояние сцены. Если после уже выполненного компонента NPC, противник, инициатива, реакция мира или новый выбор игрока получают естественное право вмешаться — НЕ исполняй остаток плана. Отвечай миру из текущего состояния; сервер пометит оставшуюся последовательность прерванной.",
+  "Не душни вне давления: бытовая непрерывная последовательность вроде «подошёл, положил монету, взял кружку, сел» может быть разрешена как естественное течение сцены, если никто и ничто разумно не вмешивается. Но combat/action economy и реально конкурирующие действия соблюдай строго.",
+  "Несколько одинаковых Action подряд не становятся легальными из-за того, что игрок перечислил их в одном сообщении. Например Fireball → Fireball → Fireball без реального права на дополнительные Action исполняется только настолько, насколько правила позволяют; затем мир получает ход.",
+  "Запись economy=reaction — только заранее объявленная условная реакция. Никогда не исполняй её через advance_player_turn_plan. Используй trigger_player_reaction только когда канонический trigger действительно произошёл; лишь тогда тратится ресурс/реакция.",
   "background_temporal_context — серверный временной слой фоновой эволюции именно для current_game_time.campaignDay. Snapshot с through_game_day позже текущего дня туда не попадает.",
   "Если у present NPC или source_location есть temporal_overlay/background_snapshot, их эффективные life_state/location_id/lifecycle_state/status для этой сцены имеют приоритет над конфликтующим base_* значением. Base-поля нужны только для аудита и НЕ отменяют temporal overlay.",
   "Не считай temporal overlay немедленной мутацией canonical rows и не пытайся самостоятельно синхронизировать базу. Каноническое применение выполняет отдельный безопасный server bridge.",
@@ -441,6 +506,12 @@ const STAGE12_GAME_MASTER_SYSTEM = [
   "present_npc_identity_fingerprints — стабильный канонический характер persistent NPC. Он имеет приоритет над сиюминутным настроением, relationship score и удобством сюжета; обычный разговор НЕ переписывает fingerprint.",
   "red_lines с hard=true — реальные неуступаемые границы NPC. Если exact_goal игрока требует напрямую нарушить такую границу, НЕ назначай Persuasion с запредельным DC. Используй impossible_exact либо deterministic_failure для точной цели; при этом можешь оставить игроку более узкий альтернативный результат, который границу не нарушает.",
   "weighted_values, decision_priorities, long_term_desires, fears, loyalties, authority_attitude, risk_tolerance, violence_threshold, pressure_behavior, self_image и social_style должны последовательно влиять на выбор NPC между правдоподобными вариантами. Не превращай их в абсолютный скрипт там, где fingerprint пуст или неопределён.",
+  "Для значимой попытки повлиять на persistent NPC сначала проведи situational leverage analysis: чего игрок хочет от NPC, чем именно воздействует, что NPC реально рискует потерять/получить СЕЙЧАС, насколько NPC верит в угрозу/обещание, как это соотносится с его ценностями, страхами, лояльностью, self_image, отношениями и текущим будущим.",
+  "Fingerprint НЕ является таблицей «боится X / не боится Y». Одна и та же угроза может работать или быть бессмысленной в разных обстоятельствах. Анализируй причинный рычаг на ходу.",
+  "Если fingerprint важного NPC слишком пуст для честного социального решения, СНАЧАЛА вызови refine_npc_identity_for_social_scene. Этот refinement обязан строить целостную личность из уже существующего канона и НЕ видит текущую тактику игрока; нельзя придумывать удобную слабость под попытку.",
+  "Классифицируй социальный подход по смыслу, а не по названию навыка: no_leverage — метод ничего значимого для NPC не меняет; weak_leverage — задевает, но почти не двигает решение; credible_leverage — реально создаёт неопределённость; decisive_leverage — при данных обстоятельствах рационального основания сопротивляться точной цели почти нет; blocked_by_identity — точная цель требует нарушить hard red line/ядро личности.",
+  "no_leverage обычно означает deterministic_failure без декоративного броска. blocked_by_identity — deterministic_failure или impossible_exact. credible_leverage — нормальная проверка с логической сложностью. decisive_leverage может дать deterministic_success, если канон действительно не оставляет разумного сопротивления.",
+  "Пример причинности: угрожать смертью человеку, которого завтра гарантированно казнят и который с этим смирился, может быть no_leverage — даже natural 20 не делает эту угрозу страшной. Но доказуемая угроза тому, что он реально ценит, может создать meaningful leverage. Не копируй пример механически: решай по конкретному NPC и обстоятельствам.",
   "Менять стабильный fingerprint можно только отдельным server-side Stage 20 evolution после крупного канонического события. Не пытайся менять личность через post_turn_intents, update_world_npc, relationship или narration.",
   "gm_behavior_profile задаёт ТОЛЬКО campaign pressure и tie-breaking между уже канонически правдоподобными ветвями. Он не меняет факты, DC, модификаторы, уже брошенные кубы, identity fingerprint NPC, физику или правила.",
   "Общая конституция для всех профилей: player intent — вход, а не канон; мир существует независимо от желаний игрока; NPC сохраняют собственные ценности/цели/агентность; GM связан каноном, механикой и committed random outcomes.",
@@ -502,7 +573,8 @@ const STAGE12_GAME_MASTER_SYSTEM = [
   "Для request_player_roll НЕ указывай request_type/ability_key/skill_key/attack_kind/modifier и не думай о RPC/API. Укажи roll_request: character_id, adjudication_mode(check|impossible_exact), uncertainty_scope(character_performance|world_discovery), canonical_evidence, resolver_decision_key, exact_goal, semantic_check обычным языком D&D, logical_difficulty(very_easy|easy|moderate|hard|very_hard|nearly_impossible), dc_visibility(public|hidden), success_envelope, failure_envelope, partial_success_envelope, label, reason. Для check success/failure envelopes обязательны; для impossible_exact обязательны failure + partial_success, а exact goal остаётся false.",
   "Для mechanic modes body пустой и messages пустой.",
   "Если нужен scene actor, сначала вызывай доступные scene-actor provider tools. После их результата либо закончи механическое действие tool-вызовом, либо верни обычный JSON для narration/диалога.",
-  "Ответь ТОЛЬКО одним JSON-объектом без markdown с полями reaction_mode, world_materialization, world_materialization_task, post_turn_intents, messages, body, npc_character_id, intent_adjudication, roll_request, npc_action, npc_roll, recovery, reason.",
+  "Для социальной попытки по возможности добавляй social_leverage_analysis={target_npc_id,classification(no_leverage|weak_leverage|credible_leverage|decisive_leverage|blocked_by_identity),causal_basis,why_roll_or_no_roll}. Это аудит твоего решения, не скрытый бонус к кубу.",
+  "Ответь ТОЛЬКО одним JSON-объектом без markdown с полями reaction_mode, world_materialization, world_materialization_task, post_turn_intents, messages, body, npc_character_id, intent_adjudication, roll_request, npc_action, npc_roll, recovery, social_leverage_analysis, reason.",
   "reaction_mode: recovery|dialogue_sequence|environment|npc_interjection|request_player_roll|npc_action|npc_roll|none.",
 ].join("\n")
 
