@@ -1319,6 +1319,7 @@ async function runWorldMaterializer({
   providerTimeoutMs,
   allowInlineProviderFallback = true,
   cancelJobId,
+  setPhase,
 }: {
   admin: SupabaseClient
   campaignId: string
@@ -1331,6 +1332,7 @@ async function runWorldMaterializer({
   providerTimeoutMs?: number
   allowInlineProviderFallback?: boolean
   cancelJobId?: string
+  setPhase?: (phase: "thinking" | "applying") => Promise<void>
 }) {
   const model = modelOverride ||
     await resolveWorldMaterializerModel(admin, campaignId, fallbackModel)
@@ -1362,6 +1364,7 @@ async function runWorldMaterializer({
 
   for (let round = 0; round < 5; round += 1) {
     if (cancelJobId) await assertGameTurnRunning(admin, cancelJobId)
+    if (setPhase) await setPhase("thinking")
     const juniorCall = await requestJuniorCompletionWithFallback({
       admin,
       model: activeModel,
@@ -1400,6 +1403,8 @@ async function runWorldMaterializer({
         typeof assistant.content === "string" ? assistant.content : null,
       ...(calls.length ? { tool_calls: calls } : {}),
     })
+
+    if (calls.length && setPhase) await setPhase("applying")
 
     if (!calls.length) {
       if (
@@ -3650,12 +3655,15 @@ async function publishDialogueSequence({
         : {
             kind: "npc_dialogue",
             npc_character_id: output.npcCharacterId,
-            body: await generateNpcDialogue({
-              route,
-              context,
-              npcCharacterId: output.npcCharacterId,
-              priorOutputs,
-            }),
+            body: await (async () => {
+              await setRuntimePhase(admin, claimed, "thinking")
+              return generateNpcDialogue({
+                route,
+                context,
+                npcCharacterId: output.npcCharacterId,
+                priorOutputs,
+              })
+            })(),
           }
 
     messages.push(message)
@@ -3682,6 +3690,9 @@ async function publishDialogueSequence({
     return
   }
 
+  await assertGameTurnRunning(admin, claimed.id)
+  await setRuntimePhase(admin, claimed, "applying")
+  await assertGameTurnRunning(admin, claimed.id)
   await finalizeStage18VisibleAnswer({
     admin,
     campaignId,
@@ -3761,12 +3772,14 @@ async function refineNpcIdentityForSocialScene({
   context,
   npcCharacterId,
   reason,
+  setPhase,
 }: {
   admin: SupabaseClient
   campaignId: string
   context: Stage2GameChatContext
   npcCharacterId: string
   reason: string
+  setPhase?: (phase: "thinking" | "applying") => Promise<void>
 }) {
   const character = context.presentCharacters.find(
     (item) =>
@@ -3829,6 +3842,7 @@ async function refineNpcIdentityForSocialScene({
       "Persistent NPC needs a coherent stable identity before consequential social adjudication.",
   }
 
+  if (setPhase) await setPhase("thinking")
   const juniorCall = await requestJuniorCompletionWithFallback({
     admin,
     model: route.model,
@@ -3868,6 +3882,7 @@ async function refineNpcIdentityForSocialScene({
     throw new Error("npc_identity_refinement_invalid_output")
   }
 
+  if (setPhase) await setPhase("applying")
   const { data, error } = await admin.rpc(
     "refine_npc_identity_bootstrap_v2",
     {
@@ -4091,6 +4106,7 @@ async function requestPrimaryGmDecision({
 
   for (let round = 0; round < 6; round += 1) {
     await assertGameTurnRunning(admin, claimed.id)
+    await setRuntimePhase(admin, claimed, "thinking")
     const payload = await requestChatCompletion({
       model: route.model,
       messages,
@@ -4454,6 +4470,7 @@ async function requestPrimaryGmDecision({
               reason:
                 refinementReason ||
                 "Stable identity is underspecified before consequential social adjudication.",
+              setPhase: (phase) => setRuntimePhase(admin, claimed, phase),
             }),
           )
           context = await buildGameChatContextV2({
@@ -4985,6 +5002,7 @@ export async function runGameChatTurn(
           providerTimeoutMs: firstMessageBootstrapOnly ? 90_000 : undefined,
           allowInlineProviderFallback: !firstMessageBootstrapOnly,
           cancelJobId: claimed.id,
+          setPhase: (phase) => setRuntimePhase(admin, claimed, phase),
         })
 
         claimed.result = {
@@ -5167,6 +5185,7 @@ export async function runGameChatTurn(
               : ""),
           fallbackModel: route.model,
           cancelJobId: claimed.id,
+          setPhase: (phase) => setRuntimePhase(admin, claimed, phase),
         })
 
         claimed.result = {
@@ -5475,7 +5494,7 @@ export async function runGameChatTurn(
     }
 
     if (reaction.mode === "request_player_roll" && reaction.rollRequest) {
-      await setRuntimePhase(admin, claimed, "applying")
+      await setRuntimePhase(admin, claimed, "thinking")
       const request = reaction.rollRequest
       const normalized = await normalizePlayerRollWithWorker({
         admin,
@@ -5485,6 +5504,8 @@ export async function runGameChatTurn(
         originalMessage,
         request,
       })
+      await assertGameTurnRunning(admin, claimed.id)
+      await setRuntimePhase(admin, claimed, "applying")
       await assertGameTurnRunning(admin, claimed.id)
       const { data: rollReservation, error: rollError } = await admin.rpc(
         "create_ai_gm_player_roll_request_v4",
@@ -5553,18 +5574,19 @@ export async function runGameChatTurn(
       return
     }
 
+    let finalBody = reaction.body
+    if (reaction.mode === "npc_interjection" && reaction.npcCharacterId) {
+      await setRuntimePhase(admin, claimed, "thinking")
+      finalBody = await generateNpcDialogue({
+        route,
+        context,
+        npcCharacterId: reaction.npcCharacterId,
+        priorOutputs: [],
+      })
+    }
+
+    await assertGameTurnRunning(admin, claimed.id)
     await setRuntimePhase(admin, claimed, "applying")
-
-    const finalBody =
-      reaction.mode === "npc_interjection" && reaction.npcCharacterId
-        ? await generateNpcDialogue({
-            route,
-            context,
-            npcCharacterId: reaction.npcCharacterId,
-            priorOutputs: [],
-          })
-        : reaction.body
-
     await assertGameTurnRunning(admin, claimed.id)
     await finalizeStage18VisibleAnswer({
       admin,
