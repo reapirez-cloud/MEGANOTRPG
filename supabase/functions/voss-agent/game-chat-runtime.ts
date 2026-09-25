@@ -1273,6 +1273,35 @@ async function resolveWorldMaterializerModel(
   return route.model
 }
 
+class GameTurnCancelledError extends Error {
+  constructor() {
+    super("ai_gm_turn_cancelled")
+    this.name = "GameTurnCancelledError"
+  }
+}
+
+async function gameTurnWasCancelled(admin: SupabaseClient, jobId: string) {
+  const { data, error } = await admin
+    .from("agent_jobs")
+    .select("status,cancel_requested")
+    .eq("id", jobId)
+    .maybeSingle()
+  if (error) throw new Error(error.message)
+  return data?.status === "cancelled" || data?.cancel_requested === true
+}
+
+async function assertGameTurnRunning(admin: SupabaseClient, jobId: string) {
+  const { data, error } = await admin
+    .from("agent_jobs")
+    .select("status,cancel_requested")
+    .eq("id", jobId)
+    .maybeSingle()
+  if (error) throw new Error(error.message)
+  if (!data || data.status !== "running" || data.cancel_requested === true) {
+    throw new GameTurnCancelledError()
+  }
+}
+
 async function runWorldMaterializer({
   admin,
   campaignId,
@@ -1284,6 +1313,7 @@ async function runWorldMaterializer({
   modelOverride,
   providerTimeoutMs,
   allowInlineProviderFallback = true,
+  cancelJobId,
 }: {
   admin: SupabaseClient
   campaignId: string
@@ -1295,6 +1325,7 @@ async function runWorldMaterializer({
   modelOverride?: RouterModel
   providerTimeoutMs?: number
   allowInlineProviderFallback?: boolean
+  cancelJobId?: string
 }) {
   const model = modelOverride ||
     await resolveWorldMaterializerModel(admin, campaignId, fallbackModel)
@@ -1325,6 +1356,7 @@ async function runWorldMaterializer({
   let firstCreatedLocationId = ""
 
   for (let round = 0; round < 5; round += 1) {
+    if (cancelJobId) await assertGameTurnRunning(admin, cancelJobId)
     const juniorCall = await requestJuniorCompletionWithFallback({
       admin,
       model: activeModel,
@@ -1348,6 +1380,7 @@ async function runWorldMaterializer({
       allowProviderFallback: allowInlineProviderFallback,
     })
     const payload = juniorCall.payload
+    if (cancelJobId) await assertGameTurnRunning(admin, cancelJobId)
     activeModel = juniorCall.model
     reasoningEffort = juniorCall.reasoningEffort
 
@@ -1384,6 +1417,7 @@ async function runWorldMaterializer({
     let roundHadStructuralError = false
 
     for (let index = 0; index < calls.length; index += 1) {
+      if (cancelJobId) await assertGameTurnRunning(admin, cancelJobId)
       const call = calls[index]
       const callId = call.id || `world-materializer-${round}-${index}`
       const name =
@@ -1494,6 +1528,7 @@ async function runWorldMaterializer({
     })
 
     if (!alreadyMoved) {
+      if (cancelJobId) await assertGameTurnRunning(admin, cancelJobId)
       const result = await executeVossManagerTool(
         {
           client: admin,
@@ -3190,6 +3225,7 @@ async function failJob(
         updated_at: new Date().toISOString(),
       })
       .eq("id", jobId)
+      .in("status", ["queued", "running", "waiting_for_user"])
   } catch {
     // Preserve the original runtime failure even if failure bookkeeping fails.
   }
@@ -3467,7 +3503,7 @@ async function completeWithoutChatMessage({
   extraResult?: JsonRecord
   completedOutputs?: 0 | 1
 }) {
-  await admin
+  const { data: completedJob, error: completeError } = await admin
     .from("agent_jobs")
     .update({
       status: "completed",
@@ -3501,7 +3537,12 @@ async function completeWithoutChatMessage({
       error_message: null,
     })
     .eq("id", claimed.id)
+    .eq("status", "running")
+    .select("id")
+    .maybeSingle()
 
+  if (completeError) throw new Error(completeError.message)
+  if (!completedJob?.id) return
   await syncStage11TurnLedger(admin, claimed.id)
 }
 
@@ -4040,6 +4081,7 @@ async function requestPrimaryGmDecision({
       )
 
   for (let round = 0; round < 6; round += 1) {
+    await assertGameTurnRunning(admin, claimed.id)
     const payload = await requestChatCompletion({
       model: route.model,
       messages,
@@ -4054,6 +4096,7 @@ async function requestPrimaryGmDecision({
       retryCount: 0,
     })
 
+    await assertGameTurnRunning(admin, claimed.id)
     const assistant = providerMessage(payload)
     const calls = Array.isArray(assistant.tool_calls)
       ? assistant.tool_calls.slice(0, 6)
@@ -4157,6 +4200,7 @@ async function requestPrimaryGmDecision({
     let resolverRoundError = ""
 
     for (let index = 0; index < calls.length; index += 1) {
+      await assertGameTurnRunning(admin, claimed.id)
       const call = calls[index]
       const callId = call.id || `scene-tool-${round}-${index}`
       const name =
@@ -4919,6 +4963,7 @@ export async function runGameChatTurn(
           modelOverride: bootstrapFallbackRoute?.model,
           providerTimeoutMs: firstMessageBootstrapOnly ? 90_000 : undefined,
           allowInlineProviderFallback: !firstMessageBootstrapOnly,
+          cancelJobId: claimed.id,
         })
 
         claimed.result = {
@@ -5059,6 +5104,7 @@ export async function runGameChatTurn(
     })
     context = initialDecision.context
     if (initialDecision.completed) return
+    await assertGameTurnRunning(admin, claimed.id)
 
     let reaction = applyAiGmRuntimeSettings(
       parseReaction(initialDecision.raw, context),
@@ -5098,6 +5144,7 @@ export async function runGameChatTurn(
               ? "Stage 26: классифицируй текущую source_location, построй ровно её непосредственный структурный слой через materialize_location_cascade и НЕ перемещай персонажа, если он уже находится здесь."
               : ""),
           fallbackModel: route.model,
+          cancelJobId: claimed.id,
         })
 
         claimed.result = {
@@ -5157,6 +5204,7 @@ export async function runGameChatTurn(
     }
 
     reaction = enforceStage12Audience(reaction, context)
+    await assertGameTurnRunning(admin, claimed.id)
     await settleDeclaredPlayerTurnAfterDecision(admin, claimed, reaction)
     let recoveryResult: JsonRecord | null = null
 
@@ -5415,6 +5463,7 @@ export async function runGameChatTurn(
         originalMessage,
         request,
       })
+      await assertGameTurnRunning(admin, claimed.id)
       const { data: rollReservation, error: rollError } = await admin.rpc(
         "create_ai_gm_player_roll_request_v4",
         {
@@ -5494,6 +5543,7 @@ export async function runGameChatTurn(
           })
         : reaction.body
 
+    await assertGameTurnRunning(admin, claimed.id)
     await finalizeStage18VisibleAnswer({
       admin,
       campaignId,
@@ -5517,6 +5567,14 @@ export async function runGameChatTurn(
       extraResult: recoveryExtra,
     })
   } catch (error) {
+    if (error instanceof GameTurnCancelledError) return
+    if (claimed) {
+      try {
+        if (await gameTurnWasCancelled(admin, claimed.id)) return
+      } catch {
+        // Fall through to ordinary failure bookkeeping.
+      }
+    }
     if (
       claimed &&
       isDurableProviderContinuationError(error)
@@ -5600,7 +5658,8 @@ export async function startGameChatTurnRequest(
     action !== "game_chat_turn" &&
     action !== "game_chat_replay" &&
     action !== "game_chat_turn_resume" &&
-    action !== "game_chat_post_turn_resume"
+    action !== "game_chat_post_turn_resume" &&
+    action !== "game_chat_turn_control"
   ) {
     return null
   }
@@ -5628,6 +5687,69 @@ export async function startGameChatTurnRequest(
         error: "ai_gm_not_available",
         code: "ai_gm_not_available",
       },
+    }
+  }
+
+  if (action === "game_chat_turn_control") {
+    const jobId =
+      typeof input.body.jobId === "string" ? input.body.jobId.trim() : ""
+    const controlMode =
+      input.body.controlMode === "inspect" ||
+      input.body.controlMode === "cancel" ||
+      input.body.controlMode === "edit_resend"
+        ? input.body.controlMode
+        : ""
+    const editedBody =
+      typeof input.body.editedBody === "string"
+        ? input.body.editedBody
+        : null
+
+    if (!jobId || !controlMode) {
+      return {
+        status: 400,
+        body: { error: "jobId and controlMode are required" },
+      }
+    }
+
+    const { data, error } = await input.admin.rpc(
+      "control_active_ai_gm_turn_v1",
+      {
+        p_campaign_id: input.campaignId,
+        p_user_id: input.userId,
+        p_job_id: jobId,
+        p_mode: controlMode,
+        p_edited_body: controlMode === "edit_resend" ? editedBody : null,
+      },
+    )
+
+    if (error) {
+      return {
+        status: 409,
+        body: {
+          accepted: false,
+          error: error.message,
+          code: "ai_gm_active_turn_control_denied",
+        },
+      }
+    }
+
+    const control = jsonRecord(data)
+    const nextJobId =
+      typeof control.job_id === "string" ? control.job_id : ""
+
+    return {
+      status: controlMode === "inspect" ? 200 : 202,
+      body: {
+        ...control,
+        accepted:
+          controlMode === "inspect"
+            ? true
+            : control.accepted === true,
+      },
+      background:
+        controlMode === "edit_resend" && nextJobId
+          ? runGameChatTurn(input.admin, input.campaignId, nextJobId)
+          : undefined,
     }
   }
 
