@@ -3251,6 +3251,37 @@ async function requestPrimaryGmDecision({
       if (!raw) throw new Error("ai_gm_provider_empty_answer")
 
       const semanticPreview = parseJsonObject(raw)
+
+      if (replayMechanicsLocked) {
+        const replayMode = String(semanticPreview?.reaction_mode || "")
+        const replayMaterialization =
+          semanticPreview?.world_materialization === true
+        const replayPostTurnIntents = Array.isArray(
+          semanticPreview?.post_turn_intents,
+        )
+          ? semanticPreview!.post_turn_intents as unknown[]
+          : []
+        const forbiddenReplayMode =
+          replayMode === "request_player_roll" ||
+          replayMode === "npc_action" ||
+          replayMode === "npc_roll" ||
+          replayMode === "recovery"
+
+        if (
+          forbiddenReplayMode ||
+          replayMaterialization ||
+          replayPostTurnIntents.length > 0
+        ) {
+          messages.push({ role: "assistant", content: raw })
+          messages.push({
+            role: "system",
+            content:
+              "REGENERATION MECHANICS LOCK: этот ход уже механически разрешён. Запрещены request_player_roll, npc_action, npc_roll, recovery, world_materialization и любые post_turn_intents. Не меняй Resolver, куб, outcome или канон. Верни новый финальный narration/dialogue/environment для УЖЕ ЗАФИКСИРОВАННОГО результата, world_materialization=false, post_turn_intents=[].",
+          })
+          continue
+        }
+      }
+
       const leveragePreview = jsonRecord(
         semanticPreview?.social_leverage_analysis,
       )
