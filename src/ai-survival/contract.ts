@@ -96,12 +96,13 @@ export const AI_SURVIVAL_STAGES = [
     id: 4,
     key: "coop-rollback-certification",
     title: "Co-op time + rollback + certification",
-    status: "planned",
+    status: "certified",
     requiredArtifacts: [
       "shared-scene participant time advancement",
       "split-party exact clocks",
-      "turn-revision time/survival receipts",
-      "regenerate/undo idempotency",
+      "turn-revision time/survival before+after snapshots",
+      "revision-scoped regenerate/undo idempotency",
+      "food/rest/inventory rollback certification",
       "focused full-path certification",
     ],
     acceptance: [
