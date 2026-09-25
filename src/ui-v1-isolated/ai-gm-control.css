@@ -663,3 +663,34 @@
     font-size: 13px;
   }
 }
+
+.u1-ai-gm-assistant {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+
+.u1-ai-gm-assistant__intro {
+  display: grid;
+  gap: 4px;
+  padding: 2px 2px 0;
+}
+
+.u1-ai-gm-assistant__intro > span {
+  color: rgba(176, 184, 188, 0.54);
+  font-size: 7px;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.u1-ai-gm-assistant__intro > strong {
+  color: rgba(235, 238, 239, 0.92);
+  font-size: 14px;
+}
+
+.u1-ai-gm-assistant__intro > small {
+  color: rgba(184, 190, 193, 0.56);
+  font-size: 9px;
+  line-height: 1.45;
+}

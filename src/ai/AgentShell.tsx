@@ -195,7 +195,7 @@ function readableBytes(bytes: number) {
   return (bytes / (1024 * 1024)).toFixed(1) + " МБ"
 }
 
-export default function AgentShell() {
+export default function AgentShell({ embedded = false }: { embedded?: boolean }) {
   const {
     campaignId,
     canManage,
@@ -223,7 +223,7 @@ export default function AgentShell() {
     send,
   } = useAI()
 
-  const [open, setOpen] = useState(false)
+  const [open, setOpen] = useState(embedded)
   const [toolsOpen, setToolsOpen] = useState(false)
   const [draft, setDraft] = useState("")
   const [attachments, setAttachments] = useState<AIAttachment[]>([])
@@ -317,6 +317,10 @@ export default function AgentShell() {
   }, [])
 
   useEffect(() => {
+    if (embedded) setOpen(true)
+  }, [embedded])
+
+  useEffect(() => {
     orbPositionRef.current = orbPosition
     pendingOrbPositionRef.current = orbPosition
   }, [orbPosition])
@@ -370,7 +374,7 @@ export default function AgentShell() {
           setToolsOpen(false)
           return
         }
-        setOpen(false)
+        if (!embedded) setOpen(false)
         return
       }
 
@@ -400,7 +404,7 @@ export default function AgentShell() {
 
     window.addEventListener("keydown", onKeyDown)
     return () => window.removeEventListener("keydown", onKeyDown)
-  }, [open, previewImage, toolsOpen])
+  }, [embedded, open, previewImage, toolsOpen])
 
   useEffect(() => {
     let cancelled = false
@@ -737,47 +741,52 @@ export default function AgentShell() {
 
   return (
     <>
-      <button
-        ref={orbRef}
-        type="button"
-        className="u1-agent-orb"
-        style={{
-          transform: `translate3d(${orbPosition.x}px, ${orbPosition.y}px, 0)`,
-        }}
-        onPointerDown={orbPointerDown}
-        onPointerMove={orbPointerMove}
-        onPointerUp={orbPointerUp}
-        onPointerCancel={orbPointerCancel}
-        onKeyDown={(event) => {
-          if (event.key !== "Enter" && event.key !== " ") return
-          event.preventDefault()
-          setOpen((current) => !current)
-        }}
-        aria-label={
-          open
-            ? `Свернуть ${assistantName}`
-            : sending || pendingReply
-              ? `${assistantName} работает в фоне`
-              : `Открыть ${assistantName}`
-        }
-        aria-expanded={open}
-        aria-controls="u1-agent-panel"
-        data-open={open || undefined}
-        data-busy={(sending || pendingReply) || undefined}
-        data-dragging={orbDragging || undefined}
-      >
-        <AgentMark />
-        <span className="u1-agent-orb__state" aria-hidden="true" />
-      </button>
-
-      {open && (
+      {!embedded && (
+        <>
         <button
+          ref={orbRef}
           type="button"
-          className="u1-agent-backdrop"
-          onClick={() => setOpen(false)}
-          aria-label={`Закрыть ${assistantName}`}
-          tabIndex={-1}
-        />
+          className="u1-agent-orb"
+          style={{
+            transform: `translate3d(${orbPosition.x}px, ${orbPosition.y}px, 0)`,
+          }}
+          onPointerDown={orbPointerDown}
+          onPointerMove={orbPointerMove}
+          onPointerUp={orbPointerUp}
+          onPointerCancel={orbPointerCancel}
+          onKeyDown={(event) => {
+            if (event.key !== "Enter" && event.key !== " ") return
+            event.preventDefault()
+            setOpen((current) => !current)
+          }}
+          aria-label={
+            open
+              ? `Свернуть ${assistantName}`
+              : sending || pendingReply
+                ? `${assistantName} работает в фоне`
+                : `Открыть ${assistantName}`
+          }
+          aria-expanded={open}
+          aria-controls="u1-agent-panel"
+          data-open={open || undefined}
+          data-busy={(sending || pendingReply) || undefined}
+          data-dragging={orbDragging || undefined}
+        >
+          <AgentMark />
+          <span className="u1-agent-orb__state" aria-hidden="true" />
+        </button>
+  
+        {open && (
+          <button
+            type="button"
+            className="u1-agent-backdrop"
+            onClick={() => setOpen(false)}
+            aria-label={`Закрыть ${assistantName}`}
+            tabIndex={-1}
+          />
+        )}
+  
+          </>
       )}
 
       {previewImage && (
@@ -797,8 +806,9 @@ export default function AgentShell() {
         id="u1-agent-panel"
         className="u1-agent-panel"
         aria-label={assistantName}
-        aria-hidden={!open}
-        data-open={open || undefined}
+        aria-hidden={embedded ? false : !open}
+        data-open={(embedded || open) || undefined}
+        data-embedded={embedded || undefined}
       >
         <header className="u1-agent-panel__header">
           <button
@@ -823,14 +833,16 @@ export default function AgentShell() {
 
           <div className="u1-agent-panel__header-actions">
             <small>{selectedModel?.display_name || "AI"}</small>
-            <button
-              type="button"
-              className="u1-agent-panel__close"
-              onClick={() => setOpen(false)}
-              aria-label={`Свернуть ${assistantName}`}
-            >
-              ×
-            </button>
+            {!embedded && (
+              <button
+                type="button"
+                className="u1-agent-panel__close"
+                onClick={() => setOpen(false)}
+                aria-label={`Свернуть ${assistantName}`}
+              >
+                ×
+              </button>
+            )}
           </div>
         </header>
 
