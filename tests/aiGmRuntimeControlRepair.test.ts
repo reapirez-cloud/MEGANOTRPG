@@ -221,3 +221,13 @@ test("AI GM player roll requests become visible auto-rolls and cannot tool-loop"
   assert.match(autoRollMigration, /r\.status='pending'/)
   assert.match(autoRollMigration, /ИИ-ГМ запросил бросок · бросаем автоматически/)
 })
+
+
+test("AI GM cannot reopen mechanics after a resolved player roll in the same turn", () => {
+  assert.match(runtime, /resolvedRollContinuationLocked/)
+  assert.match(runtime, /isResume &&[\s\S]*last_roll_result/)
+  assert.match(runtime, /replayMechanicsLocked \|\| resolvedRollContinuationLocked/)
+  assert.match(runtime, /POST-ROLL MECHANICS LOCK/)
+  assert.match(runtime, /Не проси новый бросок/)
+  assert.match(runtime, /world_materialization === true/)
+})
