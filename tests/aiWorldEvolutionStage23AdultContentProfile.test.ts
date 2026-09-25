@@ -86,7 +86,8 @@ test("Stage 23 keeps adult profile permission-only inside the GM prompt", () => 
   const npcStart = runtime.indexOf("const NPC_DIALOGUE_SYSTEM", gmStart)
   const gmPrompt = runtime.slice(gmStart, npcStart)
 
-  assert.match(gmPrompt, /content_profile\.mode=allowed: разрешены зрелые темы/)
+  assert.match(gmPrompt, /content_profile\.mode=allowed: 18\+ тематика разрешена/)
+  assert.match(gmPrompt, /Секс, нагота, грубая лексика/)
   assert.match(gmPrompt, /content_profile\.mode=adult_focused: всё из allowed разрешено/)
   assert.doesNotMatch(
     gmPrompt,
@@ -99,7 +100,9 @@ test("Stage 23 NPC prompt stays permission-oriented", () => {
   const jsonStart = runtime.indexOf("function jsonRecord", npcStart)
   const npcPrompt = runtime.slice(npcStart, jsonStart)
 
-  assert.match(npcPrompt, /allowed\/adult_focused разрешают зрелые темы/)
+  assert.match(npcPrompt, /content_profile\.mode=allowed: 18\+ тематика разрешена/)
+  assert.match(npcPrompt, /включая секс, наготу, грубую лексику/)
+  assert.match(npcPrompt, /content_profile\.mode=adult_focused: всё из allowed разрешено/)
   assert.doesNotMatch(
     npcPrompt,
     /несовершеннолет|совершеннолет|provider|policy|jailbreak|цензур|consent|compliance|fade-to-black/i,
