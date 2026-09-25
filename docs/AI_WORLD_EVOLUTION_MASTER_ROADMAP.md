@@ -1692,7 +1692,7 @@ Deferred to Stage 27:
 
 ## Stage 27 — Deterministic Executor + Inventory Commit
 
-**Status: IMPLEMENTED — 2026-09-25**
+**Status: READY — 2026-09-25**
 
 The Junior model is now a planner, not the final mutation authority. Every
 post-turn tool proposal becomes one typed `agent_jobs` row with
@@ -1745,3 +1745,38 @@ Deferred to Stage 28:
 - persistent 16:9 location hero state and retry UI;
 - full cross-system E2E certification and reconciliation of older AI-world
   scenes.
+
+
+---
+
+## Stage 28 — Location Media Recovery + Causal Certification
+
+**Status: IMPLEMENTED — 2026-09-25**
+
+Stage 28 closes the remaining media/UI debt after the causal runtime rebuild.
+
+Contracts:
+
+- the protected AI-GM media dispatcher is enabled automatically when a project
+  URL exists; the private dispatch token remains mandatory at the worker edge;
+- queued media jobs record dispatch attempts and can be redispatched after a
+  bounded delay without creating duplicate lifecycle rows;
+- stale running jobs are failed by a watchdog after 15 minutes and may be
+  requeued up to three automatic recovery attempts;
+- app-open recovery is opportunistic and campaign-scoped, while explicit GM
+  retry can force a failed/cancelled location art generation;
+- currently occupied AI-world locations are reconciled on migration so older
+  campaigns that predate the first-visit trigger do not remain permanently
+  artless;
+- location media UI reads canonical active media_bindings first, with legacy
+  locations.image_url only as fallback;
+- every location detail always owns a persistent 16:9 hero slot with
+  idle/queued/running/failed/completed presentation state;
+- the provider-supported 1536x1024 source is displayed through a deliberate
+  16:9 cover crop rather than pretending the image provider emits native 16:9;
+- failed/stale media can be retried by campaign managers without exposing
+  private lifecycle tables or the dispatch token;
+- Stage 27 is certified READY before this stage begins.
+
+Final certification requires the Stage 28 commit to pass the full repository CI
+and the live queued-location recovery to reach a terminal worker state.
