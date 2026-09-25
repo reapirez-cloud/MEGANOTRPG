@@ -502,15 +502,15 @@ test("Workspace is a real role-aware identity surface instead of a dashboard pla
   assert.match(workspaceStyles, /min-height:\s*clamp\(150px, 29vh, 226px\)/)
 })
 
-test("global AgentMark replaces the inactive VI profile placeholder", () => {
+test("AI GM square button is the only global AI entry point", () => {
   assert.doesNotMatch(app, /PlayerProfileMark/)
-  assert.match(app, /<AgentShell \/>/)
+  assert.doesNotMatch(app, /<AgentShell \/>/)
+  assert.doesNotMatch(app, /import AgentShell from/)
   assert.match(workspace, /u1-workspace__ai-button/)
   assert.match(app, /onOpenAiGm=\{\(\) => go\("ai-gm"\)\}/)
   assert.match(agentShell, /className="u1-agent-orb"/)
-  assert.match(agentShell, /\`Свернуть \$\{assistantName\}\`/)
-  assert.match(agentShell, /\`\$\{assistantName\} работает в фоне\`/)
-  assert.match(agentShell, /\`Открыть \$\{assistantName\}\`/)
+  assert.match(agentShell, /\{!embedded && \([\s\S]*className="u1-agent-orb"/)
+  assert.match(agentShell, /data-embedded=\{embedded \|\| undefined\}/)
 })
 
 
