@@ -16,6 +16,7 @@ import {
 } from "./provider-gateway.ts"
 import {
   resolveCampaignGmModel,
+  resolveCampaignJuniorFallbackModel,
   resolveCampaignJuniorModel,
   type RouterModel,
 } from "./model-router.ts"
@@ -1036,6 +1037,65 @@ function providerText(payload: any) {
   return ""
 }
 
+type JuniorReasoningEffort = "low" | "high"
+
+function isJuniorProviderTimeout(error: unknown) {
+  return (
+    error instanceof ProviderGatewayError &&
+    (
+      error.code === "ai_provider_timeout" ||
+      error.providerStatus === 504 ||
+      error.providerStatus === 524
+    )
+  )
+}
+
+async function requestJuniorCompletionWithFallback({
+  admin,
+  model,
+  reasoningEffort = "low",
+  request,
+}: {
+  admin: SupabaseClient
+  model: RouterModel
+  reasoningEffort?: JuniorReasoningEffort
+  request: Omit<
+    Parameters<typeof requestChatCompletion>[0],
+    "model" | "reasoningEffort"
+  >
+}) {
+  try {
+    return {
+      payload: await requestChatCompletion({
+        ...request,
+        model,
+        reasoningEffort,
+      }),
+      model,
+      reasoningEffort,
+      providerFallback: false,
+    }
+  } catch (error) {
+    if (!isJuniorProviderTimeout(error)) throw error
+
+    const fallbackRoute = await resolveCampaignJuniorFallbackModel(admin, {
+      excludeModelKey: model.model_key,
+    })
+    const fallbackModel = fallbackRoute.model
+
+    return {
+      payload: await requestChatCompletion({
+        ...request,
+        model: fallbackModel,
+        reasoningEffort: "low",
+      }),
+      model: fallbackModel,
+      reasoningEffort: "low" as const,
+      providerFallback: true,
+    }
+  }
+}
+
 const PLAYER_FACING_META_LANGUAGE =
   /(?:\bresolver\b|резолвер|\bserver\b|сервер|канон(?:ич)?|\breceipt\b|decision[_ -]?key|claim[_ -]?basis|rarity[_ -]?class|\bstage\s*\d*|\btool\b|\brpc\b|player[_ -]?specific[_ -]?claim|world[_ -]?discovery)/iu
 
@@ -1186,6 +1246,9 @@ async function runWorldMaterializer({
     return { changed: false, toolRuns: [] as JsonRecord[] }
   }
 
+  let activeModel = model
+  let reasoningEffort: JuniorReasoningEffort = "low"
+
   const messages: Array<Record<string, unknown>> = [
     { role: "system", content: WORLD_MATERIALIZER_SYSTEM },
     {
@@ -1206,21 +1269,28 @@ async function runWorldMaterializer({
   let firstCreatedLocationId = ""
 
   for (let round = 0; round < 5; round += 1) {
-    const payload = await requestChatCompletion({
-      model,
-      messages,
-      tools: WORLD_MATERIALIZER_TOOLS as unknown as Array<Record<string, unknown>>,
-      toolChoice:
-        round === 0 && !context.sourceLocation
-          ? {
-              type: "function",
-              function: { name: "materialize_location_cascade" },
-            }
-          : "auto",
-      temperature: 0.15,
-      timeoutMs: 75_000,
-      retryCount: 0,
+    const juniorCall = await requestJuniorCompletionWithFallback({
+      admin,
+      model: activeModel,
+      reasoningEffort,
+      request: {
+        messages,
+        tools: WORLD_MATERIALIZER_TOOLS as unknown as Array<Record<string, unknown>>,
+        toolChoice:
+          round === 0 && !context.sourceLocation
+            ? {
+                type: "function",
+                function: { name: "materialize_location_cascade" },
+              }
+            : "auto",
+        temperature: 0.15,
+        timeoutMs: context.sourceLocation ? 60_000 : 45_000,
+        retryCount: 0,
+      },
     })
+    const payload = juniorCall.payload
+    activeModel = juniorCall.model
+    reasoningEffort = juniorCall.reasoningEffort
 
     const assistant = providerMessage(payload)
     const calls = Array.isArray(assistant.tool_calls)
@@ -1234,7 +1304,25 @@ async function runWorldMaterializer({
       ...(calls.length ? { tool_calls: calls } : {}),
     })
 
-    if (!calls.length) break
+    if (!calls.length) {
+      if (
+        !context.sourceLocation &&
+        round < 4 &&
+        activeModel.model_key !== "mimo-v2.5-pro" &&
+        reasoningEffort === "low"
+      ) {
+        reasoningEffort = "high"
+        messages.push({
+          role: "user",
+          content:
+            "Ты не вызвал обязательный materialize_location_cascade. Это structural retry: не пиши объяснение, вызови требуемый tool по контракту.",
+        })
+        continue
+      }
+      break
+    }
+
+    let roundHadStructuralError = false
 
     for (let index = 0; index < calls.length; index += 1) {
       const call = calls[index]
@@ -1246,8 +1334,10 @@ async function runWorldMaterializer({
       let result: unknown
       const validationError = worldMaterializerValidationError(name, args)
       if (!WORLD_MATERIALIZER_ALL_TOOL_NAMES.has(name)) {
+        roundHadStructuralError = true
         result = { error: "world_materializer_tool_not_allowed" }
       } else if (validationError) {
+        roundHadStructuralError = true
         result = { error: validationError }
       } else if (WORLD_MATERIALIZER_QUEST_TOOL_NAMES.has(name)) {
         result = await executeVossQuestTool(
@@ -1306,6 +1396,16 @@ async function runWorldMaterializer({
                 truncated: true,
                 preview: rawResult.slice(0, 12000),
               }),
+      })
+    }
+
+    if (roundHadStructuralError && round < 4) {
+      reasoningEffort =
+        activeModel.model_key === "mimo-v2.5-pro" ? "low" : "high"
+      messages.push({
+        role: "user",
+        content:
+          "Предыдущий tool call не прошёл server contract. Исправь только структуру/аргументы и повтори допустимый tool call; не меняй ТЗ и не добавляй новый сюжет.",
       })
     }
   }
@@ -1368,7 +1468,7 @@ async function runWorldMaterializer({
     changed: toolRuns.some(
       (run) => jsonRecord(run.result).canonical_state_changed === true,
     ),
-    modelKey: model.model_key,
+    modelKey: activeModel.model_key,
     toolRuns,
   }
 }
@@ -1507,41 +1607,83 @@ async function runStage18Intent({
     throw new Error("stage18_post_turn_intent_has_no_tools")
   }
 
-  const payload = await requestChatCompletion({
+  const workerMessages: Array<Record<string, unknown>> = [
+    { role: "system", content: STAGE18_POST_TURN_WORKER_SYSTEM },
+    {
+      role: "user",
+      content: JSON.stringify({
+        immutable_intent: {
+          intent_key: intent.intentKey,
+          kind: intent.kind,
+          instruction: intent.instruction,
+          evidence: intent.evidence,
+        },
+        published_messages: publishedMessages,
+        canonical_context: JSON.parse(stage2ContextForPrompt(context)),
+        execution_contract: {
+          exactly_one_tool_call: true,
+          server_atomic_mutation_receipt: true,
+          do_not_invent_uuid: true,
+          do_not_expand_published_canon: true,
+        },
+      }),
+    },
+  ]
+
+  let juniorCall = await requestJuniorCompletionWithFallback({
+    admin,
     model,
-    messages: [
-      { role: "system", content: STAGE18_POST_TURN_WORKER_SYSTEM },
-      {
-        role: "user",
-        content: JSON.stringify({
-          immutable_intent: {
-            intent_key: intent.intentKey,
-            kind: intent.kind,
-            instruction: intent.instruction,
-            evidence: intent.evidence,
-          },
-          published_messages: publishedMessages,
-          canonical_context: JSON.parse(stage2ContextForPrompt(context)),
-          execution_contract: {
-            exactly_one_tool_call: true,
-            server_atomic_mutation_receipt: true,
-            do_not_invent_uuid: true,
-            do_not_expand_published_canon: true,
-          },
-        }),
-      },
-    ],
-    tools: tools as unknown as Array<Record<string, unknown>>,
-    toolChoice: "auto",
-    temperature: 0.05,
-    timeoutMs: 60_000,
-    retryCount: 0,
+    reasoningEffort: "low",
+    request: {
+      messages: workerMessages,
+      tools: tools as unknown as Array<Record<string, unknown>>,
+      toolChoice: "auto",
+      temperature: 0.05,
+      timeoutMs: 45_000,
+      retryCount: 0,
+    },
   })
 
-  const assistant = providerMessage(payload)
-  const calls = Array.isArray(assistant.tool_calls)
+  let payload = juniorCall.payload
+  let assistant = providerMessage(payload)
+  let calls = Array.isArray(assistant.tool_calls)
     ? assistant.tool_calls
     : []
+
+  if (
+    calls.length !== 1 &&
+    juniorCall.model.model_key !== "mimo-v2.5-pro" &&
+    juniorCall.reasoningEffort === "low"
+  ) {
+    workerMessages.push({
+      role: "assistant",
+      content: providerText(payload) || null,
+      ...(calls.length ? { tool_calls: calls } : {}),
+    })
+    workerMessages.push({
+      role: "user",
+      content:
+        "Structural retry: выполни ровно один разрешённый mutation tool call по immutable_intent. Не добавляй новый сюжет и не отвечай прозой.",
+    })
+    juniorCall = await requestJuniorCompletionWithFallback({
+      admin,
+      model: juniorCall.model,
+      reasoningEffort: "high",
+      request: {
+        messages: workerMessages,
+        tools: tools as unknown as Array<Record<string, unknown>>,
+        toolChoice: "auto",
+        temperature: 0.05,
+        timeoutMs: 45_000,
+        retryCount: 0,
+      },
+    })
+    payload = juniorCall.payload
+    assistant = providerMessage(payload)
+    calls = Array.isArray(assistant.tool_calls)
+      ? assistant.tool_calls
+      : []
+  }
 
   if (calls.length !== 1) {
     const raw = providerText(payload)
@@ -2011,17 +2153,22 @@ async function normalizePlayerRollWithWorker({
   ]
 
   for (let attempt = 0; attempt < 2; attempt += 1) {
-    const payload = await requestChatCompletion({
+    const juniorCall = await requestJuniorCompletionWithFallback({
+      admin,
       model,
-      messages,
-      temperature: 0.05,
-      timeoutMs: 45_000,
-      retryCount: 0,
+      reasoningEffort: attempt === 0 ? "low" : "high",
+      request: {
+        messages,
+        temperature: 0.05,
+        timeoutMs: 40_000,
+        retryCount: 0,
+      },
     })
+    const payload = juniorCall.payload
     const raw = providerText(payload)
     const parsed = raw ? parseJsonObject(raw) : null
     const normalized = parsed
-      ? parseNormalizedPlayerRoll(parsed, model.model_key)
+      ? parseNormalizedPlayerRoll(parsed, juniorCall.model.model_key)
       : null
     if (normalized) return normalized
 
@@ -3567,33 +3714,38 @@ async function refineNpcIdentityForSocialScene({
       "Persistent NPC needs a coherent stable identity before consequential social adjudication.",
   }
 
-  const payload = await requestChatCompletion({
+  const juniorCall = await requestJuniorCompletionWithFallback({
+    admin,
     model: route.model,
-    messages: [
-      {
-        role: "system",
-        content: [
-          "Ты младший психологический world-builder MEGANOT. Твоя задача — достроить недостающий СТАБИЛЬНЫЙ identity fingerprint NPC до того, как основной GM оценит социальную попытку игрока.",
-          "ТЕБЕ НАМЕРЕННО НЕ ПЕРЕДАЁТСЯ текущая тактика игрока. Никогда не придумывай страх, желание, red line или слабость специально под попытку, которую ты не видишь.",
-          "Строй целостного человека только из переданного канона: роль, биография, мотивация, фракция, отношения, мир и уже существующие части fingerprint.",
-          "Не придумывай скрытый сюжетный поворот, тайную связь с PC, преступление, родственника, предмет или факт мира без канонического основания.",
-          "Допустимо создавать обычные личностные свойства, ценности, страхи и приоритеты, логично следующие из уже существующего образа NPC.",
-          "Верни один JSON {core}. core обязан содержать ВСЕ поля: traits, weighted_values, red_lines, long_term_desires, fears, loyalties, authority_attitude, risk_tolerance, violence_threshold, pressure_behavior, self_image, social_style, decision_priorities.",
-          "weighted_values: максимум 12 объектов {key,label,weight:0..5,reason}. red_lines: максимум 12 объектов {key,label,hard:boolean,reason}. Остальные списки — короткие конкретные строки. risk_tolerance и violence_threshold — целые 0..5.",
-          "Не делай NPC удобным для игрока и не делай его искусственно враждебным. Нужна причинная личность, которая способна как согласиться, так и отказать по своим основаниям.",
-        ].join("\n"),
-      },
-      {
-        role: "user",
-        content:
-          "КАНОН NPC БЕЗ ТЕКУЩЕЙ ТАКТИКИ ИГРОКА:\n" +
-          JSON.stringify(sanitizedCanon),
-      },
-    ],
-    temperature: 0.28,
-    timeoutMs: 60_000,
-    retryCount: 0,
+    reasoningEffort: "low",
+    request: {
+      messages: [
+        {
+          role: "system",
+          content: [
+            "Ты младший психологический world-builder MEGANOT. Твоя задача — достроить недостающий СТАБИЛЬНЫЙ identity fingerprint NPC до того, как основной GM оценит социальную попытку игрока.",
+            "ТЕБЕ НАМЕРЕННО НЕ ПЕРЕДАЁТСЯ текущая тактика игрока. Никогда не придумывай страх, желание, red line или слабость специально под попытку, которую ты не видишь.",
+            "Строй целостного человека только из переданного канона: роль, биография, мотивация, фракция, отношения, мир и уже существующие части fingerprint.",
+            "Не придумывай скрытый сюжетный поворот, тайную связь с PC, преступление, родственника, предмет или факт мира без канонического основания.",
+            "Допустимо создавать обычные личностные свойства, ценности, страхи и приоритеты, логично следующие из уже существующего образа NPC.",
+            "Верни один JSON {core}. core обязан содержать ВСЕ поля: traits, weighted_values, red_lines, long_term_desires, fears, loyalties, authority_attitude, risk_tolerance, violence_threshold, pressure_behavior, self_image, social_style, decision_priorities.",
+            "weighted_values: максимум 12 объектов {key,label,weight:0..5,reason}. red_lines: максимум 12 объектов {key,label,hard:boolean,reason}. Остальные списки — короткие конкретные строки. risk_tolerance и violence_threshold — целые 0..5.",
+            "Не делай NPC удобным для игрока и не делай его искусственно враждебным. Нужна причинная личность, которая способна как согласиться, так и отказать по своим основаниям.",
+          ].join("\n"),
+        },
+        {
+          role: "user",
+          content:
+            "КАНОН NPC БЕЗ ТЕКУЩЕЙ ТАКТИКИ ИГРОКА:\n" +
+            JSON.stringify(sanitizedCanon),
+        },
+      ],
+      temperature: 0.28,
+      timeoutMs: 45_000,
+      retryCount: 0,
+    },
   })
+  const payload = juniorCall.payload
 
   const parsed = parseJsonObject(providerText(payload))
   const proposedCore = parsed ? jsonRecord(parsed.core) : {}
@@ -3611,7 +3763,7 @@ async function refineNpcIdentityForSocialScene({
         reason.trim().slice(0, 1200) ||
         "Complete missing stable identity before social adjudication.",
       p_provenance: {
-        model_key: route.model.model_key,
+        model_key: juniorCall.model.model_key,
         current_player_tactic_excluded: true,
         current_chat_messages_excluded: true,
       },
@@ -3621,7 +3773,7 @@ async function refineNpcIdentityForSocialScene({
 
   return {
     ...jsonRecord(data),
-    junior_model_key: route.model.model_key,
+    junior_model_key: juniorCall.model.model_key,
     current_player_tactic_excluded: true,
   }
 }

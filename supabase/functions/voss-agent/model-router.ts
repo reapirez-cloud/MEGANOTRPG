@@ -619,6 +619,54 @@ export async function resolveCampaignJuniorModel(
   }
 }
 
+export async function resolveCampaignJuniorFallbackModel(
+  admin: SupabaseClient,
+  input: {
+    excludeModelKey?: string | null
+  } = {},
+): Promise<VossRouteDecision> {
+  const { data: rows, error } = await admin
+    .from("ai_models")
+    .select(
+      "id,provider_key,model_key,display_name,enabled,is_base,gm_selectable,user_selectable,supports_tools,supports_json,supports_streaming,supports_vision,model_kind,access_scope,context_window,cost_tier,reasoning_tier,latency_tier",
+    )
+    .eq("enabled", true)
+    .eq("model_kind", "agent")
+    .eq("access_scope", "campaign")
+    .eq("supports_tools", true)
+    .eq("supports_json", true)
+
+  if (error) throw new Error(error.message)
+
+  const excluded =
+    typeof input.excludeModelKey === "string" ? input.excludeModelKey : ""
+  const models = ((rows || []) as RouterModel[]).filter(
+    (model) => model.model_key !== excluded,
+  )
+
+  const model =
+    models.find((candidate) => candidate.model_key === "mimo-v2.5-pro") ||
+    models.find((candidate) => candidate.model_key === "deepseek-v4.1-flash") ||
+    models.find((candidate) => candidate.model_key === "gemini-3.8-flash") ||
+    models[0] ||
+    null
+
+  if (!model) {
+    throw new Error("No active junior fallback model configured")
+  }
+
+  return {
+    taskKey: "general",
+    model,
+    routeMode: "fallback",
+    reason:
+      model.model_key === "mimo-v2.5-pro"
+        ? "Junior provider fallback uses MiMo V2.5 Pro."
+        : "Junior provider fallback selected the next compatible tool-capable model.",
+    degraded: false,
+  }
+}
+
 export async function recordVossRouteRun(
   admin: SupabaseClient,
   input: {

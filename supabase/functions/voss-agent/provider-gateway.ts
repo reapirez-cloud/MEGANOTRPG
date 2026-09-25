@@ -2,6 +2,8 @@ import type { RouterModel } from "./model-router.ts"
 
 type JsonRecord = Record<string, unknown>
 
+export type ReasoningEffort = "none" | "low" | "medium" | "high" | "max" | "xhigh"
+
 type ChatRequest = {
   model: RouterModel
   messages: Array<Record<string, unknown>>
@@ -10,6 +12,7 @@ type ChatRequest = {
   temperature?: number
   allowOwnerOverride?: boolean
   disableReasoningEffort?: boolean
+  reasoningEffort?: ReasoningEffort
   timeoutMs?: number
   retryCount?: number
   responseFormat?: { type: "json_object" }
@@ -196,7 +199,7 @@ export async function requestChatCompletion(input: ChatRequest) {
   const reasoningEffort =
     input.disableReasoningEffort === true
       ? null
-      : reasoningEffortForModel(input.model)
+      : input.reasoningEffort ?? reasoningEffortForModel(input.model)
 
   let deepSeekCompatibilityMode = false
 
