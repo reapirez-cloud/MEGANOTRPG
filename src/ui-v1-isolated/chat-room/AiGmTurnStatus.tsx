@@ -20,6 +20,8 @@ type AiGmStatus = {
   max_attempts?: number
   can_recover?: boolean
   wake_required?: boolean
+  pending_roll_request_id?: string | null
+  auto_roll_available?: boolean
   error_code?: string | null
   error_message?: string | null
   updated_at?: string | null
@@ -85,6 +87,7 @@ export default function AiGmTurnStatus({ roomId }: { roomId: string }) {
   const [status, setStatus] = useState<AiGmStatus | null>(null)
   const [recovering, setRecovering] = useState(false)
   const wakeAttemptRef = useRef<string>("")
+  const autoRollAttemptRef = useRef<string>("")
 
   const refresh = useCallback(async () => {
     const result = await supabase.rpc("get_ai_gm_room_status_v3", {
@@ -99,6 +102,33 @@ export default function AiGmTurnStatus({ roomId }: { roomId: string }) {
 
     setStatus(value)
     publishStatus(roomId, value)
+
+    const pendingRollId =
+      value?.phase === "waiting_for_roll" &&
+      value.auto_roll_available === true &&
+      typeof value.pending_roll_request_id === "string"
+        ? value.pending_roll_request_id
+        : ""
+
+    if (pendingRollId && autoRollAttemptRef.current !== pendingRollId) {
+      autoRollAttemptRef.current = pendingRollId
+      void supabase
+        .rpc("resolve_player_roll_request_v1", {
+          p_request_id: pendingRollId,
+        })
+        .then(({ error: rollError }) => {
+          if (rollError) {
+            console.warn("[ai-gm] automatic player roll failed", rollError.message)
+            return
+          }
+          window.dispatchEvent(
+            new CustomEvent(CHAT_MESSAGE_SENT_EVENT, {
+              detail: { roomId },
+            }),
+          )
+          void refresh()
+        })
+    }
 
     const wakeKey =
       value?.wake_required && value.commit_id
