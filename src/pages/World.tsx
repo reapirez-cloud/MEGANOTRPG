@@ -8,6 +8,7 @@ import { ZoneHabitatNpcsSheet } from "../components/world/NpcZoneHabitatSheet"
 import WorldEditor from "../components/world/WorldEditor"
 import type { WorldEditorMode } from "../components/world/WorldEditor"
 import WorldMapView from "../components/world/WorldMapView"
+import WorldLoreFeed from "../components/world/WorldLoreFeed"
 import { useCharacters } from "../context/CharacterContext"
 import { useLongPressItem } from "../hooks/useLongPressItem"
 import { useNpcZoneHabitats } from "../hooks/useNpcZoneHabitats"
@@ -95,7 +96,7 @@ export default function World() {
   const world = useWorldContent()
   const state = useWorldState()
   const habitats = useNpcZoneHabitats()
-  const [viewMode, setViewMode] = useState<"lore" | "map">("lore")
+  const [viewMode, setViewMode] = useState<"lore" | "atlas" | "map">("lore")
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [editor, setEditor] = useState<WorldEditorMode>(null)
   const [menuTarget, setMenuTarget] = useState<MenuTarget | null>(null)
@@ -326,10 +327,13 @@ export default function World() {
     <div className="world-v2">
       <nav className="world-mode-nav" role="tablist" aria-label="Представление мира">
         <button type="button" role="tab" aria-selected={viewMode === "lore"} className={viewMode === "lore" ? "is-active" : ""} onClick={() => setViewMode("lore")}>ЛОР</button>
+        <button type="button" role="tab" aria-selected={viewMode === "atlas"} className={viewMode === "atlas" ? "is-active" : ""} onClick={() => setViewMode("atlas")}>АТЛАС</button>
         <button type="button" role="tab" aria-selected={viewMode === "map"} className={viewMode === "map" ? "is-active" : ""} onClick={() => setViewMode("map")}>КАРТА</button>
       </nav>
 
-      {viewMode === "map" ? (
+      {viewMode === "lore" ? (
+        <WorldLoreFeed entries={world.loreEntries}/>
+      ) : viewMode === "map" ? (
         <WorldMapView
           locations={world.locations}
           sections={world.locationSections}
