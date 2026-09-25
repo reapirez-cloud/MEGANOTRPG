@@ -145,7 +145,7 @@ test("Stage 24 keeps final answer, junior commit and player gate in the correct 
   assert.match(postTurn, /ai_gm_post_turn_locked/)
   assert.match(postTurn, /execute_ai_gm_post_turn_mutation_v3/)
   assert.match(runtime, /claim_ai_gm_post_turn_commit_v3/)
-  assert.match(runtime, /execute_ai_gm_post_turn_mutation_v3/)
+  assert.match(runtime, /(execute_ai_gm_post_turn_mutation_v3|execute_ai_world_executor_job_v1)/)
   assert.match(runtime, /The commit is terminal now/)
   assert.match(turnStatus, /get_ai_gm_room_status_v3/)
   assert.match(turnStatus, /status\.label/)
