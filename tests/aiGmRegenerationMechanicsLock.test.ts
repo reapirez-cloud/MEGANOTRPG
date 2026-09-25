@@ -22,6 +22,9 @@ test("regeneration can inherit a resolved player roll without rerolling mechanic
   assert.match(runtime, /REGENERATION WITH LOCKED MECHANICS/)
   assert.match(runtime, /inherited_scene_actor_tool_runs/)
   assert.match(runtime, /let forceFinalWithoutTools = replayMechanicsLocked/)
+  assert.match(runtime, /REGENERATION MECHANICS LOCK/)
+  assert.match(runtime, /forbiddenReplayMode/)
+  assert.match(runtime, /replayPostTurnIntents\.length > 0/)
 
   assert.match(migration, /reserve_ai_gm_replay_preserving_roll_v1/)
   assert.match(migration, /v_mode <> 'regenerate'/)
