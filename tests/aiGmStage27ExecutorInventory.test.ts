@@ -93,5 +93,8 @@ test("Stage 27 Executor closes the Stage 26 post-turn cascade gap", () => {
 
 test("Stage 27 is recorded in the master roadmap", () => {
   assert.match(roadmap, /## Stage 27 — Deterministic Executor \+ Inventory Commit/)
-  assert.match(roadmap, /\*\*Status: IMPLEMENTED/)
+  assert.match(
+    roadmap,
+    /## Stage 27 — Deterministic Executor \+ Inventory Commit[\s\S]*\*\*Status: READY/,
+  )
 })
