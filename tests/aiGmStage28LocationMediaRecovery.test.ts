@@ -67,6 +67,6 @@ test("Stage 27 is READY and Stage 28 is recorded", () => {
   )
   assert.match(
     roadmap,
-    /## Stage 28 — Location Media Recovery \+ Causal Certification/,
+    /## Stage 28 — Location Media Recovery \+ Causal Certification[\s\S]*\*\*Status: READY/,
   )
 })
