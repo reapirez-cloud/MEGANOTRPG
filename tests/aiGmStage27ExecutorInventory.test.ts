@@ -16,6 +16,9 @@ const registry = read(
 const retryBatchMigration = read(
   "supabase/migrations/20260925153500_ai_gm_executor_retry_and_inventory_batch_v1.sql",
 )
+const stackFixMigration = read(
+  "supabase/migrations/20260925154500_ai_gm_inventory_stack_quantity_commands_fix_v1.sql",
+)
 const roadmap = read("docs/AI_WORLD_EVOLUTION_MASTER_ROADMAP.md")
 
 test("Stage 27 introduces a typed deterministic Executor queue", () => {
@@ -116,4 +119,10 @@ test("Stage 27 can atomically settle purchases and trades", () => {
   assert.match(retryBatchMigration, /jsonb_array_length\(v_args->'deltas'\)>16/)
   assert.match(retryBatchMigration, /inventory_executor_batch_character_mismatch/)
   assert.match(retryBatchMigration, /public\.ai_gm_commit_inventory_delta_v1\([\s\S]*v_batch_delta/)
+})
+
+test("Stage 27 changes stack quantities without re-authoring item definitions", () => {
+  assert.match(stackFixMigration, /to_jsonb\(v_existing\)[\s\S]*'quantity'/)
+  assert.match(stackFixMigration, /public\.update_inventory_item_v2/)
+  assert.doesNotMatch(stackFixMigration, /public\.update_inventory_item_v3/)
 })
