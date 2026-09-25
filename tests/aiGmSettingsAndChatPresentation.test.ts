@@ -27,7 +27,11 @@ test("AI GM settings are mounted outside the animated workspace stage", () => {
 })
 
 test("AI GM settings are a dedicated full-screen route without the agent overlay", () => {
-  assert.match(app, /route\.type !== "ai-gm" \? <AgentShell \/> : null/)
+  assert.match(app, /if \(route\.type === "ai-gm"\) \{[\s\S]*u1-app u1-app--ai-gm/)
+  assert.doesNotMatch(
+    app.match(/if \(route\.type === "ai-gm"\) \{[\s\S]*?\n  \}/)?.[0] || "",
+    /AgentShell/,
+  )
   assert.match(controlCss, /\.u1-ai-gm-control\s*\{[\s\S]*position:\s*fixed/)
   assert.match(controlCss, /\.u1-ai-gm-control\s*\{[\s\S]*inset:\s*0/)
   assert.match(controlCss, /\.u1-ai-gm-control\s*\{[\s\S]*z-index:\s*120/)
