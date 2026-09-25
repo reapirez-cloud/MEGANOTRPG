@@ -466,6 +466,28 @@ const AI_SURVIVAL_EXECUTOR_TOOL = {
           type: "string",
           enum: ["none", "short_rest", "long_rest"],
         },
+        participant_character_ids: {
+          type: "array",
+          maxItems: 16,
+          items: { type: "string" },
+          description:
+            "Runtime-authoritative PC ids physically present in the same shared scene. Copy exactly from immutable intent; never add/remove ids.",
+        },
+        shared_sleep: {
+          type: "boolean",
+          description:
+            "True only when the published scene establishes that all listed scene participants slept for sleep_minutes.",
+        },
+        shared_rest: {
+          type: "boolean",
+          description:
+            "True only when the published scene establishes that all listed scene participants received the same short/long rest.",
+        },
+        shared_exertion: {
+          type: "boolean",
+          description:
+            "True only when the heavy exertion explicitly affected all listed scene participants; otherwise extra depletion applies only to the source PC.",
+        },
         food: {
           type: "array",
           maxItems: 8,
@@ -508,6 +530,7 @@ const STAGE18_POST_TURN_WORKER_SYSTEM = [
   "Для inventory intent используй только commit_inventory_delta. Для grant ты не создаёшь definition напрямую: дай semantic card, после чего серверный Item Registry ОБЯЗАН сначала искать system/campaign definitions и только при реальном отсутствии создать одну campaign-definition. Лишь resolved definition_id + revision передаются Cheburashka.",
   "AI Survival: если immutable intent имеет intent_key=survival_turn или instruction.operation=commit_survival_turn, используй ТОЛЬКО commit_survival_turn и буквально перенеси structured arguments из instruction. Не пересчитывай время, еду, сон или нагрузку сам.",
   "В survival food используй только item_id из canonical_inventory_for_present_characters. Не создавай второй inventory intent для той же съеденной еды: commit_survival_turn списывает её атомарно сам.",
+  "Stage 4 co-op: participant_character_ids уже вычислены runtime из физически присутствующих PC и immutable intent. Копируй их без изменений. shared_sleep/shared_rest/shared_exertion тоже копируй буквально из intent, не расширяй область эффекта сам.",
   "Сразу классифицируй grant: canonical_name, category, semantic_role, короткие aliases/tags. Это каталогизация, а не новая механика. Не добавляй сценовые эпитеты в canonical_name: «окровавленный меч из канавы» для обычного longsword должен резолвиться как стандартный длинный меч, если опубликованный канон не установил отдельную идентичность.",
   "Для действительно уникального/именного предмета ставь unique_identity=true и стабильный identity_key, основанный на его канонической личности, а не на случайном UUID. Повторное появление той же вещи должно находить ту же definition.",
   "Если опубликовано получение D&D-монет, используй currency_key cp|sp|ep|gp|pp; сервер ищет системное определение номинала. Не создавай новую definition монеты.",
@@ -940,7 +963,9 @@ const STAGE12_GAME_MASTER_SYSTEM = [
   "Голод не должен превращать игру в симулятор кухни: базовая сытость рассчитана примерно на 48 часов без еды, бодрость примерно на 72 часа без сна. Не придумывай дополнительные штрафы: сервер сам вычисляет стадии и d20 pressure.",
   "При реально тяжёлой физической нагрузке ты МОЖЕШЬ дополнительно уменьшить сытость и/или бодрость через extra_*_depletion. Обычно это 0; используй положительное значение только когда нагрузка явно существенная. Сервер ограничивает каждый extra-параметр диапазоном 0..25.",
   "Если source_character реально съел еду из canonical_inventory_for_present_characters, добавь её в survival_turn.food как {item_id,quantity,satiety_restore}. Сам оцени насыщение по виду, объёму и контексту еды; нормальная плотная еда может восстановить вплоть до 100%, сервер обрежет итог до шкалы 100. Не создавай отдельный inventory intent для этой же еды.",
-  "Если персонаж спит, укажи sleep_minutes. Восстановление бодрости считает сервер; 8 часов реального сна способны вернуть полную шкалу. Для полноценного short/long rest дополнительно укажи rest_type, и сервер сам продвинет время и вызовет существующее восстановление ресурсов.",
+  "Если персонаж спит, укажи sleep_minutes. Восстановление бодрости считает сервер; 8 часов реального сна способны вернуть полную шкалу. Если из видимого ответа ясно, что спит вся физически присутствующая группа, ставь shared_sleep=true; иначе false.",
+  "Для полноценного short/long rest укажи rest_type. shared_rest=true только когда этот же отдых явно получили все физически присутствующие PC; иначе отдых применяется source PC. Время общей сцены всё равно проходит для всех.",
+  "Для тяжёлой нагрузки shared_exertion=true только когда одна и та же нагрузка явно затронула всю группу, например общий форсированный марш. Иначе extra_* относится только к source PC.",
   "Точное current_game_time.campaignMinute является каноническим временем. campaignDay/dayPeriod остаются совместимым отображением. Не округляй длительные действия обратно до периода суток.",
   "Для travel сначала проверь source_location_structure.transitions. Если фактически пройденный прямой маршрут содержит travel_minutes, используй именно это значение как elapsed_minutes; не переоценивай его моделью. Если канонической длительности нет, оцени разумно по сцене.",
   "Stage 18: НЕ задерживай финальный ответ ради обычного world bookkeeping. Если в уже написанном финальном ответе появился новый канонический факт, который можно записать ПОСЛЕ публикации, добавь bounded post_turn_intents. Игрок сначала увидит ответ, затем младший worker синхронизирует базу, а сервер до конца синхронизации не примет следующий free-form ход.",
@@ -2279,6 +2304,19 @@ function parseReaction(
       })
     : []
 
+  const sharedSceneParticipantIds = Array.from(new Set([
+    String(context.sourceCharacter.id || ""),
+    ...(context.sourceAudience.scope === "scene"
+      ? context.presentCharacters
+          .filter(
+            (character) =>
+              character.character_type === "pc" &&
+              character.life_state === "alive",
+          )
+          .map((character) => String(character.id || ""))
+      : []),
+  ].filter(Boolean))).slice(0, 16)
+
   const survivalPlan = {
     elapsed_minutes: survivalElapsed,
     time_reason: survivalReason,
@@ -2286,6 +2324,10 @@ function parseReaction(
     extra_alertness_depletion: normalizedExtra(rawSurvival.extra_alertness_depletion),
     sleep_minutes: survivalSleepMinutes,
     rest_type: survivalRestType,
+    participant_character_ids: sharedSceneParticipantIds,
+    shared_sleep: rawSurvival.shared_sleep === true,
+    shared_rest: rawSurvival.shared_rest === true,
+    shared_exertion: rawSurvival.shared_exertion === true,
     food: survivalFood,
   }
 
