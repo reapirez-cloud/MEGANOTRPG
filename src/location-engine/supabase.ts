@@ -14,9 +14,9 @@ export class SupabaseLarisaStorage implements LarisaStorage {
 
   async loadCampaignSnapshot(campaignId: string): Promise<LarisaSnapshot> {
     const [stateResult, locationResult, sceneResult, participantResult, surfaceResult, surfaceAccessResult, storageResult] = await Promise.all([
-      this.client.from("character_world_state").select("character_id,campaign_id,location_id,campaign_day,day_period,updated_at,updated_by").eq("campaign_id", campaignId),
+      this.client.from("character_world_state").select("character_id,campaign_id,location_id,campaign_day,day_period,campaign_minute,updated_at,updated_by").eq("campaign_id", campaignId),
       this.client.from("locations").select("id,name,parent_location_id,image_url,visibility_mode,lifecycle_state").eq("campaign_id", campaignId).order("sort_order", { ascending: true }),
-      this.client.from("chat_rooms").select("id,title,location_id,campaign_day,day_period,scene_state,room_state").eq("campaign_id", campaignId).eq("room_type", "scene"),
+      this.client.from("chat_rooms").select("id,title,location_id,campaign_day,day_period,campaign_minute,scene_state,room_state").eq("campaign_id", campaignId).eq("room_type", "scene"),
       this.client.from("scene_participants").select("room_id,character_id"),
       this.client.from("scene_surfaces")
         .select("id,campaign_id,room_id,name,description,access_mode,lifecycle_state,version")
@@ -39,6 +39,7 @@ export class SupabaseLarisaStorage implements LarisaStorage {
         location_id: room.location_id,
         campaign_day: room.campaign_day,
         day_period: room.day_period as DayPeriod,
+        campaign_minute: Number(room.campaign_minute),
         scene_state: room.scene_state as "active" | "closed",
         room_state: room.room_state as "open" | "gm_only" | "closed",
       })) satisfies SceneWorldState[],
