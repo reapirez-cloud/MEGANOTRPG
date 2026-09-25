@@ -109,6 +109,7 @@ export const AI_SURVIVAL_STAGES = [
       "Retry/regenerate never double-advances survival time",
       "Undo restores world time and survival atomically",
       "Colocated convergence remains temporally safe",
+      "Cross-room later participant turns block an unsafe rewind",
       "Four-stage roadmap can be marked certified without hidden follow-up stages",
     ],
   },
