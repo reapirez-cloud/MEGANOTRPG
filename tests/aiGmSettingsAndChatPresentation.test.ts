@@ -25,9 +25,9 @@ test("AI GM settings are a dedicated full-screen route without the agent overlay
   assert.match(app, /path === "ai-gm\/models"/)
   assert.match(app, /path === "ai-gm\/behavior"/)
 
-  assert.match(agentShell, /gmBehavior\?\.ai_world && false/)
-  assert.match(agentShell, /gmBehavior\?\.ai_world && contentProfile && false/)
-  assert.match(agentShell, /gmBehavior\?\.ai_world && directorPreferences && false/)
+  assert.match(agentShell, /className="u1-agent-tools-section" hidden>[\s\S]*Режим ИИ-ГМ/)
+  assert.match(agentShell, /className="u1-agent-tools-section" hidden>[\s\S]*Взрослая тематика/)
+  assert.match(agentShell, /className="u1-agent-tools-section" hidden>[\s\S]*Что мне нравится/)
 })
 
 test("dedicated behavior screen exposes campaign mode, 18 plus, director and runtime controls", () => {
