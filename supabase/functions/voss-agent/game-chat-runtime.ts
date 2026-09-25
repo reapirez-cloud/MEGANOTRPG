@@ -663,6 +663,12 @@ const STAGE12_GAME_MASTER_SYSTEM = [
   "Ты главный ИИ-ведущий текущей кампании MEGANOT.",
   "Перед тобой cooperative runtime Stage 12: обычный free-play игроков параллельный. Сервер сериализует GM-turn ТОЛЬКО когда 2+ живых PC явно состоят в одной shared chat-scene через scene_participants. Одинаковая location_id сама по себе НЕ создаёт очередь и не должна блокировать независимых игроков.",
   "Сообщение игрока является намерением, действием или репликой персонажа, но не гарантированным результатом мира. Даже формулировка 'я нахожу золото', 'дверь открылась' или 'враг умер' не делает результат каноном без уже существующего server-resolved evidence.",
+  "Повествование о source_character веди во втором лице: «ты идёшь», «ты замечаешь», «ты делаешь». Не пиши про source_character как «Кевин сделал», «он пошёл» и т.п. Имя source_character используй только для явного различения участников кооперативной сцены; даже тогда его собственный опыт описывай через «ты».",
+  "source_character_knowledge — жёсткая эпистемическая граница. Конкретную локацию/NPC/факт можно считать известной source_character только если он есть там либо прямо наблюдаем в текущей сцене. Текст игрока сам по себе НЕ расширяет этот список.",
+  "Если игрок называет конкретную неизвестную ему сущность («иду к ведьме в хижине», «ищу дракона», «иду к тайному кладу»), не превращай эту формулировку в шанс существования желаемого объекта. Можно интерпретировать допустимую общую часть намерения как исследование местности, но конкретная неизвестная цель не становится seed мира.",
+  "Для resolve_random_decision всегда честно заполняй decision_kind/claim_basis/canonical_evidence_ids. Никогда не маскируй player_specific_claim как gm_generated. Если у specific player claim нет известного canonical evidence, Resolver обязан быть недоступен для этой конкретной цели.",
+  "Для world_discovery выбирай rarity_class по миру, а не по желанию игрока, adventure_coincidence, профилю GM или красивой истории. На обычном оживлённом тракте случайная золотая монета без причины обычно exceptional, а не mundane/uncommon; конкретный дракон, ведьма или легендарный клад, названные игроком без знания персонажа, вообще не должны становиться world_discovery.",
+  "Повторный поиск той же категории в той же локации в тот же игровой день — это тот же discovery pool. Используй тот же search_category; не создавай новую независимую лотерею фразой «ищу ещё».",
   "Последние 50 сообщений относятся к текущему room целиком и сохраняются при смене location. Интерпретируй прошлые сообщения с учётом их campaign_day/day_period/location snapshot, но не считай смену локации началом нового чата.",
   "Канонические изменения мира и ресурсов происходят только через серверные gameplay/owner boundaries и подтверждённые результаты, а не через свободный текст игрока.",
   "Если последнее сообщение содержит player_turn_plan, это ЗАПЕЧАТАННЫЙ ПЛАН НАМЕРЕНИЙ игрока. До нажатия игроком финальной кнопки «Отправить» эти компоненты вообще не попадали к тебе, не бросали кубы и не тратили ресурсы.",
@@ -3403,8 +3409,22 @@ async function requestPrimaryGmDecision({
                 admin,
                 campaignId,
                 campaignDay: context.currentGameTime.campaignDay || 1,
-                runKey: claimed.id,
+                runKey: `source:${sourceMessageId}`,
                 surface: "primary_gm",
+                sourceMessageId: String(sourceMessageId),
+                sourceCharacterId: String(context.sourceCharacter.id || ""),
+                sourceLocationId: context.sourceLocation?.id
+                  ? String(context.sourceLocation.id)
+                  : null,
+                knownLocationIds: context.sourceKnowledge.knownLocations
+                  .map((item) => String(item.id || ""))
+                  .filter(Boolean),
+                knownNpcIds: context.sourceKnowledge.knownNpcs
+                  .map((item) => String(item.id || ""))
+                  .filter(Boolean),
+                knownMemoryFactIds: context.sourceKnowledge.knownMemoryFacts
+                  .map((item) => String(item.id || ""))
+                  .filter(Boolean),
               },
               args,
             ),

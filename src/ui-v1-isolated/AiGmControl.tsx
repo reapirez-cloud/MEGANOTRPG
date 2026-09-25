@@ -395,11 +395,18 @@ export default function AiGmControl({
         </button>
       </header>
 
-      {!panel?.ai_world ? (
+      {error && !panel ? (
+        <section className="u1-ai-gm-control__empty">
+          <strong>Не удалось загрузить настройки ИИ-ГМ</strong>
+          <p>{error}</p>
+          <button type="button" onClick={() => void load(true)}>
+            Повторить
+          </button>
+        </section>
+      ) : !panel?.ai_world ? (
         <section className="u1-ai-gm-control__empty">
           <strong>Это не ИИ-мир</strong>
           <p>Настройки старшего и младшего ИИ доступны внутри экспериментальной AI-кампании.</p>
-          {error && <p>{error}</p>}
         </section>
       ) : (
         <div className="u1-ai-gm-control__body">

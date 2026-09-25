@@ -10,6 +10,12 @@ export type RandomDecisionContext = {
   campaignDay: number
   runKey: string
   surface: RandomDecisionSurface
+  sourceMessageId?: string
+  sourceCharacterId?: string
+  sourceLocationId?: string | null
+  knownLocationIds?: string[]
+  knownNpcIds?: string[]
+  knownMemoryFactIds?: string[]
 }
 
 export const RESOLVE_RANDOM_DECISION_TOOL = {
@@ -26,6 +32,49 @@ export const RESOLVE_RANDOM_DECISION_TOOL = {
           type: "string",
           description:
             "Short stable local key for this exact uncertainty inside the current GM turn/day run, e.g. patrol_arrives or merchant_recovers. Reusing it with different semantics is rejected.",
+        },
+        decision_kind: {
+          type: "string",
+          enum: ["generic", "world_discovery"],
+          description:
+            "Use world_discovery only when deciding whether a previously-unestablished searched-for thing/place/creature/valuable exists in the current world area. Presence/state of an already-known entity is generic.",
+        },
+        claim_basis: {
+          type: "string",
+          enum: [
+            "canonical_context",
+            "gm_generated",
+            "player_specific_claim",
+            "generic_search",
+          ],
+          description:
+            "Where the uncertainty came from. A specific target named only by the player's message is player_specific_claim, never gm_generated.",
+        },
+        canonical_evidence_ids: {
+          type: "array",
+          maxItems: 16,
+          items: { type: "string" },
+          description:
+            "Canonical known location/NPC/memory-fact ids that justify a specific player target. Use [] when none exist.",
+        },
+        rarity_class: {
+          type: "string",
+          enum: ["mundane", "uncommon", "rare", "exceptional", "legendary"],
+          description:
+            "Required for world_discovery. Choose from world context, never from the player's desire or GM behavior profile.",
+        },
+        search_category: {
+          type: "string",
+          enum: [
+            "valuables",
+            "supplies",
+            "tracks",
+            "hidden_places",
+            "creatures",
+            "other",
+          ],
+          description:
+            "Required for world_discovery. Stable category for the same area/day so repeated searches reuse one committed discovery pool.",
         },
         question: {
           type: "string",
@@ -61,6 +110,11 @@ export const RESOLVE_RANDOM_DECISION_TOOL = {
               description: { type: "string" },
               min: { type: "integer", minimum: 1, maximum: 100 },
               max: { type: "integer", minimum: 1, maximum: 100 },
+              target_present: {
+                type: "boolean",
+                description:
+                  "Required for world_discovery. True only when this band establishes the searched-for target/category as present in the area.",
+              },
               payload: { type: "object", additionalProperties: true },
             },
             required: ["key", "description", "min", "max"],
@@ -69,6 +123,9 @@ export const RESOLVE_RANDOM_DECISION_TOOL = {
       },
       required: [
         "decision_key",
+        "decision_kind",
+        "claim_basis",
+        "canonical_evidence_ids",
         "question",
         "reason",
         "target_scope",
@@ -151,6 +208,24 @@ function cleanBands(value: unknown) {
   return result
 }
 
+const DISCOVERY_MAX_PRESENT_PERCENT = {
+  mundane: 65,
+  uncommon: 25,
+  rare: 8,
+  exceptional: 2,
+  legendary: 1,
+} as const
+
+function stringList(value: unknown, limit = 16) {
+  return Array.isArray(value)
+    ? value
+        .filter((item): item is string => typeof item === "string")
+        .map((item) => item.trim())
+        .filter(Boolean)
+        .slice(0, limit)
+    : []
+}
+
 function fullDecisionKey(
   surface: RandomDecisionSurface,
   runKey: string,
@@ -172,7 +247,25 @@ export async function executeRandomDecision(
   const targetScope = text(args.target_scope, 32).toLowerCase()
   const targetId = text(args.target_id, 240)
   const outcomeBands = cleanBands(args.outcome_bands)
+  const decisionKind = text(args.decision_kind, 40).toLowerCase()
+  const claimBasis = text(args.claim_basis, 64).toLowerCase()
+  const rarityClass = text(args.rarity_class, 40).toLowerCase()
+  const searchCategory = text(args.search_category, 64).toLowerCase()
+  const canonicalEvidenceIds = stringList(args.canonical_evidence_ids)
 
+  if (!["generic", "world_discovery"].includes(decisionKind)) {
+    throw new Error("random_decision_kind_invalid")
+  }
+  if (
+    ![
+      "canonical_context",
+      "gm_generated",
+      "player_specific_claim",
+      "generic_search",
+    ].includes(claimBasis)
+  ) {
+    throw new Error("random_decision_claim_basis_invalid")
+  }
   if (!question) throw new Error("random_decision_question_required")
   if (!reason) throw new Error("random_decision_reason_required")
   if (!["world", "npc", "location", "scene_actor"].includes(targetScope)) {
@@ -183,10 +276,81 @@ export async function executeRandomDecision(
     throw new Error("random_decision_campaign_day_invalid")
   }
 
+  const knownEvidence = new Set([
+    ...(context.knownLocationIds || []),
+    ...(context.knownNpcIds || []),
+    ...(context.knownMemoryFactIds || []),
+  ])
+
+  if (
+    context.surface === "primary_gm" &&
+    claimBasis === "player_specific_claim" &&
+    !canonicalEvidenceIds.some((id) => knownEvidence.has(id))
+  ) {
+    throw new Error("random_decision_player_specific_claim_unknown")
+  }
+
+  let decisionRunKey = context.runKey
+  let decisionLocalKey = localKey
+
+  if (decisionKind === "world_discovery") {
+    if (
+      !["mundane", "uncommon", "rare", "exceptional", "legendary"].includes(
+        rarityClass,
+      )
+    ) {
+      throw new Error("random_decision_discovery_rarity_required")
+    }
+    if (
+      ![
+        "valuables",
+        "supplies",
+        "tracks",
+        "hidden_places",
+        "creatures",
+        "other",
+      ].includes(searchCategory)
+    ) {
+      throw new Error("random_decision_search_category_required")
+    }
+
+    const presenceFlags = outcomeBands.map((band) =>
+      (band as JsonRecord).target_present
+    )
+    if (presenceFlags.some((value) => typeof value !== "boolean")) {
+      throw new Error("random_decision_discovery_presence_flags_required")
+    }
+
+    const presentPercent = outcomeBands.reduce((total, band) => {
+      const row = band as JsonRecord
+      return row.target_present === true
+        ? total + Number(row.max) - Number(row.min) + 1
+        : total
+    }, 0)
+    const maxPresent =
+      DISCOVERY_MAX_PRESENT_PERCENT[
+        rarityClass as keyof typeof DISCOVERY_MAX_PRESENT_PERCENT
+      ]
+    if (presentPercent > maxPresent) {
+      throw new Error("random_decision_discovery_probability_too_high")
+    }
+
+    if (context.surface === "primary_gm") {
+      decisionRunKey = [
+        "day",
+        String(context.campaignDay),
+        targetScope,
+        targetId,
+        searchCategory,
+      ].join(":")
+      decisionLocalKey = "discovery_pool"
+    }
+  }
+
   const decisionKey = fullDecisionKey(
     context.surface,
-    context.runKey,
-    localKey,
+    decisionRunKey,
+    decisionLocalKey,
   )
 
   // Stage 11 protocol is intentionally two RPCs.
@@ -198,7 +362,7 @@ export async function executeRandomDecision(
     p_question: question,
     p_bands: outcomeBands,
     p_campaign_day: context.campaignDay,
-    p_run_key: context.runKey,
+    p_run_key: decisionRunKey,
     p_target_scope: targetScope,
     p_target_id: targetId,
     p_caller_surface: context.surface,
@@ -227,6 +391,11 @@ export async function executeRandomDecision(
     matched_outcome_key: receipt.matched_outcome_key,
     matched_outcome: matched,
     outcome_bands: resolution.outcome_bands,
+    decision_kind: decisionKind,
+    claim_basis: claimBasis,
+    rarity_class: decisionKind === "world_discovery" ? rarityClass : null,
+    search_category: decisionKind === "world_discovery" ? searchCategory : null,
+    canonical_evidence_ids: canonicalEvidenceIds,
     commit_replayed: commit.replayed === true,
     roll_replayed: resolution.replayed === true,
     instruction:

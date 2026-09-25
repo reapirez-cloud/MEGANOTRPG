@@ -51,6 +51,11 @@ export type Stage2GameChatContext = {
     projectedMessageCount: number
     recentMessageJsonBytes: number
   }
+  sourceKnowledge: {
+    knownLocations: JsonRecord[]
+    knownNpcs: JsonRecord[]
+    knownMemoryFacts: JsonRecord[]
+  }
   mentionedPlayerCharacters: Array<{ id: string; name: string }>
 }
 
@@ -630,6 +635,8 @@ export async function buildGameChatContextV2({
     roomMembersResult,
     memoryFactsResult,
     memorySummariesResult,
+    locationDiscoveriesResult,
+    npcDiscoveriesResult,
   ] = await Promise.all([
     admin
       .from("chat_rooms")
@@ -664,6 +671,14 @@ export async function buildGameChatContextV2({
       .eq("status", "active")
       .order("updated_at", { ascending: false })
       .limit(24),
+    admin
+      .from("character_location_discoveries")
+      .select("location_id,discovered_at,source")
+      .eq("character_id", sourceCharacterId),
+    admin
+      .from("character_npc_discoveries")
+      .select("npc_character_id,discovered_at,source,source_message_id,last_interaction_at")
+      .eq("character_id", sourceCharacterId),
   ])
 
   const firstError =
@@ -672,7 +687,9 @@ export async function buildGameChatContextV2({
     worldStatesResult.error ||
     roomMembersResult.error ||
     memoryFactsResult.error ||
-    memorySummariesResult.error
+    memorySummariesResult.error ||
+    locationDiscoveriesResult.error ||
+    npcDiscoveriesResult.error
 
   if (firstError) throw new Error(firstError.message)
 
@@ -783,9 +800,19 @@ export async function buildGameChatContextV2({
       new TextEncoder().encode(JSON.stringify(recentMessages)).length,
   }
 
+  const discoveredLocationRows = rows(locationDiscoveriesResult.data)
+  const discoveredNpcRows = rows(npcDiscoveriesResult.data)
+  const discoveredLocationIds = unique(
+    discoveredLocationRows.map((item) => nullableString(item.location_id)),
+  )
+  const discoveredNpcIds = unique(
+    discoveredNpcRows.map((item) => nullableString(item.npc_character_id)),
+  )
+
   const locationIds = unique(
     worldStates.map((item) => nullableString(item.location_id))
-      .concat(sourceLocationId ? [sourceLocationId] : []),
+      .concat(sourceLocationId ? [sourceLocationId] : [])
+      .concat(discoveredLocationIds),
   )
   const locationsResult = locationIds.length
     ? await admin
@@ -1383,6 +1410,65 @@ export async function buildGameChatContextV2({
     })
     .map((player) => ({ id: String(player.id), name: String(player.name) }))
 
+  const knownLocationIds = new Set(
+    unique(discoveredLocationIds.concat(sourceLocationId ? [sourceLocationId] : [])),
+  )
+  const knownNpcIds = new Set(
+    unique(
+      discoveredNpcIds.concat(
+        presentCharacters
+          .filter((item) => item.character_type === "npc")
+          .map((item) => nullableString(item.id)),
+      ),
+    ),
+  )
+  const knownLocations = [...knownLocationIds]
+    .map((id) => locationById.get(id))
+    .filter((item): item is JsonRecord => Boolean(item))
+    .map((item) => ({
+      id: item.id,
+      name: item.name,
+      summary: boundedText(item.summary, 500),
+      parent_location_id: item.parent_location_id,
+      discovery: discoveredLocationRows.find(
+        (row) => String(row.location_id) === String(item.id),
+      ) || null,
+    }))
+    .slice(0, 80)
+  const knownNpcs = characters
+    .filter((item) => knownNpcIds.has(String(item.id)))
+    .map((item) => ({
+      id: item.id,
+      name: item.name,
+      character_type: item.character_type,
+      life_state: item.life_state,
+      discovery: discoveredNpcRows.find(
+        (row) => String(row.npc_character_id) === String(item.id),
+      ) || null,
+    }))
+    .slice(0, 80)
+  const knownMemoryFacts = rows(memoryFactsResult.data)
+    .filter((item) => {
+      const visibility = nullableString(item.visibility) || "campaign"
+      if (visibility === "gm") return false
+      if (visibility === "campaign") return true
+      if (visibility === "room") return item.room_id === roomId
+      return strings(item.visible_character_ids).includes(sourceCharacterId)
+    })
+    .filter((item) =>
+      memorySourceSetVisibleAtGameDay(strings(item.source_event_ids))
+    )
+    .map((item) => ({
+      id: item.id,
+      fact_key: item.fact_key,
+      subject_type: item.subject_type,
+      subject_id: item.subject_id,
+      predicate: item.predicate,
+      statement: boundedText(item.statement, 700),
+      room_id: item.room_id,
+    }))
+    .slice(0, 32)
+
   return {
     room,
     sourceCharacter: {
@@ -1429,6 +1515,11 @@ export async function buildGameChatContextV2({
     temporalSync,
     recentMessages,
     contextMetrics,
+    sourceKnowledge: {
+      knownLocations,
+      knownNpcs,
+      knownMemoryFacts,
+    },
     mentionedPlayerCharacters,
   }
 }
@@ -1601,6 +1692,8 @@ export function stage2ContextForPrompt(context: Stage2GameChatContext) {
       unnamed_mechanical_extras_use_scene_actors_not_characters: true,
       scene_actor_runtime_ordinal_is_not_a_personal_name: true,
       worker_commands_are_not_narrative_memory: true,
+      player_claims_do_not_expand_character_knowledge: true,
+      unknown_specific_player_targets_cannot_seed_world_discovery: true,
     },
     current_game_time: context.currentGameTime,
     source_audience: context.sourceAudience,
@@ -1630,6 +1723,13 @@ export function stage2ContextForPrompt(context: Stage2GameChatContext) {
           temporal_status: context.sourceLocation.temporal_status,
         }
       : null,
+    source_character_knowledge: {
+      known_locations: context.sourceKnowledge.knownLocations,
+      known_npcs: context.sourceKnowledge.knownNpcs,
+      known_memory_facts: context.sourceKnowledge.knownMemoryFacts,
+      rule:
+        "Only these discoveries/facts plus directly observable current-scene evidence may justify a PC intentionally targeting a specific location/NPC/fact. Player wording alone is not knowledge.",
+    },
     participating_players: context.players.slice(0, 16),
     characters_physically_present_with_source: compactCharacters,
     canonical_sheets_for_present_characters: compactSheets,
@@ -1792,6 +1892,7 @@ export function stage2ContextForPrompt(context: Stage2GameChatContext) {
     room: payload.room,
     source_character: payload.source_character,
     source_location: payload.source_location,
+    source_character_knowledge: payload.source_character_knowledge,
     participating_players: payload.participating_players,
     characters_physically_present_with_source:
       payload.characters_physically_present_with_source,

@@ -1612,3 +1612,39 @@ Stages 16–20 keep runtime bounded, make turns non-blocking where possible, kee
 Stages 21–23 make campaign style configurable without letting GM profile, player preference or content mode overrule canon, dice or NPC autonomy.
 
 Stage 24 certifies the whole stack end to end.
+
+
+---
+
+## Stage 25 — AI-GM causal resolver hardening
+
+**Status: IMPLEMENTED — 2026-09-25**
+
+This stage hardens the current AI-GM without pulling cascade materialization or
+inventory execution forward from the next stages.
+
+Implemented contracts:
+
+- AI-GM settings load failures are distinct from a genuine non-AI campaign.
+- The junior model selector helper has an explicit authenticated EXECUTE repair.
+- Narration addresses the source PC in second person instead of defaulting to
+  third-person name/pronoun narration.
+- The primary GM receives an explicit source-character knowledge projection from
+  location discoveries, NPC discoveries and player-visible memory facts.
+- Player wording does not add knowledge and an unknown specific player target
+  cannot seed Resolver without known canonical evidence.
+- Resolver calls classify generic uncertainty vs world discovery and record
+  claim basis plus evidence provenance.
+- World discovery requires a conservative rarity class and server-capped
+  presence probability: mundane 65%, uncommon 25%, rare 8%, exceptional 2%,
+  legendary 1%.
+- Repeated world discovery in the same target/category/day reuses one stable
+  discovery-pool decision key.
+- Primary-GM randomness keys are source-message-stable so regenerate cannot
+  obtain a fresh world merely because a new job UUID was created.
+
+Explicitly deferred:
+
+- cascade location topology/materialization: Stage 26;
+- executor and inventory canonical commits: Stage 27;
+- location media repair and final cross-system E2E: Stage 28.
