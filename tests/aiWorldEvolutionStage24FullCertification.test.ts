@@ -226,15 +226,17 @@ test("Stage 24 retains human-GM, maintenance, quest and rest regressions", () =>
   assert.match(restRegression, /test\(/)
 })
 
-test("Stage 24 closes the 24-stage contract only with all certification artifacts present", () => {
+test("Stage 24 remains a certified 1-24 baseline when later stages are added", () => {
   assert.deepEqual(validateAiWorldEvolutionContract(), [])
-  assert.equal(AI_WORLD_EVOLUTION_STAGES.length, 24)
+  assert.ok(AI_WORLD_EVOLUTION_STAGES.length >= 24)
   assert.equal(
     AI_WORLD_EVOLUTION_STAGES.find((stage) => stage.id === 24)?.status,
     "certified",
   )
   assert.equal(
-    AI_WORLD_EVOLUTION_STAGES.some((stage) => stage.status === "planned"),
+    AI_WORLD_EVOLUTION_STAGES
+      .filter((stage) => stage.id <= 24)
+      .some((stage) => stage.status === "planned"),
     false,
   )
   assert.match(roadmap, /## Stage 24 — Full certification/)
