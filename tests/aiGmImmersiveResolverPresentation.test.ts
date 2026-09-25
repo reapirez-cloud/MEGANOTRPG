@@ -63,7 +63,7 @@ test("adult mode is framed to the model as permission, not censorship plumbing",
   )
 
   assert.match(gmPrompt, /разрешены зрелые темы/)
-  assert.match(gmPrompt, /не добавляй автоматические эвфемизмы/)
+  assert.match(gmPrompt, /не добавляй автоматические эвфемизмы/i)
   assert.doesNotMatch(gmPrompt, /provider|policy|jailbreak|цензур/i)
   assert.doesNotMatch(npcPrompt, /provider|policy|jailbreak|цензур/i)
 })
