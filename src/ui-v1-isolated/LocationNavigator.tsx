@@ -270,6 +270,19 @@ function LocationDetailConnection({
   const snake = useSnake()
   const storages = world.storages.filter((storage) => storage.location_id === location.id)
   const canCreateStorage = world.canManage || Boolean(world.activeCharacterId)
+  const [retryingMedia, setRetryingMedia] = useState(false)
+  const mediaStatusText =
+    location.media_status === "queued"
+      ? "Арт локации в очереди"
+      : location.media_status === "running"
+        ? "Создаётся арт локации…"
+        : location.media_status === "failed"
+          ? "Не удалось создать арт локации"
+          : location.media_status === "cancelled"
+            ? "Генерация арта отменена"
+            : location.media_status === "completed"
+              ? "Арт локации пока недоступен"
+              : "Арт появится после первого посещения"
   const hasText = Boolean(
     location.summary.trim() ||
     location.description.trim() ||
@@ -313,12 +326,39 @@ function LocationDetailConnection({
       </header>
 
       <article className="u1-entity-detail">
-        {location.display_image_url && (
-          <div className="u1-entity-detail__hero">
+        <div
+          className="u1-entity-detail__hero"
+          data-media-status={location.media_status}
+        >
+          {location.display_image_url ? (
             <img src={location.display_image_url} alt="" draggable={false} />
-            <span aria-hidden="true" />
-          </div>
-        )}
+          ) : (
+            <div className="u1-entity-detail__hero-placeholder" aria-live="polite">
+              <span className="u1-entity-detail__hero-mark" aria-hidden="true">◫</span>
+              <strong>{mediaStatusText}</strong>
+              {location.media_error && world.canManage && (
+                <small>{location.media_error}</small>
+              )}
+              {location.media_can_retry && world.canManage && (
+                <button
+                  type="button"
+                  disabled={retryingMedia}
+                  onClick={async () => {
+                    setRetryingMedia(true)
+                    try {
+                      await world.retryLocationMedia(location.id)
+                    } finally {
+                      setRetryingMedia(false)
+                    }
+                  }}
+                >
+                  {retryingMedia ? "Запускаю…" : "Повторить генерацию"}
+                </button>
+              )}
+            </div>
+          )}
+          <span className="u1-entity-detail__hero-scrim" aria-hidden="true" />
+        </div>
 
         <div className="u1-entity-detail__copy">
           {location.summary.trim() && <p className="u1-entity-detail__lead">{location.summary}</p>}
