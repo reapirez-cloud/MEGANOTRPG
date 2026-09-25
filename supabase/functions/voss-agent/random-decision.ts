@@ -195,6 +195,9 @@ function cleanBands(value: unknown) {
       description,
       min,
       max,
+      ...(typeof row.target_present === "boolean"
+        ? { target_present: row.target_present }
+        : {}),
       ...(row.payload && typeof row.payload === "object" && !Array.isArray(row.payload)
         ? { payload: row.payload as JsonRecord }
         : {}),
@@ -319,6 +322,21 @@ export async function executeRandomDecision(
     )
     if (presenceFlags.some((value) => typeof value !== "boolean")) {
       throw new Error("random_decision_discovery_presence_flags_required")
+    }
+
+    for (const band of outcomeBands) {
+      const row = band as JsonRecord
+      const payload = record(row.payload)
+      const worldExistence = text(payload.stage17_world_existence, 16).toLowerCase()
+      if (worldExistence !== "exists" && worldExistence !== "absent") {
+        throw new Error("random_decision_discovery_world_existence_required")
+      }
+      if (
+        (row.target_present === true && worldExistence !== "exists") ||
+        (row.target_present === false && worldExistence !== "absent")
+      ) {
+        throw new Error("random_decision_discovery_world_existence_mismatch")
+      }
     }
 
     const presentPercent = outcomeBands.reduce((total, band) => {
