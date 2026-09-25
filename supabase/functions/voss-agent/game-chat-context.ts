@@ -15,6 +15,7 @@ export type Stage2GameChatContext = {
   sourceCharacter: JsonRecord
   sourceLocation: JsonRecord | null
   sourceLocationChildren: JsonRecord[]
+  sourceLocationTransitions: JsonRecord[]
   currentGameTime: {
     campaignDay: number | null
     dayPeriod: string | null
@@ -899,6 +900,61 @@ export async function buildGameChatContextV2({
   }
   const sourceLocationChildren = rows(sourceLocationChildrenResult.data)
 
+  const sourceSectionsResult = sourceLocationId
+    ? await admin
+        .from("location_sections")
+        .select("id")
+        .eq("location_id", sourceLocationId)
+        .limit(80)
+    : { data: [], error: null }
+
+  if (sourceSectionsResult.error) {
+    throw new Error(sourceSectionsResult.error.message)
+  }
+  const sourceSectionIds = rows(sourceSectionsResult.data)
+    .map((item) => nullableString(item.id))
+    .filter((id): id is string => Boolean(id))
+
+  const sourceTransitionsResult = sourceSectionIds.length
+    ? await admin
+        .from("location_links")
+        .select("id,section_id,target_location_id,label,visibility_mode,sort_order,travel_minutes")
+        .in("section_id", sourceSectionIds)
+        .order("sort_order", { ascending: true })
+        .limit(80)
+    : { data: [], error: null }
+
+  if (sourceTransitionsResult.error) {
+    throw new Error(sourceTransitionsResult.error.message)
+  }
+
+  const transitionRows = rows(sourceTransitionsResult.data)
+  const transitionTargetIds = unique(
+    transitionRows.map((item) => nullableString(item.target_location_id)),
+  )
+  const transitionTargetsResult = transitionTargetIds.length
+    ? await admin
+        .from("locations")
+        .select("id,name,lifecycle_state")
+        .eq("campaign_id", campaignId)
+        .in("id", transitionTargetIds)
+    : { data: [], error: null }
+
+  if (transitionTargetsResult.error) {
+    throw new Error(transitionTargetsResult.error.message)
+  }
+
+  const transitionTargetById = new Map(
+    rows(transitionTargetsResult.data).map((item) => [String(item.id), item]),
+  )
+  const sourceLocationTransitions = transitionRows.map((item) => ({
+    ...item,
+    target_location_name:
+      transitionTargetById.get(String(item.target_location_id))?.name || null,
+    target_lifecycle_state:
+      transitionTargetById.get(String(item.target_location_id))?.lifecycle_state || null,
+  }))
+
   const sceneActorsResult = sourceLocationId
     ? await admin
         .from("ai_scene_actors")
@@ -1513,6 +1569,7 @@ export async function buildGameChatContextV2({
     },
     sourceLocation,
     sourceLocationChildren,
+    sourceLocationTransitions,
     currentGameTime: {
       campaignDay: currentDay,
       dayPeriod: currentPeriod,
@@ -1772,6 +1829,14 @@ export function stage2ContextForPrompt(context: Stage2GameChatContext) {
         !["materialized", "detailed"].includes(
           String(context.sourceLocation?.structure_state || "stub"),
         ),
+      transitions: context.sourceLocationTransitions.map((item) => ({
+        id: item.id,
+        target_location_id: item.target_location_id,
+        target_location_name: item.target_location_name,
+        label: item.label,
+        visibility_mode: item.visibility_mode,
+        travel_minutes: item.travel_minutes,
+      })),
       direct_children: context.sourceLocationChildren.map((item) => ({
         id: item.id,
         name: item.name,
