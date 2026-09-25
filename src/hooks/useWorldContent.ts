@@ -8,6 +8,7 @@ import { oracle } from "../oracle-engine/runtime.ts"
 import type {
   AchievementEntry,
   CampaignUpdate,
+  WorldLoreEntry,
   LocationEntry,
   LocationLink,
   LocationSection,
@@ -38,20 +39,22 @@ export function useWorldContent() {
   const [locationLinks, setLocationLinks] = useState<LocationLink[]>([])
   const [achievements, setAchievements] = useState<AchievementEntry[]>([])
   const [updates, setUpdates] = useState<CampaignUpdate[]>([])
+  const [loreEntries, setLoreEntries] = useState<WorldLoreEntry[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     if (!campaignId) return
     setLoading(true); setError(null)
-    const [sectionResult, articleResult, locationResult, achievementResult, updateResult] = await Promise.all([
+    const [sectionResult, articleResult, locationResult, achievementResult, updateResult, loreResult] = await Promise.all([
       supabase.from("world_sections").select("id,campaign_id,slug,title,description,sort_order").eq("campaign_id", campaignId).order("sort_order", { ascending: true }),
       supabase.from("world_articles").select("id,campaign_id,section_id,title,summary,body,sort_order").eq("campaign_id", campaignId).order("sort_order", { ascending: true }),
       supabase.from("locations").select("id,campaign_id,parent_location_id,name,summary,description,image_url,sort_order,visibility_mode,lifecycle_state,created_by,archived_at,created_at,updated_at").eq("campaign_id", campaignId).order("sort_order", { ascending: true }),
       supabase.from("achievements").select("id,campaign_id,character_id,title,description,icon,awarded_at").eq("campaign_id", campaignId).order("awarded_at", { ascending: false }),
       supabase.from("campaign_updates").select("id,campaign_id,kind,title,body,published_at").eq("campaign_id", campaignId).order("published_at", { ascending: false }).limit(20),
+      supabase.from("world_lore_entries").select("id,campaign_id,category,title,summary,body,source_kind,source_id,source_entry_key,location_id,campaign_day,day_period,occurred_at,visibility,visible_character_ids,importance,tags,provenance,created_at,updated_at").eq("campaign_id", campaignId).order("occurred_at", { ascending: false }).limit(200),
     ])
-    const firstError = sectionResult.error || articleResult.error || locationResult.error || achievementResult.error || updateResult.error
+    const firstError = sectionResult.error || articleResult.error || locationResult.error || achievementResult.error || updateResult.error || loreResult.error
     if (firstError) { setError(firstError.message); setLoading(false); return }
 
     const nextLocations = (locationResult.data || []) as LocationEntry[]
@@ -76,6 +79,7 @@ export function useWorldContent() {
     setLocationLinks(nextLocationLinks)
     setAchievements((achievementResult.data || []) as AchievementEntry[])
     setUpdates((updateResult.data || []) as CampaignUpdate[])
+    setLoreEntries((loreResult.data || []) as WorldLoreEntry[])
     setLoading(false)
   }, [campaignId])
 
@@ -94,6 +98,7 @@ export function useWorldContent() {
       .on("postgres_changes", { event: "*", schema: "public", table: "location_links" }, refresh)
       .on("postgres_changes", { event: "*", schema: "public", table: "character_location_discoveries" }, refresh)
       .on("postgres_changes", { event: "*", schema: "public", table: "character_location_link_discoveries" }, refresh)
+      .on("postgres_changes", { event: "*", schema: "public", table: "world_lore_entries", filter: `campaign_id=eq.${campaignId}` }, refresh)
       .subscribe()
     return () => { if (timer !== null) window.clearTimeout(timer); void supabase.removeChannel(channel) }
   }, [campaignId, load])
@@ -234,5 +239,5 @@ export function useWorldContent() {
     if (deleteError) return { ok: false, error: deleteError.message }; await load(); return { ok: true }
   }, [gmContext, load, rejectTopologyWrite])
 
-  return { sections, articles, locations, locationSections, locationLinks, achievements, updates, loading, error, reload: load, createWorldSection, updateWorldSection, createWorldArticle, updateWorldArticle, createLocation, updateLocation, setLocationVisibility, setLocationArchived, publishLocationEvent, createLocationSection, updateLocationSection, createLocationLink, updateLocationLink, createAchievement, updateAchievement, createUpdate, updateUpdate, deleteWorldItem }
+  return { sections, articles, locations, locationSections, locationLinks, achievements, updates, loreEntries, loading, error, reload: load, createWorldSection, updateWorldSection, createWorldArticle, updateWorldArticle, createLocation, updateLocation, setLocationVisibility, setLocationArchived, publishLocationEvent, createLocationSection, updateLocationSection, createLocationLink, updateLocationLink, createAchievement, updateAchievement, createUpdate, updateUpdate, deleteWorldItem }
 }
