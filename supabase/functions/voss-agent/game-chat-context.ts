@@ -18,6 +18,7 @@ export type Stage2GameChatContext = {
   currentGameTime: {
     campaignDay: number | null
     dayPeriod: string | null
+    campaignMinute: number | null
   }
   sourceAudience: {
     scope: "scene" | "direct_pc"
@@ -642,7 +643,7 @@ export async function buildGameChatContextV2({
   ] = await Promise.all([
     admin
       .from("chat_rooms")
-      .select("id,title,category,room_type,open_to_campaign,campaign_can_write,location_id,campaign_day,day_period,scene_state,room_state")
+      .select("id,title,category,room_type,open_to_campaign,campaign_can_write,location_id,campaign_day,day_period,campaign_minute,scene_state,room_state")
       .eq("id", roomId)
       .eq("campaign_id", campaignId)
       .maybeSingle(),
@@ -653,7 +654,7 @@ export async function buildGameChatContextV2({
       .eq("publication_state", "campaign"),
     admin
       .from("character_world_state")
-      .select("character_id,location_id,campaign_day,day_period,updated_at")
+      .select("character_id,location_id,campaign_day,day_period,campaign_minute,updated_at")
       .eq("campaign_id", campaignId),
     admin
       .from("chat_room_members")
@@ -716,6 +717,8 @@ export async function buildGameChatContextV2({
     nullableNumber(sourceWorld.campaign_day) ?? nullableNumber(room.campaign_day)
   let currentPeriod =
     nullableString(sourceWorld.day_period) || nullableString(room.day_period)
+  let currentMinute =
+    nullableNumber(sourceWorld.campaign_minute) ?? nullableNumber(room.campaign_minute)
 
   const syncResult = await admin.rpc("sync_colocated_player_time_v1", {
     p_campaign_id: campaignId,
@@ -727,7 +730,7 @@ export async function buildGameChatContextV2({
   if (Number(temporalSync.synced_count || 0) > 0) {
     const refreshedWorldStates = await admin
       .from("character_world_state")
-      .select("character_id,location_id,campaign_day,day_period,updated_at")
+      .select("character_id,location_id,campaign_day,day_period,campaign_minute,updated_at")
       .eq("campaign_id", campaignId)
 
     if (refreshedWorldStates.error) {
@@ -747,13 +750,15 @@ export async function buildGameChatContextV2({
       nullableNumber(sourceWorld.campaign_day) ?? nullableNumber(room.campaign_day)
     currentPeriod =
       nullableString(sourceWorld.day_period) || nullableString(room.day_period)
+    currentMinute =
+      nullableNumber(sourceWorld.campaign_minute) ?? nullableNumber(room.campaign_minute)
   }
 
   let recentCatchups: JsonRecord[] = []
   if (sourceLocationId && currentDay !== null) {
     const catchupsResult = await admin
       .from("ai_player_time_catchup_receipts")
-      .select("id,location_id,character_id,source_character_id,from_day,from_period,to_day,to_period,catchup_kind,meaningful_actions,narrative_semantics,created_at")
+      .select("id,location_id,character_id,source_character_id,from_day,from_period,to_day,to_period,from_minute,to_minute,catchup_kind,meaningful_actions,narrative_semantics,created_at")
       .eq("campaign_id", campaignId)
       .eq("location_id", sourceLocationId)
       .gte("to_day", Math.max(1, currentDay - 1))
@@ -1511,6 +1516,7 @@ export async function buildGameChatContextV2({
     currentGameTime: {
       campaignDay: currentDay,
       dayPeriod: currentPeriod,
+      campaignMinute: currentMinute,
     },
     sourceAudience,
     players: playerCharacters,
@@ -1734,6 +1740,7 @@ export function stage2ContextForPrompt(context: Stage2GameChatContext) {
       location_id: context.room.location_id,
       campaign_day: context.room.campaign_day,
       day_period: context.room.day_period,
+      campaign_minute: context.room.campaign_minute,
       scene_state: context.room.scene_state,
     },
     source_character: {
@@ -1900,8 +1907,10 @@ export function stage2ContextForPrompt(context: Stage2GameChatContext) {
           source_character_id: item.source_character_id,
           from_day: item.from_day,
           from_period: item.from_period,
+          from_minute: item.from_minute,
           to_day: item.to_day,
           to_period: item.to_period,
+          to_minute: item.to_minute,
           catchup_kind: item.catchup_kind,
           meaningful_actions_json: boundedText(
             JSON.stringify(item.meaningful_actions ?? []),
