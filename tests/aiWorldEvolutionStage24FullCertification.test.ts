@@ -214,6 +214,13 @@ test("Stage 24 certifies configuration as style guidance, never canon authority"
     runtime,
     /content_profile\.mode=adult_focused: всё из allowed разрешено/,
   )
+  const gmStart = runtime.indexOf("const STAGE12_GAME_MASTER_SYSTEM")
+  const npcStart = runtime.indexOf("const NPC_DIALOGUE_SYSTEM", gmStart)
+  const gmPrompt = runtime.slice(gmStart, npcStart)
+  assert.doesNotMatch(
+    gmPrompt,
+    /несовершеннолет|совершеннолет|provider|policy|jailbreak|цензур|consent|compliance|fade-to-black/i,
+  )
 })
 
 test("Stage 24 retains human-GM, maintenance, quest and rest regressions", () => {
