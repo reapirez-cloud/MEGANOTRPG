@@ -880,7 +880,7 @@ export default function AgentShell() {
             </div>
           </div>
 
-          {gmBehavior?.ai_world && (
+          {false && gmBehavior?.ai_world && (
             <div className="u1-agent-tools-section">
               <span className="u1-agent-tools-section__label">Режим ИИ-ГМ</span>
               <div className="u1-agent-gm-behavior-list">
@@ -905,7 +905,7 @@ export default function AgentShell() {
             </div>
           )}
 
-          {gmBehavior?.ai_world && contentProfile && (
+          {false && gmBehavior?.ai_world && contentProfile && (
             <div className="u1-agent-tools-section">
               <span className="u1-agent-tools-section__label">
                 Взрослая тематика
@@ -940,7 +940,7 @@ export default function AgentShell() {
             </div>
           )}
 
-          {gmBehavior?.ai_world && directorPreferences && (
+          {false && gmBehavior?.ai_world && directorPreferences && (
             <div className="u1-agent-tools-section">
               <span className="u1-agent-tools-section__label">
                 Что мне нравится
