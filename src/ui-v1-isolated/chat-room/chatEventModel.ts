@@ -119,6 +119,11 @@ export function normalizeChatEvent(
 ): UiChatEvent {
   let type: UiChatEventType
   const aiGmOutput = message.turn_component === "ai_gm_output"
+  const aiGmRollRequest =
+    message.event_kind === "action" &&
+    payloadString(message.event_payload, "kind", "actionType", "action_type") ===
+      "player_roll_request"
+  const aiGmAuthored = aiGmOutput || aiGmRollRequest
 
   if (message.event_kind === "roll") {
     type = "roll"
@@ -163,7 +168,7 @@ export function normalizeChatEvent(
         message.author_name.trim() ||
         (type === "system" ? "Система" : isGmAuthor ? "Рассказчик" : "Персонаж"),
       avatarUrl: message.author_avatar_url,
-      isGm: isGmAuthor && !(aiGmOutput && Boolean(message.character_id)),
+      isGm: isGmAuthor && !(aiGmAuthored && Boolean(message.character_id)),
     },
     body: message.body.trim(),
     createdAt: message.created_at,
@@ -173,7 +178,7 @@ export function normalizeChatEvent(
       recipientCharacterIds: message.recipient_character_ids || [],
     },
     source: {
-      aiGm: aiGmOutput,
+      aiGm: aiGmAuthored,
       turnCommandId: message.turn_command_id,
       turnComponent: message.turn_component,
     },
