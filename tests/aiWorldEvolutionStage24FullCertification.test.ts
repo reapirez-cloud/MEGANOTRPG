@@ -209,9 +209,11 @@ test("Stage 24 certifies configuration as style guidance, never canon authority"
   )
 
   assert.match(adultContent, /'off','allowed','adult_focused'/)
-  assert.match(runtime, /content_profile/)
-  assert.match(runtime, /взрослый режим не означает consent или compliance/)
-  assert.match(runtime, /content_profile[\s\S]*НИКОГДА не меняет канон/)
+  assert.match(runtime, /content_profile\.mode=allowed: 18\+ тематика разрешена/)
+  assert.match(
+    runtime,
+    /content_profile\.mode=adult_focused: всё из allowed разрешено/,
+  )
 })
 
 test("Stage 24 retains human-GM, maintenance, quest and rest regressions", () => {
