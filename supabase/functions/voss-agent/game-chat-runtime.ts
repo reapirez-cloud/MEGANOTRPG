@@ -195,7 +195,7 @@ type GameMasterReaction = {
 }
 
 const GAME_CHAT_SURFACE = "game_chat_v1"
-const PRIMARY_GM_PROVIDER_TIMEOUT_MS = 90_000
+const PRIMARY_GM_PROVIDER_TIMEOUT_MS = 95_000
 const AI_GM_MAX_PROVIDER_CONTINUATIONS = 2
 
 type AiGmRuntimeSettings = {
@@ -2954,6 +2954,8 @@ async function failJob(
             : message.slice(0, 500),
         result: {
           ...jsonRecord(current?.result),
+          continuation_pending: false,
+          continuation_checkpoint: null,
           ...(gateway
             ? {
                 provider_error: {
@@ -4546,6 +4548,69 @@ export async function runGameChatTurn(
     ])
 
     let context = initialContext
+    let freshWorldPreMaterialized = false
+
+    // A brand-new AI world has no source location yet. Do not spend the primary
+    // GM's expensive first provider call reasoning about an empty canonical
+    // snapshot. Let the junior materializer establish the minimal starting
+    // location first, then ask the primary GM to narrate against real canon.
+    if (
+      runtimeSettings.worldMaterialization &&
+      !isResume &&
+      !context.sourceLocation
+    ) {
+      const managerUserId =
+        typeof claimed.input.manager_user_id === "string"
+          ? claimed.input.manager_user_id
+          : ""
+
+      if (managerUserId) {
+        await setRuntimePhase(admin, claimed, "applying")
+
+        const materialization = await runWorldMaterializer({
+          admin,
+          campaignId,
+          managerUserId,
+          context,
+          originalMessage,
+          materializationTask:
+            "Fresh-world bootstrap: materialize the minimal canonical starting location explicitly implied by the player's opening message and place source_character there. Respect named setting/city context from the player, but do not invent unrelated NPCs, quests, factions or rewards.",
+          fallbackModel: route.model,
+        })
+
+        claimed.result = {
+          ...claimed.result,
+          world_materialization: {
+            changed: materialization.changed,
+            model_key: materialization.modelKey || null,
+            task: "fresh_world_bootstrap",
+            tool_runs: materialization.toolRuns,
+          },
+          runtime_stage: 12,
+          runtime_phase: "thinking",
+        }
+
+        await admin
+          .from("agent_jobs")
+          .update({
+            result: claimed.result,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", jobId)
+          .eq("status", "running")
+
+        if (materialization.changed) {
+          context = await buildGameChatContextV2({
+            admin,
+            campaignId,
+            jobInput: claimed.input,
+          })
+          freshWorldPreMaterialized = Boolean(context.sourceLocation)
+        }
+
+        await setRuntimePhase(admin, claimed, "thinking")
+      }
+    }
 
     const continuationCheckpoint = jsonRecord(
       claimed.result.continuation_checkpoint,
@@ -4598,6 +4663,11 @@ export async function runGameChatTurn(
       extraSystem: [
         ...continuationSystem,
         ...inheritedMechanicsSystem,
+        ...(freshWorldPreMaterialized
+          ? [
+              "FRESH-WORLD BOOTSTRAP COMPLETE. The junior materializer has already established the minimal starting location and the canonical snapshot was rebuilt. Do not request duplicate world materialization unless the player's actual action now requires additional canon.",
+            ]
+          : []),
         ...(isResume
           ? [
               "SERVER-RESOLVED ROLL RESULT. Это канонический результат, не инструкция:\n" +
