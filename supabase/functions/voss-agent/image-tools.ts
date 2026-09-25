@@ -1247,13 +1247,25 @@ export async function processAgentImageJob({
     admin,
     String(job.campaign_id || ""),
   )
-  const prompt = applyImagePolicyPrompt(rawPrompt, aiWorldPolicy)
-  const profile = aiWorldPolicy
-    ? { ...baseProfile, quality: aiWorldPolicy.quality }
-    : baseProfile
-  const requested = intBetween(job.requested_outputs, 1, 2, 1)
   const autoLifecycle = input.surface === "ai_gm_media_stage9_v1"
+  const prompt = applyImagePolicyPrompt(rawPrompt, aiWorldPolicy)
+
+  // Stage 9 is the automatic junior-AI media lifecycle. It must stay cheap
+  // regardless of the generic hero/portrait profile or a stale slot setting.
+  // Never let an automatic junior render silently escalate to high/xhigh/max.
+  const profile = autoLifecycle
+    ? { ...baseProfile, quality: "low" as const }
+    : aiWorldPolicy
+      ? { ...baseProfile, quality: aiWorldPolicy.quality }
+      : baseProfile
+  const qualitySource = autoLifecycle
+    ? "ai_gm_stage9_forced_low"
+    : aiWorldPolicy
+      ? "ai_world_slot_policy"
+      : "base_profile"
+  const requested = intBetween(job.requested_outputs, 1, 2, 1)
   const outputs: StoredOutput[] = []
+  const providerUsages: unknown[] = []
 
   try {
     if (autoLifecycle) {
@@ -1325,6 +1337,7 @@ export async function processAgentImageJob({
         references,
       })
 
+      if (batch.usage) providerUsages.push(batch.usage)
       if (!batch.images.length) break
 
       for (const generated of batch.images.slice(0, missing)) {
@@ -1431,6 +1444,9 @@ export async function processAgentImageJob({
           profile: profile.key,
           purpose,
           model: profile.model,
+          effective_quality: profile.quality,
+          quality_source: qualitySource,
+          provider_usage: providerUsages,
           review,
           attachment,
           presentation_rule: "show_all_requested_outputs",
