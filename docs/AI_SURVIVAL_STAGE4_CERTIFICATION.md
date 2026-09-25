@@ -17,6 +17,7 @@ Stage 4 closes the four-stage AI Survival implementation contract.
 - Long-rest rollback restores the selected character-sheet/rest state captured before the turn.
 - Junior post-turn execution cannot choose co-op participants. It receives an immutable participant list authored by the primary runtime.
 - Survival mutation RPCs remain service-role only.
+- Cross-room rollback is rejected when any affected participant already has a later active survival turn, preventing co-op time from rewinding through another player's newer history.
 
 ## Transactional certification
 
@@ -30,6 +31,7 @@ The following checks were executed against the live database schema inside trans
 | Same-revision retry does not double-advance | PASS |
 | New regenerate revision receives a distinct idempotency key | PASS |
 | Long-rest time/resource/session rollback | PASS |
+| Cross-room later-participant rollback guard | PASS |
 
 No certification fixture is intentionally persisted.
 
