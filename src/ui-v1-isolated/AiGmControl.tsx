@@ -125,7 +125,17 @@ function selectedModel(models: ModelChoice[]) {
   return models.find((model) => model.selected) || models[0] || null
 }
 
-export default function AiGmControl({ onBack }: { onBack: () => void }) {
+export type AiGmControlPage = "overview" | "models" | "behavior"
+
+export default function AiGmControl({
+  page,
+  onBack,
+  onNavigate,
+}: {
+  page: AiGmControlPage
+  onBack: () => void
+  onNavigate: (page: Exclude<AiGmControlPage, "overview">) => void
+}) {
   const { campaignId, assistantName } = useAI()
   const [panel, setPanel] = useState<ControlPanelResponse | null>(null)
   const [directorDraft, setDirectorDraft] = useState<DirectorResponse | null>(null)
@@ -176,6 +186,12 @@ export default function AiGmControl({ onBack }: { onBack: () => void }) {
     [panel?.junior_models],
   )
   const canManage = panel?.can_manage === true
+  const pageTitle =
+    page === "models"
+      ? "Модели компании"
+      : page === "behavior"
+        ? "Настройки поведения ИИ"
+        : "Настройки ИИ-ГМ"
 
   async function saveAndReload(
     key: string,
@@ -349,7 +365,7 @@ export default function AiGmControl({ onBack }: { onBack: () => void }) {
         <button type="button" onClick={onBack} aria-label="Назад">‹</button>
         <div>
           <span>MEGANOT / AI WORLD</span>
-          <h1>Настройки ИИ-ГМ</h1>
+          <h1>{pageTitle}</h1>
         </div>
         <button
           type="button"
@@ -370,235 +386,285 @@ export default function AiGmControl({ onBack }: { onBack: () => void }) {
         </section>
       ) : (
         <div className="u1-ai-gm-control__body">
-          <section className="u1-ai-gm-card u1-ai-gm-card--models">
-            <span className="u1-ai-gm-card__eyebrow">01 · МОДЕЛИ ИИ</span>
-            <h2>Кто ведёт и кто шуршит</h2>
-            <p>
-              Старший ИИ ведёт сцену. Младший выполняет техническую работу:
-              материализацию, post-turn изменения и служебные задачи.
-            </p>
-
-            <div className="u1-ai-gm-model-selectors">
-              <label>
-                <span>
-                  <strong>Старший ИИ</strong>
-                  <small>Ведущий, решения, проверки и ответы игроку</small>
-                </span>
-                <select
-                  value={gmModel?.id || ""}
-                  disabled={!canManage || Boolean(busy)}
-                  onChange={(event) => void chooseModel("gm", event.target.value)}
+          {page === "overview" && (
+            <>
+              <section className="u1-ai-gm-menu" aria-label="Разделы настроек ИИ-ГМ">
+                <button
+                  type="button"
+                  className="u1-ai-gm-menu__entry"
+                  onClick={() => onNavigate("models")}
                 >
-                  {(panel.gm_models || []).map((model) => (
-                    <option key={model.id} value={model.id}>
-                      {model.display_name}
-                    </option>
-                  ))}
-                </select>
-                <em>{modelMeta(gmModel)}</em>
-              </label>
-
-              <label>
-                <span>
-                  <strong>Младший ИИ</strong>
-                  <small>Шуршальщик, мир, сущности и фоновые задачи</small>
-                </span>
-                <select
-                  value={juniorModel?.id || ""}
-                  disabled={!canManage || Boolean(busy)}
-                  onChange={(event) => void chooseModel("junior", event.target.value)}
-                >
-                  {(panel.junior_models || []).map((model) => (
-                    <option key={model.id} value={model.id}>
-                      {model.display_name}
-                    </option>
-                  ))}
-                </select>
-                <em>{modelMeta(juniorModel)}</em>
-              </label>
-            </div>
-          </section>
-
-          {panel.behavior && (
-            <section className="u1-ai-gm-card">
-              <span className="u1-ai-gm-card__eyebrow">02 · РЕЖИМ МАСТЕРА</span>
-              <h2>Стиль ведения</h2>
-              <p>
-                Режим влияет на выбор между одинаково правдоподобными ветками,
-                но не отменяет канон, кубы и самостоятельность NPC.
-              </p>
-              <div className="u1-ai-gm-behaviors">
-                {panel.behavior.profiles.map((profile) => (
-                  <button
-                    key={profile.profile_key}
-                    type="button"
-                    className="u1-ai-gm-choice u1-ai-gm-choice--behavior"
-                    data-selected={profile.selected || undefined}
-                    disabled={!canManage || Boolean(busy)}
-                    onClick={() => void chooseBehavior(profile.profile_key)}
-                  >
-                    <span>
-                      <strong>{profile.display_name}</strong>
-                      <small>{profile.summary}</small>
-                    </span>
-                    <i>{profile.selected ? "✓" : "›"}</i>
-                  </button>
-                ))}
-              </div>
-            </section>
-          )}
-
-          {directorDraft && (
-            <section className="u1-ai-gm-card">
-              <span className="u1-ai-gm-card__eyebrow">03 · ДИРЕКТОР</span>
-              <h2>Что хочется встречать чаще</h2>
-              <p>
-                Мягкое направление будущих возможностей. Это не приказ миру
-                выдать игроку желаемый результат.
-              </p>
-              <div className="u1-ai-gm-sliders">
-                {DIRECTOR_CONTROLS.map((control) => (
-                  <label key={control.key}>
-                    <span>
-                      <strong>{control.label}</strong>
-                      <b>{directorDraft.interests[control.key]}</b>
-                    </span>
-                    <input
-                      type="range"
-                      min={0}
-                      max={5}
-                      step={1}
-                      value={directorDraft.interests[control.key]}
-                      onChange={(event) =>
-                        setInterest(control.key, Number(event.target.value))
-                      }
-                    />
+                  <span>
+                    <b>Модели компании</b>
                     <small>
-                      <i>{control.low}</i>
-                      <i>{control.high}</i>
+                      Старший: {gmModel?.display_name || "не выбрана"} · Младший:{" "}
+                      {juniorModel?.display_name || "не выбрана"}
                     </small>
-                  </label>
-                ))}
-              </div>
+                  </span>
+                  <i aria-hidden="true">›</i>
+                </button>
 
-              <label className="u1-ai-gm-free-text">
-                <span>Свободное направление</span>
-                <textarea
-                  value={directorDraft.free_text}
-                  maxLength={1200}
-                  rows={4}
-                  onChange={(event) => {
-                    setDirectorDraft((current) =>
-                      current
-                        ? { ...current, free_text: event.target.value.slice(0, 1200) }
-                        : current,
-                    )
-                    setDirectorDirty(true)
-                  }}
-                  placeholder="Например: больше городской социалки, медленная жизнь, торговля и жильё; боёв поменьше."
-                />
-              </label>
+                <button
+                  type="button"
+                  className="u1-ai-gm-menu__entry"
+                  onClick={() => onNavigate("behavior")}
+                >
+                  <span>
+                    <b>Настройки поведения ИИ</b>
+                    <small>
+                      Режим мастера, директор, контент-профиль и автоматика мира
+                    </small>
+                  </span>
+                  <i aria-hidden="true">›</i>
+                </button>
+              </section>
+
+              {!canManage && (
+                <div className="u1-ai-gm-control__notice">
+                  Настройки кампании меняет владелец/ГМ.
+                </div>
+              )}
+
+              {error && <div className="u1-ai-gm-control__error">{error}</div>}
 
               <button
                 type="button"
-                className="u1-ai-gm-save"
-                disabled={!directorDirty || Boolean(busy)}
-                onClick={() => void saveDirector()}
+                className="u1-ai-gm-open-freddy"
+                onClick={() => openAgent()}
               >
-                {busy === "director" ? "Сохраняем…" : "Сохранить предпочтения"}
+                <span>Открыть {assistantName}</span>
+                <small>Фредди остаётся отдельным дворецким/админом.</small>
               </button>
-            </section>
+            </>
           )}
 
-          {panel.content && (
-            <section className="u1-ai-gm-card">
-              <span className="u1-ai-gm-card__eyebrow">04 · КОНТЕНТ-ПРОФИЛЬ</span>
-              <h2>Тематика кампании</h2>
-              <p>
-                Профиль приложения не отменяет ограничения провайдера,
-                причинность мира и самостоятельность NPC.
-              </p>
-              <div className="u1-ai-gm-behaviors">
-                {panel.content.modes.map((choice) => (
-                  <button
-                    key={choice.mode}
-                    type="button"
-                    className="u1-ai-gm-choice"
-                    data-selected={panel.content?.selected_mode === choice.mode || undefined}
-                    disabled={!canManage || Boolean(busy)}
-                    onClick={() => void chooseContent(choice.mode)}
-                  >
+          {page === "models" && (
+            <>
+              <section className="u1-ai-gm-card u1-ai-gm-card--models">
+                <span className="u1-ai-gm-card__eyebrow">МОДЕЛИ КОМПАНИИ</span>
+                <h2>Старший и младший ИИ</h2>
+                <p>
+                  Здесь выбираются обе модели кампании. Этот экран отдельный и
+                  не делит место с настройками поведения.
+                </p>
+
+                <div className="u1-ai-gm-model-selectors">
+                  <label>
                     <span>
-                      <strong>{choice.display_name}</strong>
-                      <small>{choice.summary}</small>
+                      <strong>Старший ИИ</strong>
+                      <small>Ведущий, решения, проверки и ответы игроку</small>
                     </span>
-                    <i>{panel.content?.selected_mode === choice.mode ? "✓" : "›"}</i>
-                  </button>
-                ))}
-              </div>
-            </section>
+                    <select
+                      value={gmModel?.id || ""}
+                      disabled={!canManage || Boolean(busy)}
+                      onChange={(event) => void chooseModel("gm", event.target.value)}
+                    >
+                      {(panel.gm_models || []).map((model) => (
+                        <option key={model.id} value={model.id}>
+                          {model.display_name}
+                        </option>
+                      ))}
+                    </select>
+                    <em>{modelMeta(gmModel)}</em>
+                  </label>
+
+                  <label>
+                    <span>
+                      <strong>Младший ИИ</strong>
+                      <small>Шуршальщик, мир, сущности и фоновые задачи</small>
+                    </span>
+                    <select
+                      value={juniorModel?.id || ""}
+                      disabled={!canManage || Boolean(busy)}
+                      onChange={(event) => void chooseModel("junior", event.target.value)}
+                    >
+                      {(panel.junior_models || []).map((model) => (
+                        <option key={model.id} value={model.id}>
+                          {model.display_name}
+                        </option>
+                      ))}
+                    </select>
+                    <em>{modelMeta(juniorModel)}</em>
+                  </label>
+                </div>
+              </section>
+
+              {notice && <div className="u1-ai-gm-control__notice">{notice}</div>}
+              {error && <div className="u1-ai-gm-control__error">{error}</div>}
+            </>
           )}
 
-          <section className="u1-ai-gm-card">
-            <span className="u1-ai-gm-card__eyebrow">05 · ФУНКЦИИ ИИ-МИРА</span>
-            <h2>Автоматика</h2>
-            <p>
-              Дополнительные системы можно включать и выключать здесь.
-              Системы ядра отмечены замком и остаются включёнными.
-            </p>
+          {page === "behavior" && (
+            <>
+              {panel.behavior && (
+                <section className="u1-ai-gm-card">
+                  <span className="u1-ai-gm-card__eyebrow">РЕЖИМ МАСТЕРА</span>
+                  <h2>Стиль ведения</h2>
+                  <p>
+                    Режим влияет на выбор между одинаково правдоподобными ветками,
+                    но не отменяет канон, кубы и самостоятельность NPC.
+                  </p>
+                  <div className="u1-ai-gm-behaviors">
+                    {panel.behavior.profiles.map((profile) => (
+                      <button
+                        key={profile.profile_key}
+                        type="button"
+                        className="u1-ai-gm-choice u1-ai-gm-choice--behavior"
+                        data-selected={profile.selected || undefined}
+                        disabled={!canManage || Boolean(busy)}
+                        onClick={() => void chooseBehavior(profile.profile_key)}
+                      >
+                        <span>
+                          <strong>{profile.display_name}</strong>
+                          <small>{profile.summary}</small>
+                        </span>
+                        <i>{profile.selected ? "✓" : "›"}</i>
+                      </button>
+                    ))}
+                  </div>
+                </section>
+              )}
 
-            <div className="u1-ai-gm-features">
-              {(panel.features || []).map((feature) => (
-                <article
-                  key={feature.key}
-                  data-enabled={feature.enabled || undefined}
-                  data-locked={!feature.mutable || undefined}
-                >
-                  <div>
-                    <strong>{feature.display_name}</strong>
-                    <small>{feature.summary}</small>
+              {directorDraft && (
+                <section className="u1-ai-gm-card">
+                  <span className="u1-ai-gm-card__eyebrow">ДИРЕКТОР</span>
+                  <h2>Что хочется встречать чаще</h2>
+                  <p>
+                    Мягкое направление будущих возможностей. Это не приказ миру
+                    выдать игроку желаемый результат.
+                  </p>
+                  <div className="u1-ai-gm-sliders">
+                    {DIRECTOR_CONTROLS.map((control) => (
+                      <label key={control.key}>
+                        <span>
+                          <strong>{control.label}</strong>
+                          <b>{directorDraft.interests[control.key]}</b>
+                        </span>
+                        <input
+                          type="range"
+                          min={0}
+                          max={5}
+                          step={1}
+                          value={directorDraft.interests[control.key]}
+                          onChange={(event) =>
+                            setInterest(control.key, Number(event.target.value))
+                          }
+                        />
+                        <small>
+                          <i>{control.low}</i>
+                          <i>{control.high}</i>
+                        </small>
+                      </label>
+                    ))}
                   </div>
 
-                  {feature.mutable ? (
-                    <button
-                      type="button"
-                      className="u1-ai-gm-switch"
-                      aria-pressed={feature.enabled}
-                      aria-label={
-                        (feature.enabled ? "Отключить: " : "Включить: ") +
-                        feature.display_name
-                      }
-                      disabled={!canManage || Boolean(busy)}
-                      onClick={() => void toggleFeature(feature)}
+                  <label className="u1-ai-gm-free-text">
+                    <span>Свободное направление</span>
+                    <textarea
+                      value={directorDraft.free_text}
+                      maxLength={1200}
+                      rows={4}
+                      onChange={(event) => {
+                        setDirectorDraft((current) =>
+                          current
+                            ? { ...current, free_text: event.target.value.slice(0, 1200) }
+                            : current,
+                        )
+                        setDirectorDirty(true)
+                      }}
+                      placeholder="Например: больше городской социалки, медленная жизнь, торговля и жильё; боёв поменьше."
+                    />
+                  </label>
+
+                  <button
+                    type="button"
+                    className="u1-ai-gm-save"
+                    disabled={!directorDirty || Boolean(busy)}
+                    onClick={() => void saveDirector()}
+                  >
+                    {busy === "director" ? "Сохраняем…" : "Сохранить предпочтения"}
+                  </button>
+                </section>
+              )}
+
+              {panel.content && (
+                <section className="u1-ai-gm-card">
+                  <span className="u1-ai-gm-card__eyebrow">КОНТЕНТ-ПРОФИЛЬ</span>
+                  <h2>Тематика кампании</h2>
+                  <div className="u1-ai-gm-behaviors">
+                    {panel.content.modes.map((choice) => (
+                      <button
+                        key={choice.mode}
+                        type="button"
+                        className="u1-ai-gm-choice"
+                        data-selected={panel.content?.selected_mode === choice.mode || undefined}
+                        disabled={!canManage || Boolean(busy)}
+                        onClick={() => void chooseContent(choice.mode)}
+                      >
+                        <span>
+                          <strong>{choice.display_name}</strong>
+                          <small>{choice.summary}</small>
+                        </span>
+                        <i>{panel.content?.selected_mode === choice.mode ? "✓" : "›"}</i>
+                      </button>
+                    ))}
+                  </div>
+                </section>
+              )}
+
+              <section className="u1-ai-gm-card">
+                <span className="u1-ai-gm-card__eyebrow">ФУНКЦИИ ИИ-МИРА</span>
+                <h2>Автоматика</h2>
+                <p>
+                  Дополнительные системы можно включать и выключать здесь.
+                  Системы ядра отмечены замком.
+                </p>
+
+                <div className="u1-ai-gm-features">
+                  {(panel.features || []).map((feature) => (
+                    <article
+                      key={feature.key}
+                      data-enabled={feature.enabled || undefined}
+                      data-locked={!feature.mutable || undefined}
                     >
-                      <i />
-                    </button>
-                  ) : (
-                    <span className="u1-ai-gm-feature-lock">ядро</span>
-                  )}
-                </article>
-              ))}
-            </div>
-          </section>
+                      <div>
+                        <strong>{feature.display_name}</strong>
+                        <small>{feature.summary}</small>
+                      </div>
 
-          {!canManage && (
-            <div className="u1-ai-gm-control__notice">
-              Модели, режим и функции кампании меняет владелец/ГМ.
-              Личные настройки директора доступны участнику для себя.
-            </div>
+                      {feature.mutable ? (
+                        <button
+                          type="button"
+                          className="u1-ai-gm-switch"
+                          aria-pressed={feature.enabled}
+                          aria-label={
+                            (feature.enabled ? "Отключить: " : "Включить: ") +
+                            feature.display_name
+                          }
+                          disabled={!canManage || Boolean(busy)}
+                          onClick={() => void toggleFeature(feature)}
+                        >
+                          <i />
+                        </button>
+                      ) : (
+                        <span className="u1-ai-gm-feature-lock">ядро</span>
+                      )}
+                    </article>
+                  ))}
+                </div>
+              </section>
+
+              {!canManage && (
+                <div className="u1-ai-gm-control__notice">
+                  Режим и функции кампании меняет владелец/ГМ.
+                  Личные настройки директора доступны участнику для себя.
+                </div>
+              )}
+
+              {notice && <div className="u1-ai-gm-control__notice">{notice}</div>}
+              {error && <div className="u1-ai-gm-control__error">{error}</div>}
+            </>
           )}
-
-          {notice && <div className="u1-ai-gm-control__notice">{notice}</div>}
-          {error && <div className="u1-ai-gm-control__error">{error}</div>}
-
-          <button
-            type="button"
-            className="u1-ai-gm-open-freddy"
-            onClick={() => openAgent()}
-          >
-            <span>Открыть {assistantName}</span>
-            <small>Фредди остаётся отдельным дворецким/админом, а не настройками ИИ-ГМ.</small>
-          </button>
         </div>
       )}
     </main>
