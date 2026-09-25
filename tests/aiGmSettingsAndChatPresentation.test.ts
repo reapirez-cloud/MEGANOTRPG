@@ -43,6 +43,14 @@ test("AI GM settings are a dedicated full-screen route without the agent overlay
   assert.match(agentShell, /className="u1-agent-tools-section" hidden>[\s\S]*Что мне нравится/)
 })
 
+test("profile header exposes only the square AI GM entry and no duplicate model circle", () => {
+  const workspace = read("src/ui-v1-isolated/Workspace.tsx")
+  assert.match(workspace, /className="u1-workspace__ai-button"/)
+  assert.match(workspace, /onClick={onOpenAiGm}/)
+  assert.doesNotMatch(workspace, /PlayerProfileMark/)
+  assert.doesNotMatch(workspace, /u1-ai-model-trigger/)
+})
+
 test("dedicated behavior screen exposes campaign mode, 18 plus, director and runtime controls", () => {
   assert.match(control, /ХАРДКОР \/ ПРИКЛЮЧЕНИЕ \/ СИМС/)
   assert.match(control, /Хардкор \/ Жестокий/)
