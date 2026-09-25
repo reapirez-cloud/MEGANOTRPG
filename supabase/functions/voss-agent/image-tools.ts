@@ -1248,21 +1248,30 @@ export async function processAgentImageJob({
     String(job.campaign_id || ""),
   )
   const autoLifecycle = input.surface === "ai_gm_media_stage9_v1"
+  const autoLifecycleTarget = record(input.target)
+  const autoLifecycleLocationMax =
+    autoLifecycle &&
+    stringValue(autoLifecycleTarget.type, 40) === "location" &&
+    stringValue(input.generation_tier, 40) === "max"
   const prompt = applyImagePolicyPrompt(rawPrompt, aiWorldPolicy)
 
-  // Stage 9 is the automatic junior-AI media lifecycle. It must stay cheap
-  // regardless of the generic hero/portrait profile or a stale slot setting.
-  // Never let an automatic junior render silently escalate to high/xhigh/max.
-  const profile = autoLifecycle
-    ? { ...baseProfile, quality: "low" as const }
-    : aiWorldPolicy
-      ? { ...baseProfile, quality: aiWorldPolicy.quality }
-      : baseProfile
-  const qualitySource = autoLifecycle
-    ? "ai_gm_stage9_forced_low"
-    : aiWorldPolicy
-      ? "ai_world_slot_policy"
-      : "base_profile"
+  // Automatic NPC portraits stay economical. Location/environment art is a
+  // deliberate exception: entering a new place or explicitly asking to see the
+  // surroundings uses the provider's maximum supported render quality.
+  const profile = autoLifecycleLocationMax
+    ? { ...baseProfile, quality: "high" as const }
+    : autoLifecycle
+      ? { ...baseProfile, quality: "low" as const }
+      : aiWorldPolicy
+        ? { ...baseProfile, quality: aiWorldPolicy.quality }
+        : baseProfile
+  const qualitySource = autoLifecycleLocationMax
+    ? "ai_gm_location_max_150k"
+    : autoLifecycle
+      ? "ai_gm_stage9_forced_low"
+      : aiWorldPolicy
+        ? "ai_world_slot_policy"
+        : "base_profile"
   const requested = intBetween(job.requested_outputs, 1, 2, 1)
   const outputs: StoredOutput[] = []
   const providerUsages: unknown[] = []
@@ -1446,6 +1455,11 @@ export async function processAgentImageJob({
           model: profile.model,
           effective_quality: profile.quality,
           quality_source: qualitySource,
+          generation_tier: stringValue(input.generation_tier, 40) || null,
+          target_token_budget:
+            Number.isFinite(Number(input.target_token_budget))
+              ? Number(input.target_token_budget)
+              : null,
           provider_usage: providerUsages,
           review,
           attachment,
