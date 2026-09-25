@@ -294,7 +294,9 @@ export async function requestChatCompletion(input: ChatRequest) {
       }
 
       const retryable =
+        response.status === 408 ||
         response.status === 429 ||
+        response.status === 500 ||
         response.status === 502 ||
         response.status === 503
 
