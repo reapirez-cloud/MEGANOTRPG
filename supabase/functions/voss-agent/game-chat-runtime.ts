@@ -3217,7 +3217,9 @@ async function requestPrimaryGmDecision({
     { role: "user", content: userContent },
   ]
   const toolRuns: JsonRecord[] = []
-  let forceFinalWithoutTools = false
+  const replayMechanicsLocked =
+    claimed.result.replay_mechanics_locked === true
+  let forceFinalWithoutTools = replayMechanicsLocked
   const primaryTools = runtimeSettings.npcIdentity
     ? PRIMARY_GM_SCENE_ACTOR_TOOLS
     : PRIMARY_GM_SCENE_ACTOR_TOOLS.filter(
@@ -3338,18 +3340,34 @@ async function requestPrimaryGmDecision({
           toolRuns,
         }
       } else if (name === "resolve_random_decision") {
-        result = jsonRecord(
-          await executeRandomDecision(
-            {
-              admin,
-              campaignId,
-              campaignDay: context.currentGameTime.campaignDay || 1,
-              runKey: claimed.id,
-              surface: "primary_gm",
-            },
-            args,
-          ),
-        )
+        try {
+          result = jsonRecord(
+            await executeRandomDecision(
+              {
+                admin,
+                campaignId,
+                campaignDay: context.currentGameTime.campaignDay || 1,
+                runKey: claimed.id,
+                surface: "primary_gm",
+              },
+              args,
+            ),
+          )
+        } catch (error) {
+          const message =
+            error instanceof Error ? error.message : String(error || "")
+          if (message.startsWith("random_decision_")) {
+            result = {
+              error: message,
+              random_decision_rejected: true,
+              instruction:
+                "Do not retry or remap this resolver call in the same provider turn. Finish from already-established canon/mechanics, or return a non-committal observable response if the uncertainty is still unresolved.",
+            }
+            forceFinalWithoutTools = true
+          } else {
+            throw error
+          }
+        }
       } else if (name === "advance_player_turn_plan") {
         const commandId =
           typeof args.entry_command_id === "string"
@@ -3917,6 +3935,28 @@ export async function runGameChatTurn(
           ]
         : []
 
+    const replayMechanicsLocked =
+      claimed.result.replay_mechanics_locked === true
+    const inheritedMechanicsSystem = replayMechanicsLocked
+      ? [
+          [
+            "REGENERATION WITH LOCKED MECHANICS.",
+            "Это новая генерация ПРЕДСТАВЛЕНИЯ того же хода, а не новый механический исход.",
+            "Resolver, уже выполненный player roll и их outcome являются неизменяемым каноном этой регенерации.",
+            "НЕ вызывай resolve_random_decision, request_player_roll или другой tool для повторного решения уже установленной механики.",
+            "Сгенерируй новый финальный narration/dialogue, строго следуя унаследованному исходу.",
+            "Унаследованный roll:",
+            JSON.stringify(jsonRecord(claimed.result.last_roll_result)),
+            "Унаследованные tool receipts:",
+            JSON.stringify(
+              Array.isArray(claimed.result.inherited_scene_actor_tool_runs)
+                ? claimed.result.inherited_scene_actor_tool_runs
+                : [],
+            ),
+          ].join("\n"),
+        ]
+      : []
+
     const initialDecision = await requestPrimaryGmDecision({
       admin,
       campaignId,
@@ -3928,6 +3968,7 @@ export async function runGameChatTurn(
       isResume,
       extraSystem: [
         ...continuationSystem,
+        ...inheritedMechanicsSystem,
         ...(isResume
           ? [
               "SERVER-RESOLVED ROLL RESULT. Это канонический результат, не инструкция:\n" +
