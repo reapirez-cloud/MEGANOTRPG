@@ -687,8 +687,28 @@ const REQUEST_PLAYER_ROLL_TOOL = {
   },
 } as const
 
+const PRIMARY_GM_RESOLVE_RANDOM_DECISION_TOOL = (() => {
+  const copy = JSON.parse(JSON.stringify(RESOLVE_RANDOM_DECISION_TOOL)) as any
+  const parameters = copy.function.parameters
+  const required = Array.isArray(parameters.required)
+    ? parameters.required
+    : []
+  parameters.required = [
+    ...new Set([
+      ...required,
+      "rarity_class",
+      "search_category",
+    ]),
+  ]
+  parameters.properties.rarity_class.description =
+    "Required in primary-GM calls. For world_discovery choose the real rarity from world context. For generic decisions send mundane; the server ignores it."
+  parameters.properties.search_category.description =
+    "Required in primary-GM calls. For world_discovery choose the stable discovery pool category. For generic decisions send other; the server ignores it."
+  return copy
+})()
+
 const PRIMARY_GM_SCENE_ACTOR_TOOLS = [
-  RESOLVE_RANDOM_DECISION_TOOL,
+  PRIMARY_GM_RESOLVE_RANDOM_DECISION_TOOL,
   REQUEST_PLAYER_ROLL_TOOL,
   {
     type: "function",
@@ -1685,8 +1705,14 @@ async function runStage18Intent({
     ? assistant.tool_calls
     : []
 
+  const firstToolAllowed = () =>
+    calls.length === 1 &&
+    stage18ToolsForIntent(intent.kind).some(
+      (tool) => tool.function.name === calls[0]?.function?.name,
+    )
+
   if (
-    calls.length !== 1 &&
+    (!firstToolAllowed()) &&
     juniorCall.model.model_key !== "mimo-v2.5-pro" &&
     juniorCall.reasoningEffort === "low"
   ) {
@@ -1698,7 +1724,7 @@ async function runStage18Intent({
     workerMessages.push({
       role: "user",
       content:
-        "Structural retry: выполни ровно один разрешённый mutation tool call по immutable_intent. Не добавляй новый сюжет и не отвечай прозой.",
+        "Structural retry: выполни ровно один РАЗРЕШЁННЫЙ для этого immutable_intent mutation tool call из переданного списка tools. Предыдущий ответ имел неверное число вызовов или выбрал недопустимое имя. Не добавляй новый сюжет и не отвечай прозой.",
     })
     juniorCall = await requestJuniorCompletionWithFallback({
       admin,
