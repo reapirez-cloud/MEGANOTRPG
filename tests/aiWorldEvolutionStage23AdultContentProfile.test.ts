@@ -14,6 +14,9 @@ const privilegeHardening = read(
 const fkIndex = read(
   "supabase/migrations/20260924181711_ai_world_evolution_stage23_content_fk_index_v3.sql",
 )
+const modeSemantics = read(
+  "supabase/migrations/20260925113000_ai_gm_immersive_presentation_and_mode_semantics_v1.sql",
+)
 const context = read("supabase/functions/voss-agent/game-chat-context.ts")
 const runtime = read("supabase/functions/voss-agent/game-chat-runtime.ts")
 const shell = read("src/ai/AgentShell.tsx")
@@ -76,28 +79,44 @@ test("Stage 23 is narrative-only and stays out of generic world-worker context",
 })
 
 test("Stage 23 does not turn mature profile into NPC compliance or mechanics", () => {
-  assert.match(runtime, /adult_focused[^\n]*тематический приоритет/)
-  assert.match(runtime, /не означает consent или compliance/)
-  assert.match(runtime, /не меняют consent, hard red_lines, отношения или личность NPC/)
+  assert.match(runtime, /adult_focused:[^\n]*тематический приоритет/)
+  assert.match(runtime, /взрослый режим не означает consent или compliance/)
+  assert.match(runtime, /никогда не меняют consent, hard red_lines, отношения или личность NPC/)
   assert.match(runtime, /НИКОГДА не меняет канон, механику, цены, последствия/)
-  assert.match(runtime, /однозначно взрослых персонажей\/контекста/)
+  assert.match(runtime, /однозначно совершеннолетних персонажей/)
 })
 
-test("Stage 23 adds no provider-bypass layer and handles refusal without alternate canon", () => {
-  assert.match(runtime, /Никаких jailbreak-попыток/)
-  assert.match(runtime, /не проси provider обходить его policy/)
+test("Stage 23 tells the model what adult content is allowed without policy jargon", () => {
+  const gmStart = runtime.indexOf("const STAGE12_GAME_MASTER_SYSTEM")
+  const npcStart = runtime.indexOf("const NPC_DIALOGUE_SYSTEM", gmStart)
+  const jsonStart = runtime.indexOf("function jsonRecord", npcStart)
+  const gmPrompt = runtime.slice(gmStart, npcStart)
+  const npcPrompt = runtime.slice(npcStart, jsonStart)
+
+  assert.match(gmPrompt, /разрешены зрелые темы/)
+  assert.match(gmPrompt, /сексуальные и романтические ситуации по взаимному согласию/)
+  assert.doesNotMatch(gmPrompt, /provider|policy|jailbreak|цензур/i)
+  assert.doesNotMatch(npcPrompt, /provider|policy|jailbreak|цензур/i)
+
+  // Refusal detection stays server-side bookkeeping and is not injected into prompts.
   assert.match(runtime, /isProviderContentRefusal/)
   assert.match(runtime, /ai_provider_content_refusal/)
-  assert.match(runtime, /stage23_provider_refusal_preserves_canon: true/)
-  assert.match(runtime, /stage23_retry_after_model_change: true/)
 })
 
 test("Stage 23 records bounded telemetry on AI GM jobs", () => {
   assert.match(context, /stage23ContentProfileTelemetry/)
   assert.match(context, /stage23_content_mode/)
   assert.match(context, /stage23_content_enabled/)
-  assert.match(context, /stage23_provider_boundary/)
+  assert.match(context, /stage23_content_permissions/)
+  assert.doesNotMatch(context, /stage23_provider_boundary/)
   assert.match(runtime, /stage23ContentProfileTelemetry/)
+})
+
+test("Stage 23 current profile summaries are permission-oriented", () => {
+  assert.match(modeSemantics, /Без специального разрешения/)
+  assert.match(modeSemantics, /Для совершеннолетних персонажей разрешены зрелые темы/)
+  assert.match(modeSemantics, /no_automatic_fade_to_black_when_enabled/)
+  assert.doesNotMatch(modeSemantics, /provider|policy|jailbreak|цензур/i)
 })
 
 test("Stage 23 UI exposes all three modes but only managers can mutate them", () => {
