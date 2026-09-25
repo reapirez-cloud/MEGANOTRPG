@@ -5573,6 +5573,12 @@
 .u1-ai-gm-status__editor button:disabled {
   opacity: .4;
 }
+.u1-ai-gm-status__hint {
+  flex: 1 0 100%;
+  color: rgba(225,228,225,.38) !important;
+  white-space: normal !important;
+  line-height: 1.35;
+}
 .u1-ai-gm-status__error {
   flex: 1 0 100%;
   color: rgba(244,154,154,.78) !important;
