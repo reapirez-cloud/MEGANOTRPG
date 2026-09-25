@@ -1599,6 +1599,7 @@ Live certification result on 2026-09-24:
 22 Player director preferences
 23 Adult / life-simulation content profile
 24 Full certification
+25 Causal GM / Resolver hardening
 ```
 
 Stages 1–3 establish the world-evolution foundation.

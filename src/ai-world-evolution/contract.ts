@@ -930,9 +930,53 @@ export const AI_WORLD_EVOLUTION_STAGES = [
       "Human-GM isolation regression suite",
     ],
   },
+  {
+    id: 25,
+    key: "causal-gm-resolver-hardening",
+    title: "Causal GM and Resolver hardening",
+    purpose:
+      "Prevent player meta-knowledge, repeated searching and regeneration from becoming hidden world-authoring or reroll controls while keeping source-PC narration immersive.",
+    status: "implemented",
+    existingFoundation: [
+      "Stage 11 committed World Resolver and replay ledger",
+      "Stage 17 canon-bound intent adjudication",
+      "Stage 19 bounded GM context",
+      "Canonical character location and NPC discovery tables",
+    ],
+    notSatisfiedBy: [
+      "Prompt-only advice that player intent is not canon",
+      "Giving every implausible request a small non-zero chance",
+      "Using a new GM job UUID as permission to reroll the same world fact",
+      "Treating repeated search text as an unlimited source of fresh loot pools",
+    ],
+    requiredArtifacts: [
+      "Explicit source-character knowledge projection from canonical discoveries and visible facts",
+      "Second-person narration contract for the source PC",
+      "Resolver provenance distinguishing generic uncertainty, world discovery and player-specific claims",
+      "Server rejection of unknown player-specific world-discovery targets",
+      "Contextual rarity classes with server-capped discovery probability",
+      "Stable location/day/category discovery pools for repeat searches",
+      "Source-message-stable Resolver identity plus a prose-only regenerate canon lock with prior Resolver evidence",
+      "Authenticated AI-GM control-panel helper permissions and truthful load-error UI",
+    ],
+    acceptance: [
+      "An unknown witch, dragon or treasure named only by the player cannot become a Resolver-backed fact",
+      "Rare and exceptional roadside finds cannot receive adventure-biased broad probability bands",
+      "Repeating the same location/day/category search reuses the same committed pool",
+      "Regenerate cannot create a new Resolver call, mechanic, materialization or post-turn mutation",
+      "Single-PC narration addresses the player character as 'ты'",
+      "The authenticated AI-GM settings panel loads instead of collapsing into a false non-AI-world state",
+    ],
+    certification: [
+      "Stage 25 causal-hardening regression suite",
+      "Authenticated live control-panel smoke",
+      "Resolver replay/search-pool regression coverage",
+      "Full CI on the combined stage",
+    ],
+  },
 ] as const satisfies readonly AiWorldEvolutionStage[]
 
-export const AI_WORLD_EVOLUTION_STAGE_COUNT = 24 as const
+export const AI_WORLD_EVOLUTION_STAGE_COUNT = 25 as const
 
 /**
  * Contract sanity validator.

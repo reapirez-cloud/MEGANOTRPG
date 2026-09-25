@@ -18,6 +18,10 @@ test("Stage 25 keeps settings-load failure distinct from non-AI campaign", () =>
   assert.match(control, /Не удалось загрузить настройки ИИ-ГМ/)
   assert.match(control, /!panel\?\.ai_world/)
   assert.match(migration, /grant execute on function private\.can_select_campaign_junior_model_v1\(uuid\)[\s\S]*authenticated/)
+  assert.match(
+    migration,
+    /grant execute on function private\.ai_gm_behavior_profile_json_v1\(text\)[\s\S]*authenticated/,
+  )
 })
 
 test("Stage 25 projects explicit source-character knowledge", () => {
@@ -60,4 +64,17 @@ test("Stage 25 makes regenerate and repeated search reuse committed uncertainty"
   assert.match(resolver, /searchCategory/)
   assert.match(resolver, /decisionLocalKey = "discovery_pool"/)
   assert.match(runtime, /тот же discovery pool/)
+})
+
+
+test("Stage 25 makes every regenerate prose-only, not only resolved-d20 replays", () => {
+  assert.match(runtime, /priorResolverRunsForRegenerate/)
+  assert.match(runtime, /regenerateCanonLocked/)
+  assert.match(runtime, /REGENERATION CANON LOCK/)
+  assert.match(
+    runtime,
+    /replayMechanicsLocked \|\| resolvedRollContinuationLocked \|\| regenerateCanonLocked/,
+  )
+  assert.match(runtime, /JSON\.stringify\(inheritedResolverRuns/)
+  assert.match(runtime, /replayMechanicsLocked \|\| regenerateCanonLocked/)
 })

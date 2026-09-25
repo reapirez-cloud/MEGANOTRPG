@@ -3186,6 +3186,97 @@ async function refineNpcIdentityForSocialScene({
   }
 }
 
+function resolverRunsFromJobResult(value: unknown) {
+  const root = jsonRecord(value)
+  const candidates = [
+    root.scene_actor_tool_runs,
+    root.inherited_scene_actor_tool_runs,
+  ]
+  const seen = new Set<string>()
+  const runs: JsonRecord[] = []
+
+  for (const candidate of candidates) {
+    if (!Array.isArray(candidate)) continue
+    for (const raw of candidate) {
+      const run = jsonRecord(raw)
+      if (String(run.name || "") !== "resolve_random_decision") continue
+      const result = jsonRecord(run.result)
+      const decisionKey = String(result.decision_key || "")
+      const dedupeKey = decisionKey || JSON.stringify(result)
+      if (seen.has(dedupeKey)) continue
+      seen.add(dedupeKey)
+      runs.push({
+        name: "resolve_random_decision",
+        result,
+      })
+    }
+  }
+
+  return runs
+}
+
+async function priorResolverRunsForRegenerate({
+  admin,
+  campaignId,
+  claimed,
+  sourceMessageId,
+}: {
+  admin: SupabaseClient
+  campaignId: string
+  claimed: ClaimedJob
+  sourceMessageId: number
+}) {
+  if (String(claimed.input.replay_mode || "") !== "regenerate") return []
+
+  const inherited = resolverRunsFromJobResult(claimed.result)
+  if (inherited.length) return inherited
+
+  const explicitParentJobId = String(claimed.input.replay_parent_job_id || "")
+  if (explicitParentJobId) {
+    const parentResult = await admin
+      .from("agent_jobs")
+      .select("id,result")
+      .eq("id", explicitParentJobId)
+      .maybeSingle()
+
+    if (!parentResult.error && parentResult.data) {
+      const parentRuns = resolverRunsFromJobResult(
+        jsonRecord(parentResult.data).result,
+      )
+      if (parentRuns.length) return parentRuns
+    }
+  }
+
+  const currentRevisionNo = Number(claimed.input.turn_revision_no || 0)
+  const priorResult = await admin
+    .from("agent_jobs")
+    .select("id,input,result,created_at")
+    .eq("campaign_id", campaignId)
+    .eq("job_type", "conversation_turn")
+    .contains("input", {
+      source_chat_message_id: String(sourceMessageId),
+    })
+    .order("created_at", { ascending: false })
+    .limit(12)
+
+  if (priorResult.error || !Array.isArray(priorResult.data)) return []
+
+  const prior = priorResult.data
+    .map((item) => jsonRecord(item))
+    .filter((item) => String(item.id || "") !== claimed.id)
+    .filter((item) => {
+      const revisionNo = Number(jsonRecord(item.input).turn_revision_no || 0)
+      return !currentRevisionNo ||
+        (revisionNo > 0 && revisionNo < currentRevisionNo)
+    })
+    .sort((a, b) =>
+      Number(jsonRecord(b.input).turn_revision_no || 0) -
+      Number(jsonRecord(a.input).turn_revision_no || 0)
+    )[0]
+
+  return prior ? resolverRunsFromJobResult(prior.result) : []
+}
+
 async function requestPrimaryGmDecision({
   admin,
   campaignId,
@@ -3211,6 +3302,29 @@ async function requestPrimaryGmDecision({
   extraSystem?: string[]
   extraResult?: JsonRecord
 }): Promise<PrimaryGmDecision> {
+  const regenerateCanonLocked =
+    String(claimed.input.replay_mode || "") === "regenerate"
+  const inheritedResolverRuns = regenerateCanonLocked
+    ? await priorResolverRunsForRegenerate({
+        admin,
+        campaignId,
+        claimed,
+        sourceMessageId,
+      })
+    : []
+  const regenerateCanonSystem = regenerateCanonLocked
+    ? [
+        [
+          "REGENERATION CANON LOCK.",
+          "Это новая формулировка того же хода, а не новый вариант мира.",
+          "Запрещено создавать новую неопределённость, вызывать Resolver/механику, материализовывать новый канон или создавать post_turn_intents.",
+          "Уже зафиксированные Resolver outcomes предыдущей ревизии неизменяемы:",
+          JSON.stringify(inheritedResolverRuns.map((run) => run.result)),
+          "Если список пуст, всё равно не создавай новую случайность: перепиши только наблюдаемую подачу уже установленного хода.",
+        ].join("\n"),
+      ]
+    : []
+
   const messages: Array<Record<string, unknown>> = [
     { role: "system", content: STAGE12_GAME_MASTER_SYSTEM },
     {
@@ -3220,6 +3334,7 @@ async function requestPrimaryGmDecision({
         primaryGmContextForPrompt(context),
     },
     ...extraSystem.map((content) => ({ role: "system", content })),
+    ...regenerateCanonSystem.map((content) => ({ role: "system", content })),
     { role: "user", content: userContent },
   ]
   const toolRuns: JsonRecord[] = []
@@ -3229,7 +3344,7 @@ async function requestPrimaryGmDecision({
     isResume &&
     Object.keys(jsonRecord(claimed.result.last_roll_result)).length > 0
   let forceFinalWithoutTools =
-    replayMechanicsLocked || resolvedRollContinuationLocked
+    replayMechanicsLocked || resolvedRollContinuationLocked || regenerateCanonLocked
   const primaryTools = runtimeSettings.npcIdentity
     ? PRIMARY_GM_SCENE_ACTOR_TOOLS
     : PRIMARY_GM_SCENE_ACTOR_TOOLS.filter(
@@ -3283,7 +3398,7 @@ async function requestPrimaryGmDecision({
         }
       }
 
-      if (replayMechanicsLocked) {
+      if (replayMechanicsLocked || regenerateCanonLocked) {
         const replayMode = String(semanticPreview?.reaction_mode || "")
         const replayMaterialization =
           semanticPreview?.world_materialization === true
@@ -3307,7 +3422,7 @@ async function requestPrimaryGmDecision({
           messages.push({
             role: "system",
             content:
-              "REGENERATION MECHANICS LOCK: этот ход уже механически разрешён. Запрещены request_player_roll, npc_action, npc_roll, recovery, world_materialization и любые post_turn_intents. Не меняй Resolver, куб, outcome или канон. Верни новый финальный narration/dialogue/environment для УЖЕ ЗАФИКСИРОВАННОГО результата, world_materialization=false, post_turn_intents=[].",
+              "REGENERATION CANON LOCK: этот ход уже разрешён как одна версия мира. Запрещены request_player_roll, npc_action, npc_roll, recovery, world_materialization, новый Resolver и любые post_turn_intents. Не меняй Resolver outcome, кубы, найденные/не найденные сущности или иной канон. Верни только новую формулировку narration/dialogue/environment, world_materialization=false, post_turn_intents=[].",
           })
           continue
         }

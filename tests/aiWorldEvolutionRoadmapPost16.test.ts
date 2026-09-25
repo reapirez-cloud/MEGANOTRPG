@@ -28,8 +28,8 @@ function stage(id: number, next: number | null) {
   return contract.slice(start, end)
 }
 
-test("post-16 roadmap has 24 executable stages", () => {
-  assert.match(contract, /AI_WORLD_EVOLUTION_STAGE_COUNT = 24 as const/)
+test("post-16 roadmap has 25 executable stages", () => {
+  assert.match(contract, /AI_WORLD_EVOLUTION_STAGE_COUNT = 25 as const/)
   assert.match(stage(17, 18), /status: "certified"/)
   assert.match(stage(18, 19), /status: "implemented"/)
   assert.match(stage(19, 20), /status: "implemented"/)
@@ -37,7 +37,8 @@ test("post-16 roadmap has 24 executable stages", () => {
   assert.match(stage(21, 22), /status: "implemented"/)
   assert.match(stage(22, 23), /status: "implemented"/)
   assert.match(stage(23, 24), /status: "implemented"/)
-  assert.match(stage(24, null), /status: "certified"/)
+  assert.match(stage(24, 25), /status: "certified"/)
+  assert.match(stage(25, null), /status: "implemented"/)
 })
 
 test("stage 17 delegates semantic checks to a smaller mechanic worker", () => {
@@ -92,9 +93,19 @@ test("stages 21-23 preserve world and NPC autonomy", () => {
 })
 
 test("stage 24 certifies complete turn pipeline", () => {
-  const s = stage(24, null)
+  const s = stage(24, 25)
   assert.match(s, /player message through GM reply/)
   assert.match(s, /junior post-turn commit/)
   assert.match(s, /500-turn bounded clean-context test/)
   assert.match(s, /Human-GM isolation regression suite/)
+})
+
+
+test("stage 25 hardens character knowledge, resolver rarity and regenerate", () => {
+  const s = stage(25, null)
+  assert.match(s, /source-character knowledge/i)
+  assert.match(s, /Second-person narration/i)
+  assert.match(s, /rarity/i)
+  assert.match(s, /Stable location\/day\/category/)
+  assert.match(s, /regenerate canon lock/i)
 })
