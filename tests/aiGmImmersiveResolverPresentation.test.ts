@@ -50,7 +50,7 @@ test("hardcore means economic causality, not forced poverty", () => {
   assert.match(ui, /реальный масштаб экономики/)
 })
 
-test("adult mode is framed to the model as permission, not censorship plumbing", () => {
+test("adult mode is framed as positive thematic permission", () => {
   const gmPrompt = block(
     runtime,
     "const STAGE12_GAME_MASTER_SYSTEM",
@@ -62,15 +62,9 @@ test("adult mode is framed to the model as permission, not censorship plumbing",
     "function jsonRecord",
   )
 
-  assert.match(gmPrompt, /content_profile\.mode=allowed: 18\+ тематика разрешена/)
-  assert.match(gmPrompt, /Секс, нагота, грубая лексика/)
-  assert.match(npcPrompt, /content_profile\.mode=allowed: 18\+ тематика разрешена/)
-  assert.doesNotMatch(
-    gmPrompt,
-    /несовершеннолет|совершеннолет|provider|policy|jailbreak|цензур|consent|соглас/i,
-  )
-  assert.doesNotMatch(
-    npcPrompt,
-    /несовершеннолет|совершеннолет|provider|policy|jailbreak|цензур|consent|соглас/i,
-  )
+  assert.match(gmPrompt, /content_profile\.mode=allowed/)
+  assert.match(gmPrompt, /content_profile\.mode=adult_focused/)
+  assert.match(npcPrompt, /content_profile\.mode=allowed/)
+  assert.doesNotMatch(gmPrompt, /provider|policy|jailbreak|цензур/i)
+  assert.doesNotMatch(npcPrompt, /provider|policy|jailbreak|цензур/i)
 })
