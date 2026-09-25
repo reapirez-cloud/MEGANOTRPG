@@ -82,6 +82,8 @@ const CORS = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 }
 
+const FREDDY_MAX_PROVIDER_CONTINUATIONS = 3
+
 type JsonRecord = Record<string, unknown>
 
 type ProviderToolCall = {
@@ -1320,6 +1322,12 @@ Deno.serve(async (req: Request) => {
         "[СЛУЖЕБНОЕ ПРОДОЛЖЕНИЕ ДЛИННОЙ ЗАДАЧИ]",
         "Это не новый запрос пользователя. Продолжай исходную задачу до завершения.",
         "Не повторяй уже успешно выполненные мутации. При сомнении перечитай каноническое состояние через read-tools.",
+        ...(continuationJobResult?.continuation_reason === "provider_timeout"
+          ? [
+              "Предыдущий вызов AI-провайдера завершился по таймауту и не дал подтверждённого ответа модели.",
+              "Не пытайся восстанавливать скрытые рассуждения из оборванного вызова. Продолжай по канону и durable ledger.",
+            ]
+          : []),
         "Уже выполненные вызовы инструментов:",
         JSON.stringify(priorTurnLedger.slice(-40)),
         "[КОНЕЦ СЛУЖЕБНОГО ПРОДОЛЖЕНИЯ]",
@@ -1516,6 +1524,10 @@ Deno.serve(async (req: Request) => {
   let lastProviderPayload: any = null
   let forceTextOnlyNextRound = false
   let needsContinuation = false
+  let providerContinuationCount = Math.max(
+    0,
+    Number(continuationJobResult?.provider_continuation_count || 0),
+  )
 
   // Voss is a reader and keeps a deliberately small turn. Freddy is a real
   // operator: his logical budget spans multiple Edge Function invocations.
@@ -1562,6 +1574,7 @@ Deno.serve(async (req: Request) => {
           chunks: currentChunk,
           ledger: turnLedger,
           granted_capabilities: [...grantedCapabilities],
+          provider_continuation_count: providerContinuationCount,
           ...extra,
         },
         ...(status === "completed" || status === "failed"
@@ -1571,6 +1584,79 @@ Deno.serve(async (req: Request) => {
         updated_at: new Date().toISOString(),
       })
       .eq("id", activeTurnJobId)
+  }
+
+  const dispatchFreddyContinuation = async (
+    reason: "chunk_limit" | "provider_timeout",
+    extra: JsonRecord = {},
+  ) => {
+    if (!activeTurnJobId) {
+      return reply({ error: "freddy_turn_continuation_job_missing" }, 409)
+    }
+
+    await persistTurnProgress("queued", {
+      continuing: true,
+      continuation_reason: reason,
+      ...extra,
+    })
+
+    let continuationResponse: Response
+    try {
+      continuationResponse = await fetch(
+        supabaseUrl + "/functions/v1/voss-agent",
+        {
+          method: "POST",
+          headers: {
+            "Authorization": authHeader,
+            "apikey": publishableKey,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            campaignId,
+            agentKey,
+            action: "continue_freddy_turn",
+            jobId: activeTurnJobId,
+            deliveryMode: "async-v1",
+          }),
+        },
+      )
+    } catch (error) {
+      await persistTurnProgress("failed", {
+        continuation_reason: reason,
+        continuation_error:
+          error instanceof Error ? error.message : String(error),
+      })
+      return reply({
+        error: "freddy_turn_continuation_failed",
+        detail: error instanceof Error ? error.message : String(error),
+      }, 502)
+    }
+
+    if (!continuationResponse.ok) {
+      const detail = (await continuationResponse.text()).slice(0, 1200)
+      await persistTurnProgress("failed", {
+        continuation_reason: reason,
+        continuation_status: continuationResponse.status,
+        continuation_error: detail,
+      })
+      return reply({
+        error: "freddy_turn_continuation_failed",
+        providerStatus: continuationResponse.status,
+        detail,
+      }, 502)
+    }
+
+    return reply({
+      accepted: true,
+      continuing: true,
+      continuationReason: reason,
+      jobId: activeTurnJobId,
+      threadId,
+      tokensUsed: turnTokensUsed,
+      tokenBudget: turnTokenBudget,
+      chunk: currentChunk,
+      providerContinuations: providerContinuationCount,
+    }, 202)
   }
 
   for (let round = 0; round < maxRounds; round += 1) {
@@ -1624,6 +1710,33 @@ Deno.serve(async (req: Request) => {
           : error instanceof Error
             ? error.message
             : String(error)
+      const durableProviderTimeout =
+        isFreddyTurn &&
+        Boolean(activeTurnJobId) &&
+        error instanceof ProviderGatewayError &&
+        (
+          error.code === "ai_provider_timeout" ||
+          error.providerStatus === 504 ||
+          error.providerStatus === 524
+        )
+
+      if (
+        durableProviderTimeout &&
+        providerContinuationCount < FREDDY_MAX_PROVIDER_CONTINUATIONS
+      ) {
+        providerContinuationCount += 1
+        return await dispatchFreddyContinuation("provider_timeout", {
+          last_provider_timeout: {
+            code: (error as ProviderGatewayError).code,
+            provider_status: (error as ProviderGatewayError).providerStatus,
+            detail: failureDetail.slice(0, 1000),
+            at: new Date().toISOString(),
+            attempt: providerContinuationCount,
+            max_attempts: FREDDY_MAX_PROVIDER_CONTINUATIONS,
+          },
+        })
+      }
+
       if (activeTurnJobId) {
         await persistTurnProgress("failed", {
           failure_stage: "provider_request",
@@ -2011,61 +2124,7 @@ Deno.serve(async (req: Request) => {
   }
 
   if (needsContinuation && activeTurnJobId) {
-    await persistTurnProgress("queued", { continuing: true })
-
-    let continuationResponse: Response
-    try {
-      continuationResponse = await fetch(
-        supabaseUrl + "/functions/v1/voss-agent",
-        {
-          method: "POST",
-          headers: {
-            "Authorization": authHeader,
-            "apikey": publishableKey,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            campaignId,
-            agentKey,
-            action: "continue_freddy_turn",
-            jobId: activeTurnJobId,
-            deliveryMode: "async-v1",
-          }),
-        },
-      )
-    } catch (error) {
-      await persistTurnProgress("failed", {
-        continuation_error:
-          error instanceof Error ? error.message : String(error),
-      })
-      return reply({
-        error: "freddy_turn_continuation_failed",
-        detail: error instanceof Error ? error.message : String(error),
-      }, 502)
-    }
-
-    if (!continuationResponse.ok) {
-      const detail = (await continuationResponse.text()).slice(0, 1200)
-      await persistTurnProgress("failed", {
-        continuation_status: continuationResponse.status,
-        continuation_error: detail,
-      })
-      return reply({
-        error: "freddy_turn_continuation_failed",
-        providerStatus: continuationResponse.status,
-        detail,
-      }, 502)
-    }
-
-    return reply({
-      accepted: true,
-      continuing: true,
-      jobId: activeTurnJobId,
-      threadId,
-      tokensUsed: turnTokensUsed,
-      tokenBudget: turnTokenBudget,
-      chunk: currentChunk,
-    }, 202)
+    return await dispatchFreddyContinuation("chunk_limit")
   }
 
   if (!answer && lastProviderPayload) {
