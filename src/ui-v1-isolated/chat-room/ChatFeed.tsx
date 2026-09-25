@@ -286,7 +286,9 @@ export default function ChatFeed({
       <div className="u1-room-feed__list">
         {events.map((event, index) => {
           const isOwn = Boolean(
-            event.author.userId && event.author.userId === viewerUserId,
+            !event.source.aiGm &&
+            event.author.userId &&
+            event.author.userId === viewerUserId,
           )
           const side =
             event.type === "system" ? "system" : isOwn ? "own" : "other"
