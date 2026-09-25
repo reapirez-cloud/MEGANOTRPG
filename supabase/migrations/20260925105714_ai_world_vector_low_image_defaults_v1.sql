@@ -1,0 +1,9 @@
+
+alter table public.ai_world_slots
+  alter column image_quality set default 'low',
+  alter column image_base_prompt set default 'High-quality modern vector illustration with clean confident contours, layered geometric shapes, controlled gradients, clear value grouping, cinematic composition, expressive but readable silhouettes, elegant simplified materials, crisp lighting, and a sophisticated restrained palette. Use polished semi-realistic vector art as the rendering language, suitable for dark fantasy game concept art, not flat clip-art. Favor strong shape design and selective detail so the image remains coherent even at low generation quality. Avoid pixel art, raster-pixel texture, 8-bit or 16-bit aesthetics, oversized pixels, chibi proportions, cheap cartoon icon style, excessive micro-detail, photorealistic noise, readable text, watermarks, and logos. Preserve the requested subject, mood, lore, composition, location identity, and character identity as the primary content.';
+
+update public.ai_world_slots
+set image_quality='low',
+    image_base_prompt='High-quality modern vector illustration with clean confident contours, layered geometric shapes, controlled gradients, clear value grouping, cinematic composition, expressive but readable silhouettes, elegant simplified materials, crisp lighting, and a sophisticated restrained palette. Use polished semi-realistic vector art as the rendering language, suitable for dark fantasy game concept art, not flat clip-art. Favor strong shape design and selective detail so the image remains coherent even at low generation quality. Avoid pixel art, raster-pixel texture, 8-bit or 16-bit aesthetics, oversized pixels, chibi proportions, cheap cartoon icon style, excessive micro-detail, photorealistic noise, readable text, watermarks, and logos. Preserve the requested subject, mood, lore, composition, location identity, and character identity as the primary content.',
+    updated_at=now();
