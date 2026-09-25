@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
 
 import { useAI } from "../ai/AIProvider"
-import { openAgent } from "../ai/agentUiBridge"
 import { supabase } from "../lib/supabase"
 import "./ai-gm-control.css"
 
@@ -150,7 +149,7 @@ export default function AiGmControl({
   onBack: () => void
   onNavigate: (page: Exclude<AiGmControlPage, "overview">) => void
 }) {
-  const { campaignId, assistantName } = useAI()
+  const { campaignId } = useAI()
   const [panel, setPanel] = useState<ControlPanelResponse | null>(null)
   const [directorDraft, setDirectorDraft] = useState<DirectorResponse | null>(null)
   const [directorDirty, setDirectorDirty] = useState(false)
@@ -444,14 +443,6 @@ export default function AiGmControl({
 
               {error && <div className="u1-ai-gm-control__error">{error}</div>}
 
-              <button
-                type="button"
-                className="u1-ai-gm-open-freddy"
-                onClick={() => openAgent()}
-              >
-                <span>Открыть {assistantName}</span>
-                <small>Фредди остаётся отдельным дворецким/админом.</small>
-              </button>
             </>
           )}
 
