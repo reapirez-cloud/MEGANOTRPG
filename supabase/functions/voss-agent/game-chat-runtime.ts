@@ -3087,6 +3087,7 @@ async function requestPrimaryGmDecision({
   campaignId: string
   claimed: ClaimedJob
   route: Awaited<ReturnType<typeof resolveCampaignGmModel>>
+  runtimeSettings: AiGmRuntimeSettings
   context: Stage2GameChatContext
   sourceMessageId: number
   isResume: boolean
