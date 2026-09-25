@@ -17,6 +17,9 @@ const fkIndex = read(
 const modeSemantics = read(
   "supabase/migrations/20260925113000_ai_gm_immersive_presentation_and_mode_semantics_v1.sql",
 )
+const permissionOnly = read(
+  "supabase/migrations/20260925113500_ai_gm_adult_profile_permission_only_v1.sql",
+)
 const context = read("supabase/functions/voss-agent/game-chat-context.ts")
 const runtime = read("supabase/functions/voss-agent/game-chat-runtime.ts")
 const shell = read("src/ai/AgentShell.tsx")
@@ -78,29 +81,29 @@ test("Stage 23 is narrative-only and stays out of generic world-worker context",
   assert.doesNotMatch(background, /contentProfile|content_profile/)
 })
 
-test("Stage 23 does not turn mature profile into NPC compliance or mechanics", () => {
-  assert.match(runtime, /adult_focused:[^\n]*тематический приоритет/)
-  assert.match(runtime, /взрослый режим не означает consent или compliance/)
-  assert.match(runtime, /никогда не меняют consent, hard red_lines, отношения или личность NPC/)
-  assert.match(runtime, /НИКОГДА не меняет канон, механику, цены, последствия/)
-  assert.match(runtime, /однозначно совершеннолетних персонажей/)
-})
-
-test("Stage 23 tells the model what adult content is allowed without policy jargon", () => {
+test("Stage 23 keeps adult profile permission-only inside the GM prompt", () => {
   const gmStart = runtime.indexOf("const STAGE12_GAME_MASTER_SYSTEM")
   const npcStart = runtime.indexOf("const NPC_DIALOGUE_SYSTEM", gmStart)
-  const jsonStart = runtime.indexOf("function jsonRecord", npcStart)
   const gmPrompt = runtime.slice(gmStart, npcStart)
+
+  assert.match(gmPrompt, /content_profile\.mode=allowed: разрешены зрелые темы/)
+  assert.match(gmPrompt, /content_profile\.mode=adult_focused: всё из allowed разрешено/)
+  assert.doesNotMatch(
+    gmPrompt,
+    /несовершеннолет|совершеннолет|provider|policy|jailbreak|цензур|consent|compliance|fade-to-black/i,
+  )
+})
+
+test("Stage 23 NPC prompt stays permission-oriented", () => {
+  const npcStart = runtime.indexOf("const NPC_DIALOGUE_SYSTEM")
+  const jsonStart = runtime.indexOf("function jsonRecord", npcStart)
   const npcPrompt = runtime.slice(npcStart, jsonStart)
 
-  assert.match(gmPrompt, /разрешены зрелые темы/)
-  assert.match(gmPrompt, /сексуальные и романтические ситуации по взаимному согласию/)
-  assert.doesNotMatch(gmPrompt, /provider|policy|jailbreak|цензур/i)
-  assert.doesNotMatch(npcPrompt, /provider|policy|jailbreak|цензур/i)
-
-  // Refusal detection stays server-side bookkeeping and is not injected into prompts.
-  assert.match(runtime, /isProviderContentRefusal/)
-  assert.match(runtime, /ai_provider_content_refusal/)
+  assert.match(npcPrompt, /allowed\/adult_focused разрешают зрелые темы/)
+  assert.doesNotMatch(
+    npcPrompt,
+    /несовершеннолет|совершеннолет|provider|policy|jailbreak|цензур|consent|compliance|fade-to-black/i,
+  )
 })
 
 test("Stage 23 records bounded telemetry on AI GM jobs", () => {
@@ -112,22 +115,14 @@ test("Stage 23 records bounded telemetry on AI GM jobs", () => {
   assert.match(runtime, /stage23ContentProfileTelemetry/)
 })
 
-test("Stage 23 current profile summaries are permission-oriented", () => {
-  const listStart = modeSemantics.indexOf(
-    "create or replace function public.list_campaign_ai_gm_content_profiles_v1",
-  )
-  const setStart = modeSemantics.indexOf(
-    "create or replace function public.set_campaign_ai_gm_content_profile_v1",
-    listStart,
-  )
-  const visibleProfileContract = modeSemantics.slice(listStart, setStart)
-
-  assert.match(visibleProfileContract, /Без специального разрешения/)
-  assert.match(visibleProfileContract, /Для совершеннолетних персонажей разрешены зрелые темы/)
-  assert.match(visibleProfileContract, /no_automatic_fade_to_black_when_enabled/)
+test("Stage 23 current profile summaries are permission-only", () => {
+  assert.match(permissionOnly, /Взрослая тематика не является специальным приоритетом/)
+  assert.match(permissionOnly, /Разрешает зрелые темы и взрослые ситуации/)
+  assert.match(permissionOnly, /mature_themes_allowed/)
+  assert.match(permissionOnly, /adult_focus/)
   assert.doesNotMatch(
-    visibleProfileContract,
-    /provider|policy|jailbreak|цензур/i,
+    permissionOnly,
+    /несовершеннолет|совершеннолет|provider|policy|jailbreak|цензур|consent|fade-to-black/i,
   )
 })
 
