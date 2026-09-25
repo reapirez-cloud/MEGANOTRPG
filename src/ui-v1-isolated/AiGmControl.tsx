@@ -125,6 +125,20 @@ function selectedModel(models: ModelChoice[]) {
   return models.find((model) => model.selected) || models[0] || null
 }
 
+function behaviorLabel(profile: BehaviorChoice | null | undefined) {
+  if (!profile) return "не выбран"
+  if (profile.profile_key === "brutal") return "Хардкор / Жестокий"
+  if (profile.profile_key === "sims") return "Симс"
+  if (profile.profile_key === "adventure") return "Приключение"
+  return profile.display_name
+}
+
+function contentLabel(mode: ContentMode | null | undefined) {
+  if (mode === "adult_focused") return "18+ · Взрослая жизнь"
+  if (mode === "allowed") return "18+ · Разрешено"
+  return "18+ выключено"
+}
+
 export type AiGmControlPage = "overview" | "models" | "behavior"
 
 export default function AiGmControl({
@@ -185,6 +199,9 @@ export default function AiGmControl({
     () => selectedModel(panel?.junior_models || []),
     [panel?.junior_models],
   )
+  const selectedBehavior =
+    panel?.behavior?.profiles.find((profile) => profile.selected) || null
+  const selectedContentMode = panel?.content?.selected_mode || "off"
   const canManage = panel?.can_manage === true
   const pageTitle =
     page === "models"
@@ -412,7 +429,7 @@ export default function AiGmControl({
                   <span>
                     <b>Настройки поведения ИИ</b>
                     <small>
-                      Режим мастера, директор, контент-профиль и автоматика мира
+                      {behaviorLabel(selectedBehavior)} · {contentLabel(selectedContentMode)} · автоматика мира
                     </small>
                   </span>
                   <i aria-hidden="true">›</i>
@@ -498,8 +515,8 @@ export default function AiGmControl({
             <>
               {panel.behavior && (
                 <section className="u1-ai-gm-card">
-                  <span className="u1-ai-gm-card__eyebrow">РЕЖИМ МАСТЕРА</span>
-                  <h2>Стиль ведения</h2>
+                  <span className="u1-ai-gm-card__eyebrow">ХАРДКОР / ПРИКЛЮЧЕНИЕ / СИМС</span>
+                  <h2>Режим кампании</h2>
                   <p>
                     Режим влияет на выбор между одинаково правдоподобными ветками,
                     но не отменяет канон, кубы и самостоятельность NPC.
@@ -515,7 +532,7 @@ export default function AiGmControl({
                         onClick={() => void chooseBehavior(profile.profile_key)}
                       >
                         <span>
-                          <strong>{profile.display_name}</strong>
+                          <strong>{behaviorLabel(profile)}</strong>
                           <small>{profile.summary}</small>
                         </span>
                         <i>{profile.selected ? "✓" : "›"}</i>
@@ -589,8 +606,12 @@ export default function AiGmControl({
 
               {panel.content && (
                 <section className="u1-ai-gm-card">
-                  <span className="u1-ai-gm-card__eyebrow">КОНТЕНТ-ПРОФИЛЬ</span>
-                  <h2>Тематика кампании</h2>
+                  <span className="u1-ai-gm-card__eyebrow">18+ / ВЗРОСЛАЯ ТЕМАТИКА</span>
+                  <h2>Контент кампании</h2>
+                  <p>
+                    Отдельно от режима мастера. Включает взрослую тематику в пределах
+                    возможностей выбранного провайдера, не переписывая канон и характер NPC.
+                  </p>
                   <div className="u1-ai-gm-behaviors">
                     {panel.content.modes.map((choice) => (
                       <button
@@ -602,7 +623,13 @@ export default function AiGmControl({
                         onClick={() => void chooseContent(choice.mode)}
                       >
                         <span>
-                          <strong>{choice.display_name}</strong>
+                          <strong>
+                            {choice.mode === "adult_focused"
+                              ? "18+ · Взрослая жизнь"
+                              : choice.mode === "allowed"
+                                ? "18+ · Разрешено"
+                                : "Выключено"}
+                          </strong>
                           <small>{choice.summary}</small>
                         </span>
                         <i>{panel.content?.selected_mode === choice.mode ? "✓" : "›"}</i>
