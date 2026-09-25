@@ -118,9 +118,9 @@ test("AI GM model and behavior controls open as separate routed screens", () => 
   assert.match(control, /<select/)
 
   assert.match(control, /page === "behavior"/)
-  assert.match(control, /РЕЖИМ МАСТЕРА/)
+  assert.match(control, /ХАРДКОР \/ ПРИКЛЮЧЕНИЕ \/ СИМС/)
   assert.match(control, /ДИРЕКТОР/)
-  assert.match(control, /КОНТЕНТ-ПРОФИЛЬ/)
+  assert.match(control, /18\+ \/ ВЗРОСЛАЯ ТЕМАТИКА/)
   assert.match(control, /ФУНКЦИИ ИИ-МИРА/)
   assert.match(control, /className="u1-ai-gm-switch"/)
   assert.match(control, /aria-pressed=\{feature\.enabled\}/)
