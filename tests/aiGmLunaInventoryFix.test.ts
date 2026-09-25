@@ -10,6 +10,9 @@ const migration = read(
 )
 const gateway = read("supabase/functions/voss-agent/provider-gateway.ts")
 const runtime = read("supabase/functions/voss-agent/game-chat-runtime.ts")
+const selectorMigration = read(
+  "supabase/migrations/20260925152000_luna_junior_selector_rls_visibility_fix_v1.sql",
+)
 
 test("GPT-5.6 Luna is registered as a 1M junior-only model", () => {
   assert.match(migration, /'gpt-5\.6-luna'/)
@@ -36,4 +39,12 @@ test("Stage 27 normalizes incomplete AI inventory profiles server-side", () => {
   assert.match(migration, /'shape_mask',jsonb_build_array\('1'\)/)
   assert.match(migration, /cheburashka_assert_inventory_profile_v1\(v_profile\)/)
   assert.match(runtime, /server injects semantic_role and fills a safe compact 1x1 baseline/)
+})
+
+test("Luna stays junior-only but bypasses ai_models RLS inside the guarded junior selector", () => {
+  assert.match(selectorMigration, /list_campaign_ai_junior_models_v1/)
+  assert.match(selectorMigration, /security definer/)
+  assert.match(selectorMigration, /is_campaign_member/)
+  assert.match(selectorMigration, /can_select_campaign_junior_model_v1/)
+  assert.match(selectorMigration, /revoke all on function public\.list_campaign_ai_junior_models_v1\(uuid\) from public/)
 })
