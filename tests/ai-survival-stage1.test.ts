@@ -9,6 +9,7 @@ import {
   campaignMinuteToWorldTime,
   legacyWorldTimeToCampaignMinute,
 } from "../src/world-state/time.ts"
+import { evaluateCondition } from "../src/character-engine/conditions.ts"
 
 test("AI survival stages use locked thresholds", () => {
   assert.equal(resolveSurvivalStage(51), 0)
@@ -43,4 +44,23 @@ test("exact campaign minute round-trips legacy period anchors", () => {
   assert.equal(exact.day_period, "evening")
   assert.equal(exact.hour, 20)
   assert.equal(exact.minute, 0)
+})
+
+test("resource conditions read canonical runtime resources", () => {
+  assert.equal(
+    evaluateCondition(
+      { kind: "resource", key: "survival_satiety", operator: "LTE", value: 25 },
+      {
+        maxHp: 10,
+        state: {
+          currentHp: 10,
+          tempHp: 0,
+          resources: {
+            survival_satiety: { current: 20 },
+          },
+        },
+      },
+    ),
+    true,
+  )
 })
