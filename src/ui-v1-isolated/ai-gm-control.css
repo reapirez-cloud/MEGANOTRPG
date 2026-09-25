@@ -584,3 +584,74 @@
     grid-column: auto;
   }
 }
+
+
+/* AI GM v4: root menu opens real dedicated routes instead of expanding controls inline. */
+.u1-ai-gm-menu {
+  display: grid;
+  gap: 10px;
+}
+
+.u1-ai-gm-menu__entry {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  min-height: 78px;
+  padding: 15px 16px;
+  border: 1px solid rgba(255, 255, 255, 0.085);
+  border-radius: 16px;
+  color: inherit;
+  text-align: left;
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.012)),
+    rgba(13, 16, 18, 0.94);
+}
+
+.u1-ai-gm-menu__entry:active {
+  transform: scale(0.992);
+  background: rgba(28, 32, 35, 0.96);
+}
+
+.u1-ai-gm-menu__entry > span {
+  min-width: 0;
+}
+
+.u1-ai-gm-menu__entry b,
+.u1-ai-gm-menu__entry small {
+  display: block;
+}
+
+.u1-ai-gm-menu__entry b {
+  color: #eef1f2;
+  font-size: 14px;
+}
+
+.u1-ai-gm-menu__entry small {
+  margin-top: 5px;
+  color: #7f878d;
+  font-size: 10px;
+  line-height: 1.45;
+}
+
+.u1-ai-gm-menu__entry > i {
+  color: #9ba3a8;
+  font-size: 24px;
+  font-style: normal;
+}
+
+@media (max-width: 560px) {
+  .u1-ai-gm-card--models {
+    padding: 14px;
+  }
+
+  .u1-ai-gm-model-selectors > label {
+    gap: 10px;
+  }
+
+  .u1-ai-gm-model-selectors select {
+    min-height: 48px;
+    font-size: 13px;
+  }
+}
