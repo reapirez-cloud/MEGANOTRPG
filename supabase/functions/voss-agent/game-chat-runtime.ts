@@ -432,6 +432,60 @@ const STAGE27_INVENTORY_EXECUTOR_TOOL = {
   },
 } as const
 
+const AI_SURVIVAL_EXECUTOR_TOOL = {
+  type: "function",
+  function: {
+    name: "commit_survival_turn",
+    description:
+      "Commit the immutable AI survival/time plan for the source PC. The server binds character_id, owns arithmetic, clamps survival to 0..100, atomically consumes food, applies sleep/rest and exact time, and rejects ordinary scene durations over five minutes.",
+    parameters: {
+      type: "object",
+      additionalProperties: false,
+      properties: {
+        elapsed_minutes: { type: "integer", minimum: 0, maximum: 10080 },
+        time_reason: {
+          type: "string",
+          enum: ["scene", "long_action", "travel", "sleep", "rest"],
+        },
+        extra_satiety_depletion: {
+          type: "integer",
+          minimum: 0,
+          maximum: 25,
+          description:
+            "Additional depletion caused by explicitly strenuous exertion beyond ordinary elapsed-time drain. Zero unless the published fiction warrants it.",
+        },
+        extra_alertness_depletion: {
+          type: "integer",
+          minimum: 0,
+          maximum: 25,
+          description:
+            "Additional fatigue caused by explicitly strenuous exertion. Zero unless the published fiction warrants it.",
+        },
+        sleep_minutes: { type: "integer", minimum: 0, maximum: 1440 },
+        rest_type: {
+          type: "string",
+          enum: ["none", "short_rest", "long_rest"],
+        },
+        food: {
+          type: "array",
+          maxItems: 8,
+          items: {
+            type: "object",
+            additionalProperties: false,
+            properties: {
+              item_id: { type: "string" },
+              quantity: { type: "integer", minimum: 1, maximum: 100 },
+              satiety_restore: { type: "integer", minimum: 0, maximum: 100 },
+            },
+            required: ["item_id", "quantity", "satiety_restore"],
+          },
+        },
+      },
+      required: ["elapsed_minutes", "time_reason"],
+    },
+  },
+} as const
+
 const STAGE18_POST_TURN_TOOLS = [
   ...VOSS_MANAGER_TOOLS.filter((tool) =>
     STAGE18_POST_TURN_MANAGER_TOOL_NAMES.has(tool.function.name)
@@ -443,6 +497,7 @@ const STAGE18_POST_TURN_TOOLS = [
     STAGE18_POST_TURN_MEMORY_TOOL_NAMES.has(tool.function.name)
   ),
   STAGE27_INVENTORY_EXECUTOR_TOOL,
+  AI_SURVIVAL_EXECUTOR_TOOL,
 ]
 
 const STAGE18_POST_TURN_WORKER_SYSTEM = [
@@ -451,6 +506,8 @@ const STAGE18_POST_TURN_WORKER_SYSTEM = [
   "Тебе передаётся РОВНО ОДИН immutable intent. Выполни максимум ОДИН write-tool call.",
   "Stage 27: ты ПЛАНИРОВЩИК, а не исполнитель. После твоего единственного tool call сервер создаёт typed job agent_key=ai_world_executor; сам Executor детерминированно выполняет мутацию без ещё одного LLM-решения.",
   "Для inventory intent используй только commit_inventory_delta. Для grant ты не создаёшь definition напрямую: дай semantic card, после чего серверный Item Registry ОБЯЗАН сначала искать system/campaign definitions и только при реальном отсутствии создать одну campaign-definition. Лишь resolved definition_id + revision передаются Cheburashka.",
+  "AI Survival: если immutable intent имеет intent_key=survival_turn или instruction.operation=commit_survival_turn, используй ТОЛЬКО commit_survival_turn и буквально перенеси structured arguments из instruction. Не пересчитывай время, еду, сон или нагрузку сам.",
+  "В survival food используй только item_id из canonical_inventory_for_present_characters. Не создавай второй inventory intent для той же съеденной еды: commit_survival_turn списывает её атомарно сам.",
   "Сразу классифицируй grant: canonical_name, category, semantic_role, короткие aliases/tags. Это каталогизация, а не новая механика. Не добавляй сценовые эпитеты в canonical_name: «окровавленный меч из канавы» для обычного longsword должен резолвиться как стандартный длинный меч, если опубликованный канон не установил отдельную идентичность.",
   "Для действительно уникального/именного предмета ставь unique_identity=true и стабильный identity_key, основанный на его канонической личности, а не на случайном UUID. Повторное появление той же вещи должно находить ту же definition.",
   "Если опубликовано получение D&D-монет, используй currency_key cp|sp|ep|gp|pp; сервер ищет системное определение номинала. Не создавай новую definition монеты.",
@@ -878,12 +935,15 @@ const STAGE12_GAME_MASTER_SYSTEM = [
   "Для npc_action выбирай mechanic_id только из actions конкретного NPC. Если runtime.kind=save_action, обязательно укажи physically-present target_character_id PC.",
   "Если NPC должен сделать обычную проверку характеристики, спасбросок или навык, используй npc_roll. Модификатор считает сервер из character_sheets.",
   "Не используй npc_action для NPC без ready runtime и не придумывай mechanic_id.",
-  "Если сервер должен дать короткий отдых, длительный отдых или перевести текущую физическую локацию к новому рассвету, используй recovery.",
-  "Для recovery передай recovery.trigger=short_rest|long_rest|dawn. Для short_rest/long_rest передай target_character_ids только из characters_physically_present_with_source. Можно указать несколько персонажей.",
-  "Для dawn target_character_ids должен быть пустым. Сервер сам переводит текущую локацию к dawn: если сейчас уже dawn, второй рассвет этого же campaign_day не срабатывает; иначе наступает следующий campaign_day. Dawn восстанавливает только физически находящихся в этой location_id персонажей.",
-  "После recovery сервер перечитает канонический контекст и даст тебе продолжить ТОТ ЖЕ GM turn уже с обновлёнными ресурсами и временем. Не проси тот же recovery второй раз.",
+  "AI Survival Stage 3: для каждого ЗАВЕРШЁННОГО видимого narrative turn заполни survival_turn. Не используй старый recovery для обычного сна/еды/отдыха AI-мира: время, сон и rest_type применяются post-turn атомарно.",
+  "survival_turn={elapsed_minutes,time_reason,extra_satiety_depletion,extra_alertness_depletion,sleep_minutes,rest_type,food}. Обычная короткая сцена допускает elapsed_minutes 0..5. Долгое действие, travel, sleep или rest может занимать больше и должно иметь соответствующий time_reason.",
+  "Голод не должен превращать игру в симулятор кухни: базовая сытость рассчитана примерно на 48 часов без еды, бодрость примерно на 72 часа без сна. Не придумывай дополнительные штрафы: сервер сам вычисляет стадии и d20 pressure.",
+  "При реально тяжёлой физической нагрузке ты МОЖЕШЬ дополнительно уменьшить сытость и/или бодрость через extra_*_depletion. Обычно это 0; используй положительное значение только когда нагрузка явно существенная. Сервер ограничивает каждый extra-параметр диапазоном 0..25.",
+  "Если source_character реально съел еду из canonical_inventory_for_present_characters, добавь её в survival_turn.food как {item_id,quantity,satiety_restore}. Сам оцени насыщение по виду, объёму и контексту еды; нормальная плотная еда может восстановить вплоть до 100%, сервер обрежет итог до шкалы 100. Не создавай отдельный inventory intent для этой же еды.",
+  "Если персонаж спит, укажи sleep_minutes. Восстановление бодрости считает сервер; 8 часов реального сна способны вернуть полную шкалу. Для полноценного short/long rest дополнительно укажи rest_type, и сервер сам продвинет время и вызовет существующее восстановление ресурсов.",
+  "Точное current_game_time.campaignMinute является каноническим временем. campaignDay/dayPeriod остаются совместимым отображением. Не округляй длительные действия обратно до периода суток.",
   "Stage 18: НЕ задерживай финальный ответ ради обычного world bookkeeping. Если в уже написанном финальном ответе появился новый канонический факт, который можно записать ПОСЛЕ публикации, добавь bounded post_turn_intents. Игрок сначала увидит ответ, затем младший worker синхронизирует базу, а сервер до конца синхронизации не примет следующий free-form ход.",
-  "post_turn_intents — массив максимум 16 объектов {intent_key,kind,instruction,evidence}. intent_key короткий стабильный snake/kebab key без UUID. kind: location|npc|quest|memory|canonical_state|binding|inventory. instruction описывает ТОЛЬКО факт, уже установленный видимым ответом; evidence коротко указывает, где именно в ответе этот факт установлен.",
+  "post_turn_intents — массив максимум 16 объектов {intent_key,kind,instruction,evidence}. intent_key короткий стабильный snake/kebab key без UUID. kind: location|npc|quest|memory|canonical_state|binding|inventory. instruction описывает ТОЛЬКО факт, уже установленный видимым ответом; evidence коротко указывает, где именно в ответе этот факт установлен. survival_turn НЕ дублируй вручную в post_turn_intents: runtime сам создаст один canonical_state intent.",
   "Stage 27: если финальный ответ устанавливает, что персонаж реально ПОЛУЧИЛ/ПОДОБРАЛ/ПОТРАТИЛ/ПОТЕРЯЛ предмет или валюту, обязательно добавь inventory post_turn_intent. Простое обнаружение/наблюдение предмета без получения не меняет inventory.",
   "Для одинаковой валюты/предметов в одном результате делай один агрегированный inventory intent с устойчивым intent_key по смыслу эффекта. Regenerate не должен превращать одну и ту же награду в повторную выдачу.",
   "Post-turn intent НЕ может добавлять новый сюжетный результат после публикации. Нельзя через него придумывать награду, секрет, врага, NPC, исход проверки или событие, которого нет в финальном ответе.",
@@ -908,7 +968,7 @@ const STAGE12_GAME_MASTER_SYSTEM = [
   "Для mechanic modes body пустой и messages пустой.",
   "Если нужен scene actor, сначала вызывай доступные scene-actor tools. После их результата либо закончи механическое действие tool-вызовом, либо верни обычный JSON для narration/диалога.",
   "Для социальной попытки по возможности добавляй social_leverage_analysis={target_npc_id,classification(no_leverage|weak_leverage|credible_leverage|decisive_leverage|blocked_by_identity),causal_basis,why_roll_or_no_roll}. Это аудит твоего решения, не скрытый бонус к кубу.",
-  "Ответь ТОЛЬКО одним JSON-объектом без markdown с полями reaction_mode, world_materialization, world_materialization_task, post_turn_intents, messages, body, npc_character_id, intent_adjudication, roll_request, npc_action, npc_roll, recovery, social_leverage_analysis, reason.",
+  "Ответь ТОЛЬКО одним JSON-объектом без markdown с полями reaction_mode, world_materialization, world_materialization_task, post_turn_intents, survival_turn, messages, body, npc_character_id, intent_adjudication, roll_request, npc_action, npc_roll, recovery, social_leverage_analysis, reason.",
   "reaction_mode: recovery|dialogue_sequence|environment|npc_interjection|request_player_roll|npc_action|npc_roll|none.",
 ].join("\n")
 
@@ -1345,6 +1405,7 @@ function stage18ToolsForIntent(kind: PostTurnIntent["kind"]) {
                   "move_character_world",
                   "set_world_discovery",
                   "set_character_life_state",
+                  "commit_survival_turn",
                 ])
 
   return STAGE18_POST_TURN_TOOLS.filter((tool) =>
@@ -2134,9 +2195,9 @@ function parseReaction(
       ? requestedMode
       : "gm_response"
 
-  const postTurnIntents = parseStage18PostTurnIntents(
+  let postTurnIntents = parseStage18PostTurnIntents(
     parsed.post_turn_intents,
-  )
+  ).filter((intent) => intent.intentKey !== "survival_turn")
   if (
     postTurnIntents.length &&
     (
@@ -2148,6 +2209,105 @@ function parseReaction(
     )
   ) {
     throw new Error("stage18_post_turn_intents_not_allowed_for_nonfinal_mode")
+  }
+
+  const rawSurvival = jsonRecord(parsed.survival_turn)
+  const survivalReason =
+    rawSurvival.time_reason === "long_action" ||
+      rawSurvival.time_reason === "travel" ||
+      rawSurvival.time_reason === "sleep" ||
+      rawSurvival.time_reason === "rest"
+      ? rawSurvival.time_reason
+      : "scene"
+  const rawElapsed = Number(rawSurvival.elapsed_minutes)
+  const survivalElapsed = survivalReason === "scene"
+    ? Math.max(0, Math.min(5, Number.isFinite(rawElapsed) ? Math.trunc(rawElapsed) : 1))
+    : Math.max(0, Math.min(10080, Number.isFinite(rawElapsed) ? Math.trunc(rawElapsed) : 1))
+  const rawSleep = Number(rawSurvival.sleep_minutes)
+  const survivalSleepMinutes = Math.max(
+    0,
+    Math.min(
+      survivalElapsed,
+      1440,
+      Number.isFinite(rawSleep) ? Math.trunc(rawSleep) : 0,
+    ),
+  )
+  const survivalRestType =
+    rawSurvival.rest_type === "short_rest" ||
+      rawSurvival.rest_type === "long_rest"
+      ? rawSurvival.rest_type
+      : "none"
+  const normalizedExtra = (value: unknown) => {
+    const parsedValue = Number(value)
+    return Math.max(
+      0,
+      Math.min(25, Number.isFinite(parsedValue) ? Math.trunc(parsedValue) : 0),
+    )
+  }
+  const sourceInventoryIds = new Set(
+    context.inventoryItems
+      .filter(
+        (item) =>
+          String(item.character_id || "") === String(context.sourceCharacter.id || ""),
+      )
+      .map((item) => String(item.id || ""))
+      .filter(Boolean),
+  )
+  const seenFoodIds = new Set<string>()
+  const survivalFood = Array.isArray(rawSurvival.food)
+    ? rawSurvival.food.slice(0, 8).flatMap((value) => {
+        const item = jsonRecord(value)
+        const itemId = typeof item.item_id === "string" ? item.item_id.trim() : ""
+        if (!itemId || !sourceInventoryIds.has(itemId) || seenFoodIds.has(itemId)) {
+          return []
+        }
+        seenFoodIds.add(itemId)
+        const rawQuantity = Number(item.quantity)
+        const rawRestore = Number(item.satiety_restore)
+        return [{
+          item_id: itemId,
+          quantity: Math.max(
+            1,
+            Math.min(100, Number.isFinite(rawQuantity) ? Math.trunc(rawQuantity) : 1),
+          ),
+          satiety_restore: Math.max(
+            0,
+            Math.min(100, Number.isFinite(rawRestore) ? Math.trunc(rawRestore) : 0),
+          ),
+        }]
+      })
+    : []
+
+  const survivalPlan = {
+    elapsed_minutes: survivalElapsed,
+    time_reason: survivalReason,
+    extra_satiety_depletion: normalizedExtra(rawSurvival.extra_satiety_depletion),
+    extra_alertness_depletion: normalizedExtra(rawSurvival.extra_alertness_depletion),
+    sleep_minutes: survivalSleepMinutes,
+    rest_type: survivalRestType,
+    food: survivalFood,
+  }
+
+  const finalNarrativeMode =
+    mode === "dialogue_sequence" ||
+    mode === "environment" ||
+    mode === "npc_interjection" ||
+    mode === "gm_response"
+
+  if (finalNarrativeMode) {
+    postTurnIntents = [
+      ...postTurnIntents,
+      {
+        intentKey: "survival_turn",
+        kind: "canonical_state",
+        instruction: JSON.stringify({
+          operation: "commit_survival_turn",
+          arguments: survivalPlan,
+        }),
+        evidence:
+          "Primary GM structured survival_turn for this published narrative turn.",
+      },
+    ]
   }
 
   const body =
