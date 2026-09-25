@@ -797,6 +797,59 @@ function WorldNpcDossierScreen({
   )
 }
 
+type WorldLoreFilter = "all" | "news" | "world_event" | "chronicle" | "history" | "rumor"
+
+const worldLoreFilters: Array<{ id: WorldLoreFilter; label: string }> = [
+  { id: "all", label: "Всё" },
+  { id: "news", label: "Новости" },
+  { id: "world_event", label: "События" },
+  { id: "chronicle", label: "Хроника" },
+  { id: "history", label: "История" },
+  { id: "rumor", label: "Слухи" },
+]
+
+const worldLoreCategoryLabel: Record<string, string> = {
+  article: "Лор мира",
+  news: "Новости",
+  world_event: "Событие мира",
+  chronicle: "Хроника",
+  history: "История",
+  rumor: "Слух",
+}
+
+const worldLorePeriodLabel: Record<string, string> = {
+  dawn: "Рассвет",
+  morning: "Утро",
+  day: "День",
+  afternoon: "После полудня",
+  evening: "Вечер",
+  night: "Ночь",
+}
+
+function worldLoreWhen(item: ReturnType<typeof useUiV1WorldData>["lore"][number]) {
+  if (item.campaign_day) {
+    const period = item.day_period ? worldLorePeriodLabel[item.day_period] : ""
+    return `День ${item.campaign_day}${period ? ` · ${period}` : ""}`
+  }
+
+  if (!item.occurred_at) return "Лор мира"
+  const date = new Date(item.occurred_at)
+  if (Number.isNaN(date.getTime())) return "Лор мира"
+
+  return new Intl.DateTimeFormat("ru-RU", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  }).format(date)
+}
+
+function worldLoreSource(item: ReturnType<typeof useUiV1WorldData>["lore"][number]) {
+  if (item.source_kind === "background_event") return "Мир развивается"
+  if (item.source_kind === "world_article") return "Энциклопедия"
+  if (item.category === "news") return "Известия"
+  return "Канон кампании"
+}
+
 export function WorldSectionScreen({
   subsection,
   path = [],
@@ -805,6 +858,18 @@ export function WorldSectionScreen({
   path?: string[]
 }) {
   const world = useUiV1WorldData()
+  const [loreFilter, setLoreFilter] = useState<WorldLoreFilter>("all")
+
+  const visibleLore = useMemo(
+    () => world.lore.filter((item) => {
+      if (loreFilter === "all") return true
+      if (loreFilter === "history") {
+        return item.category === "history" || item.category === "article"
+      }
+      return item.category === loreFilter
+    }),
+    [loreFilter, world.lore],
+  )
 
   useAIViewContextLayer(
     "world-section",
@@ -835,6 +900,9 @@ export function WorldSectionScreen({
                   id: item.id,
                   title: item.title,
                   summary: item.summary,
+                  category: item.category,
+                  source_kind: item.source_kind,
+                  campaign_day: item.campaign_day,
                 }))
               : [],
             locationCount: world.locations.length,
@@ -909,15 +977,65 @@ export function WorldSectionScreen({
           {!world.characters.length && <EmptyState>Персонажей пока нет.</EmptyState>}
         </>
       ) : subsection === "lore" ? (
-        <div className="u1-simple-list">
-          {world.lore.map((item) => (
-            <article className="u1-simple-row" key={item.id}>
-              <strong>{item.title}</strong>
-              {item.summary && <small>{item.summary}</small>}
-            </article>
-          ))}
-          {!world.lore.length && <EmptyState>Лор пока не заполнен.</EmptyState>}
-        </div>
+        <section className="u1-living-lore">
+          <div className="u1-living-lore__intro">
+            <span>Живой мир</span>
+            <p>
+              Здесь сохраняются лор, публичные новости и значимые изменения мира.
+              Мир может продолжать развиваться и без участия персонажа, а скрытые события
+              появятся здесь только когда станут известны.
+            </p>
+          </div>
+
+          <nav className="u1-living-lore__filters" aria-label="Фильтр лора">
+            {worldLoreFilters.map((filter) => (
+              <button
+                key={filter.id}
+                type="button"
+                className={loreFilter === filter.id ? "is-active" : ""}
+                onClick={() => setLoreFilter(filter.id)}
+              >
+                {filter.label}
+              </button>
+            ))}
+          </nav>
+
+          {visibleLore.length > 0 ? (
+            <div className="u1-living-lore__timeline">
+              {visibleLore.map((item) => (
+                <article className="u1-living-lore__entry" key={item.id}>
+                  <span className="u1-living-lore__rail" aria-hidden="true"><i /></span>
+                  <div className="u1-living-lore__card">
+                    <header>
+                      <span>{worldLoreCategoryLabel[item.category] || "Лор"}</span>
+                      <small>{worldLoreWhen(item)}</small>
+                      <em>{worldLoreSource(item)}</em>
+                    </header>
+                    <h2>{item.title}</h2>
+                    {item.summary && <p>{item.summary}</p>}
+                    {item.body && item.body.trim() !== item.summary.trim() && (
+                      <details>
+                        <summary>Читать подробнее</summary>
+                        <div>{item.body}</div>
+                      </details>
+                    )}
+                    {item.tags.length > 0 && (
+                      <footer>
+                        {item.tags.slice(0, 6).map((tag) => <span key={tag}>{tag}</span>)}
+                      </footer>
+                    )}
+                  </div>
+                </article>
+              ))}
+            </div>
+          ) : (
+            <EmptyState>
+              {world.lore.length
+                ? "В этой категории пока ничего нет."
+                : "Хроника пока пуста. Значимые события и новости появятся здесь автоматически."}
+            </EmptyState>
+          )}
+        </section>
       ) : (
         <FutureConnection title={registered.title} backTo="home/world" />
       )}
