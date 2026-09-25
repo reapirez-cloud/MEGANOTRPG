@@ -729,6 +729,13 @@ export const VOSS_MANAGER_TOOLS = [
           label: { type: "string" },
           visibility_mode: { type: "string", enum: ["always", "discover", "private"] },
           sort_order: { type: "integer" },
+          travel_minutes: {
+            type: "integer",
+            minimum: 1,
+            maximum: 10080,
+            description:
+              "Optional canonical one-way travel duration in game minutes. Omit when unknown; AI survival should use it when the route is actually traversed.",
+          },
         },
         required: ["source_location_id", "target_location_id"],
       },
@@ -2269,6 +2276,13 @@ async function upsertLocationTransition(
   }
   if (Number.isInteger(Number(args.sort_order))) {
     input.sort_order = Number(args.sort_order)
+  }
+  if (
+    Number.isInteger(Number(args.travel_minutes)) &&
+    Number(args.travel_minutes) >= 1 &&
+    Number(args.travel_minutes) <= 10080
+  ) {
+    input.travel_minutes = Number(args.travel_minutes)
   }
 
   const { data, error } = await canonicalManagerRpc(
