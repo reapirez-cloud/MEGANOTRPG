@@ -22,6 +22,9 @@ const runtimeSettingsMigration = read(
 const juniorBackgroundRouteMigration = read(
   "supabase/migrations/20260925042000_ai_gm_junior_background_route_v1.sql",
 )
+const runtimeQueueBoundaryMigration = read(
+  "supabase/migrations/20260925043000_ai_gm_runtime_switch_queue_boundaries_v3.sql",
+)
 const migration = read(
   "supabase/migrations/20260925013000_ai_gm_runtime_entity_authority_and_output_fix_v1.sql",
 )
@@ -174,4 +177,15 @@ test("background world freezes the currently selected junior model instead of ha
   assert.match(juniorBackgroundRouteMigration, /agent_key='junior'/)
   assert.match(juniorBackgroundRouteMigration, /can_select_campaign_junior_model_v1/)
   assert.match(juniorBackgroundRouteMigration, /v_model:=coalesce\(nullif\(v_selected_model,''\),v_model\)/)
+})
+
+
+test("disabled automatic systems stop at queue boundaries and resume durable work when re-enabled", () => {
+  assert.match(runtimeQueueBoundaryMigration, /queue_ai_gm_npc_media_after_profile_v1/)
+  assert.match(runtimeQueueBoundaryMigration, /queue_ai_gm_location_media_after_entry_v1/)
+  assert.match(runtimeQueueBoundaryMigration, /ai_gm_runtime_feature_enabled_v1/)
+  assert.match(runtimeQueueBoundaryMigration, /dispatch_ai_background_daily_run_v1/)
+  assert.match(runtimeQueueBoundaryMigration, /dispatch_ai_gm_maintenance_job_v1/)
+  assert.match(runtimeQueueBoundaryMigration, /dispatch_ai_gm_media_job_v1/)
+  assert.match(runtimeQueueBoundaryMigration, /if p_enabled and v_key='background_world'/)
 })
