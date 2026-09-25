@@ -1055,6 +1055,7 @@ async function requestJuniorCompletionWithFallback({
   model,
   reasoningEffort = "low",
   request,
+  allowProviderFallback = true,
 }: {
   admin: SupabaseClient
   model: RouterModel
@@ -1063,6 +1064,7 @@ async function requestJuniorCompletionWithFallback({
     Parameters<typeof requestChatCompletion>[0],
     "model" | "reasoningEffort"
   >
+  allowProviderFallback?: boolean
 }) {
   try {
     return {
@@ -1076,7 +1078,7 @@ async function requestJuniorCompletionWithFallback({
       providerFallback: false,
     }
   } catch (error) {
-    if (!isJuniorProviderTimeout(error)) throw error
+    if (!isJuniorProviderTimeout(error) || !allowProviderFallback) throw error
 
     const fallbackRoute = await resolveCampaignJuniorFallbackModel(admin, {
       excludeModelKey: model.model_key,
@@ -1232,6 +1234,9 @@ async function runWorldMaterializer({
   originalMessage,
   materializationTask,
   fallbackModel,
+  modelOverride,
+  providerTimeoutMs,
+  allowInlineProviderFallback = true,
 }: {
   admin: SupabaseClient
   campaignId: string
@@ -1240,8 +1245,12 @@ async function runWorldMaterializer({
   originalMessage: string
   materializationTask: string
   fallbackModel: RouterModel
+  modelOverride?: RouterModel
+  providerTimeoutMs?: number
+  allowInlineProviderFallback?: boolean
 }) {
-  const model = await resolveWorldMaterializerModel(admin, campaignId, fallbackModel)
+  const model = modelOverride ||
+    await resolveWorldMaterializerModel(admin, campaignId, fallbackModel)
   if (!model.supports_tools) {
     return { changed: false, toolRuns: [] as JsonRecord[] }
   }
@@ -1284,9 +1293,12 @@ async function runWorldMaterializer({
               }
             : "auto",
         temperature: 0.15,
-        timeoutMs: context.sourceLocation ? 60_000 : 45_000,
+        timeoutMs:
+          providerTimeoutMs ??
+          (context.sourceLocation ? 60_000 : 45_000),
         retryCount: 0,
       },
+      allowProviderFallback: allowInlineProviderFallback,
     })
     const payload = juniorCall.payload
     activeModel = juniorCall.model
@@ -4689,7 +4701,12 @@ export async function runGameChatTurn(
       throw new Error("ai_gm_turn_input_invalid")
     }
 
-    const [route, initialContext, runtimeSettings] = await Promise.all([
+    const [
+      route,
+      initialContext,
+      runtimeSettings,
+      emptyWorldProbe,
+    ] = await Promise.all([
       resolveCampaignGmModel(admin, { campaignId }),
       buildGameChatContextV2({
         admin,
@@ -4697,10 +4714,23 @@ export async function runGameChatTurn(
         jobInput: claimed.input,
       }),
       loadAiGmRuntimeSettings(admin, campaignId),
+      admin
+        .from("locations")
+        .select("id", { count: "exact", head: true })
+        .eq("campaign_id", campaignId),
     ])
+
+    if (emptyWorldProbe.error) {
+      throw new Error(emptyWorldProbe.error.message)
+    }
 
     let context = initialContext
     let freshWorldPreMaterialized = false
+    const firstMessageBootstrapOnly =
+      runtimeSettings.worldMaterialization &&
+      !isResume &&
+      !context.sourceLocation &&
+      Number(emptyWorldProbe.count || 0) === 0
 
     // A brand-new AI world has no source location yet. Do not spend the primary
     // GM's expensive first provider call reasoning about an empty canonical
@@ -4719,6 +4749,15 @@ export async function runGameChatTurn(
       if (managerUserId) {
         await setRuntimePhase(admin, claimed, "applying")
 
+        const providerContinuationCount = Math.max(
+          0,
+          Number(claimed.result.provider_continuation_count || 0),
+        )
+        const bootstrapFallbackRoute =
+          firstMessageBootstrapOnly && providerContinuationCount > 0
+            ? await resolveCampaignJuniorFallbackModel(admin)
+            : null
+
         const materialization = await runWorldMaterializer({
           admin,
           campaignId,
@@ -4726,8 +4765,13 @@ export async function runGameChatTurn(
           context,
           originalMessage,
           materializationTask:
-            "Fresh-world bootstrap: materialize the minimal canonical starting location explicitly implied by the player's opening message and place source_character there. Respect named setting/city context from the player, but do not invent unrelated NPCs, quests, factions or rewards.",
+            firstMessageBootstrapOnly
+              ? "FIRST MESSAGE BOOTSTRAP ONLY. Use the player's opening message only to establish the minimal playable starting world around source_character. Create the canonical starting location and its immediate structural layer, place source_character there, preserve named setting/geography from the message, and do not narrate the scene, advance the plot, create unrelated NPCs, quests, rewards or encounters."
+              : "Fresh-world bootstrap: materialize the minimal canonical starting location explicitly implied by the player's opening message and place source_character there. Respect named setting/city context from the player, but do not invent unrelated NPCs, quests, factions or rewards.",
           fallbackModel: route.model,
+          modelOverride: bootstrapFallbackRoute?.model,
+          providerTimeoutMs: firstMessageBootstrapOnly ? 90_000 : undefined,
+          allowInlineProviderFallback: !firstMessageBootstrapOnly,
         })
 
         claimed.result = {
@@ -4758,6 +4802,40 @@ export async function runGameChatTurn(
             jobInput: claimed.input,
           })
           freshWorldPreMaterialized = Boolean(context.sourceLocation)
+        }
+
+        if (firstMessageBootstrapOnly) {
+          if (!freshWorldPreMaterialized) {
+            throw new Error("fresh_world_bootstrap_source_location_missing")
+          }
+
+          await completeWithoutChatMessage({
+            admin,
+            claimed,
+            route,
+            sourceMessageId,
+            context,
+            reaction: {
+              mode: "none",
+              body: "",
+              npcCharacterId: null,
+              reason: "first_message_world_bootstrap_only",
+              rollRequest: null,
+              npcAction: null,
+              npcRoll: null,
+              recoveryRequest: null,
+              socialLeverageAnalysis: null,
+              dialogueOutputs: [],
+            },
+            extraResult: {
+              bootstrap_only: true,
+              primary_gm_invoked: false,
+              bootstrap_model_key: materialization.modelKey || null,
+              bootstrap_provider_continuation_count: providerContinuationCount,
+              runtime_phase: "completed",
+            },
+          })
+          return
         }
 
         await setRuntimePhase(admin, claimed, "thinking")
