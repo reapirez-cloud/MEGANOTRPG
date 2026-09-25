@@ -58,6 +58,8 @@ function DialogueMessage({
   onMediaLoad: () => void
 }) {
   const gmNarration = event.type === "gm_message"
+  const aiGmAuthored = event.source.aiGm
+  const aiNpc = aiGmAuthored && Boolean(event.author.characterId)
   const gmAuthored = event.author.isGm
   const showAuthor = groupPosition === "single" || groupPosition === "first"
 
@@ -67,7 +69,9 @@ function DialogueMessage({
       data-chat-dialogue-stage="2"
       data-message-kind={gmNarration ? "narration" : "dialogue"}
       data-event-type={event.type}
-      data-author-role={gmAuthored ? "gm" : "player"}
+      data-author-role={
+        aiNpc ? "npc-ai" : aiGmAuthored ? "gm-ai" : gmAuthored ? "gm" : "player"
+      }
       data-message-side={isOwn ? "own" : "other"}
       data-message-group={groupPosition}
     >
@@ -80,12 +84,18 @@ function DialogueMessage({
       <div className="u1-chat-line__content">
         <header className="u1-chat-line__meta" data-author-visible={showAuthor || undefined}>
           {showAuthor ? <strong>{event.author.name}</strong> : null}
-          {showAuthor && gmAuthored ? (
+          {showAuthor && (aiGmAuthored || gmAuthored) ? (
             <span
               className="u1-chat-line__role"
-              data-role="gm"
+              data-role={aiNpc ? "npc-ai" : aiGmAuthored ? "gm-ai" : "gm"}
             >
-              {gmNarration ? "GM · Рассказчик" : "GM"}
+              {aiNpc
+                ? "NPC · ИИ"
+                : aiGmAuthored
+                  ? "ИИ · Рассказчик"
+                  : gmNarration
+                    ? "GM · Рассказчик"
+                    : "GM"}
             </span>
           ) : null}
           {event.audience.scope === "direct_pc" ? (
