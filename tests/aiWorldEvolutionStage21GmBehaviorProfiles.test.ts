@@ -145,6 +145,14 @@ test("Brutal profile is strict but explicitly non-adversarial", () => {
   assert.match(gmSystem, /power asymmetry/i)
 })
 
+test("Brutal preserves economic scale without poverty bias", () => {
+  assert.match(foundation, /economic_scale/)
+  assert.match(foundation, /wages_prices_rewards/)
+  assert.match(foundation, /poverty_bias/)
+  assert.match(runtime, /экономика обязана сохранять масштаб мира/)
+  assert.match(runtime, /Hardcore НЕ означает искусственно делать PC нищим/)
+})
+
 test("Adventure favors recoverable continuations only when equally plausible", () => {
   const gmSystem = block(
     runtime,
