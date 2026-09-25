@@ -3334,7 +3334,7 @@ async function setRuntimePhase(
     runtime_phase: phase,
   }
 
-  const { error } = await admin
+  const { data, error } = await admin
     .from("agent_jobs")
     .update({
       result: claimed.result,
@@ -3342,8 +3342,12 @@ async function setRuntimePhase(
     })
     .eq("id", claimed.id)
     .eq("status", "running")
+    .eq("cancel_requested", false)
+    .select("id")
+    .maybeSingle()
 
   if (error) throw new Error(error.message)
+  if (!data?.id) throw new GameTurnCancelledError()
 }
 
 function enforceStage12Audience(
@@ -4207,6 +4211,13 @@ async function requestPrimaryGmDecision({
         typeof call.function?.name === "string" ? call.function.name : ""
       const args = parseProviderToolArguments(call.function?.arguments)
       let result: JsonRecord
+      const toolMutationPhase =
+        !(resolverCallIndex >= 0 && index !== resolverCallIndex) &&
+        name !== "request_player_roll"
+
+      if (toolMutationPhase) {
+        await setRuntimePhase(admin, claimed, "applying")
+      }
 
       if (resolverCallIndex >= 0 && index !== resolverCallIndex) {
         result = {
@@ -4798,6 +4809,11 @@ async function requestPrimaryGmDecision({
         })
         .eq("id", claimed.id)
         .eq("status", "running")
+        .eq("cancel_requested", false)
+
+      if (toolMutationPhase) {
+        await setRuntimePhase(admin, claimed, "thinking")
+      }
 
       const resultPlan = jsonRecord(result.plan)
       const resolverReceiptReturned =
@@ -5132,6 +5148,7 @@ export async function runGameChatTurn(
           : ""
 
       if (managerUserId) {
+        await setRuntimePhase(admin, claimed, "applying")
         const materialization = await runWorldMaterializer({
           admin,
           campaignId,
