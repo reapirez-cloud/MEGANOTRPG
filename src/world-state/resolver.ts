@@ -2,7 +2,16 @@ import { compareWorldTime } from "./time.ts"
 import type { CharacterWorldState, PresenceCharacter, SceneWorldState, WorldPosition } from "./types.ts"
 
 export function sameWorldPosition(a: WorldPosition | null | undefined, b: WorldPosition | null | undefined): boolean {
-  return Boolean(a && b && a.location_id && b.location_id && a.location_id === b.location_id && a.campaign_day === b.campaign_day && a.day_period === b.day_period)
+  if (!a?.location_id || !b?.location_id || a.location_id !== b.location_id) return false
+
+  if (
+    typeof a.campaign_minute === "number" &&
+    typeof b.campaign_minute === "number"
+  ) {
+    return a.campaign_minute === b.campaign_minute
+  }
+
+  return a.campaign_day === b.campaign_day && a.day_period === b.day_period
 }
 
 export function sameLocation(a: WorldPosition | null | undefined, b: WorldPosition | null | undefined): boolean {
