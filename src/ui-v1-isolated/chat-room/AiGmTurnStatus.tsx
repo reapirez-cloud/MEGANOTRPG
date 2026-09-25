@@ -28,10 +28,17 @@ type AiGmStatus = {
 }
 
 function publishStatus(roomId: string, status: AiGmStatus | null) {
+  const phase = status?.phase || "idle"
+  const terminal =
+    phase === "failed" ||
+    phase === "post_turn_failed" ||
+    phase === "cancelled" ||
+    phase === "idle"
+
   const detail: AiGmTurnStatusDetail = {
     roomId,
-    active: status?.active === true,
-    phase: status?.phase || "idle",
+    active: status?.active === true && !terminal,
+    phase,
     label: status?.label || "ИИ-ГМ",
     commitId:
       typeof status?.commit_id === "string" && status.commit_id
