@@ -25,6 +25,9 @@ const juniorBackgroundRouteMigration = read(
 const runtimeQueueBoundaryMigration = read(
   "supabase/migrations/20260925043000_ai_gm_runtime_switch_queue_boundaries_v3.sql",
 )
+const autoRollMigration = read(
+  "supabase/migrations/20260925044500_ai_gm_auto_player_roll_bridge_v1.sql",
+)
 const migration = read(
   "supabase/migrations/20260925013000_ai_gm_runtime_entity_authority_and_output_fix_v1.sql",
 )
@@ -196,4 +199,25 @@ test("disabled automatic systems stop at queue boundaries and resume durable wor
   assert.match(runtimeQueueBoundaryMigration, /dispatch_ai_gm_maintenance_job_v1/)
   assert.match(runtimeQueueBoundaryMigration, /dispatch_ai_gm_media_job_v1/)
   assert.match(runtimeQueueBoundaryMigration, /if p_enabled and v_key='background_world'/)
+})
+
+
+test("AI GM player roll requests become visible auto-rolls and cannot tool-loop", () => {
+  assert.match(runtime, /REQUEST_PLAYER_ROLL_TOOL/)
+  assert.match(runtime, /name: "request_player_roll"/)
+  assert.match(runtime, /converted_to_player_roll_reaction/)
+  assert.match(runtime, /TOOL LOOP GUARD/)
+  assert.match(runtime, /forceFinalWithoutTools/)
+  assert.match(runtime, /roll_replayed === true/)
+  assert.match(runtime, /resultPlan\.execution_state === "completed"/)
+
+  assert.match(status, /pending_roll_request_id/)
+  assert.match(status, /auto_roll_available/)
+  assert.match(status, /resolve_player_roll_request_v1/)
+  assert.match(status, /CHAT_MESSAGE_SENT_EVENT/)
+
+  assert.match(autoRollMigration, /pending_player_roll_requests/)
+  assert.match(autoRollMigration, /c\.assigned_user_id=v_user_id/)
+  assert.match(autoRollMigration, /r\.status='pending'/)
+  assert.match(autoRollMigration, /ИИ-ГМ запросил бросок · бросаем автоматически/)
 })
