@@ -2,6 +2,7 @@ import { useEffect, useState, type CSSProperties } from "react"
 
 import ChatComposer from "./ChatComposer"
 import ChatGmDrawer from "./ChatGmDrawer"
+import ChatSurvivalDrawer from "./ChatSurvivalDrawer"
 import ChatFeed from "./ChatFeed"
 import ChatRoomFrame from "./ChatRoomFrame"
 import ChatRoomHeader from "./ChatRoomHeader"
@@ -82,6 +83,11 @@ export default function ChatRoomScreen({ roomId }: { roomId: string }) {
   }
 
   const presentation = chatRoomPresentationState(model)
+  const aiSurvivalCharacterId =
+    model.viewer.aiGameMasterEnabled === true
+      ? model.viewer.playerCharacterId
+      : null
+  const aiSurvivalMode = Boolean(aiSurvivalCharacterId)
 
   return (
     <main
@@ -146,7 +152,20 @@ export default function ChatRoomScreen({ roomId }: { roomId: string }) {
         </div>
       </ChatRoomFrame>
 
-      {model.canManage && !gmDrawerOpen ? (
+      {aiSurvivalMode && !gmDrawerOpen ? (
+        <button
+          type="button"
+          className="u1-survival-drawer-trigger"
+          aria-label="Открыть статус персонажа"
+          aria-expanded="false"
+          onClick={() => setGmDrawerOpen(true)}
+        >
+          <span>СТАТУС</span>
+          <i aria-hidden="true">›</i>
+        </button>
+      ) : null}
+
+      {!model.viewer.aiGameMasterEnabled && model.canManage && !gmDrawerOpen ? (
         <button
           type="button"
           className="u1-gm-drawer-trigger"
@@ -159,7 +178,14 @@ export default function ChatRoomScreen({ roomId }: { roomId: string }) {
         </button>
       ) : null}
 
-      {gmDrawerOpen && model.canManage ? (
+      {gmDrawerOpen && aiSurvivalCharacterId ? (
+        <ChatSurvivalDrawer
+          characterId={aiSurvivalCharacterId}
+          onClose={() => setGmDrawerOpen(false)}
+        />
+      ) : null}
+
+      {gmDrawerOpen && !model.viewer.aiGameMasterEnabled && model.canManage ? (
         <ChatGmDrawer
           model={model}
           onClose={() => setGmDrawerOpen(false)}
