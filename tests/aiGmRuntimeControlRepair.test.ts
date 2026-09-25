@@ -85,7 +85,7 @@ test("dedicated AI button routes managers to the AI GM control page while Freddy
   assert.match(shell, /setOpen\(\(value\) => !value\)/)
 })
 
-test("AI GM control exposes direct senior/junior selectors and real runtime switches", () => {
+test("AI GM model and behavior controls open as separate routed screens", () => {
   assert.match(control, /read_ai_gm_control_panel_v1/)
   for (const rpc of [
     "set_campaign_gm_model_v1",
@@ -98,21 +98,29 @@ test("AI GM control exposes direct senior/junior selectors and real runtime swit
     assert.match(control, new RegExp(rpc))
   }
 
+  assert.match(app, /path === "ai-gm\/models"/)
+  assert.match(app, /path === "ai-gm\/behavior"/)
+  assert.match(app, /page=\{route\.page\}/)
+  assert.match(app, /onNavigate=\{\(page\) => go\("ai-gm\/" \+ page\)\}/)
+
+  assert.match(control, /page === "overview"/)
+  assert.match(control, /onNavigate\("models"\)/)
+  assert.match(control, /onNavigate\("behavior"\)/)
+  assert.match(control, /Модели компании/)
+  assert.match(control, /Настройки поведения ИИ/)
+
+  assert.match(control, /page === "models"/)
   assert.match(control, /Старший ИИ/)
   assert.match(control, /Младший ИИ/)
   assert.match(control, /<select/)
+
+  assert.match(control, /page === "behavior"/)
+  assert.match(control, /РЕЖИМ МАСТЕРА/)
+  assert.match(control, /ДИРЕКТОР/)
+  assert.match(control, /КОНТЕНТ-ПРОФИЛЬ/)
+  assert.match(control, /ФУНКЦИИ ИИ-МИРА/)
   assert.match(control, /className="u1-ai-gm-switch"/)
   assert.match(control, /aria-pressed=\{feature\.enabled\}/)
-
-  for (const section of [
-    "01 · МОДЕЛИ ИИ",
-    "02 · РЕЖИМ МАСТЕРА",
-    "03 · ДИРЕКТОР",
-    "04 · КОНТЕНТ-ПРОФИЛЬ",
-    "05 · ФУНКЦИИ ИИ-МИРА",
-  ]) {
-    assert.match(control, new RegExp(section))
-  }
 })
 
 test("server AI GM control panel bundles models, gameplay profiles and core runtime features", () => {
