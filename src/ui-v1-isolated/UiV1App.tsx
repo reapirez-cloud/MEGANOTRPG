@@ -812,6 +812,24 @@ export default function UiV1App() {
     [navigateBack],
   )
 
+  if (route.type === "ai-gm") {
+    return (
+      <div className="u1-app u1-app--ai-gm">
+        <AiGmControl
+          page={route.page}
+          onNavigate={(page) => go("ai-gm/" + page)}
+          onBack={() => {
+            if (route.page !== "overview") {
+              go("ai-gm")
+              return
+            }
+            if (!navigateAppBack()) go("workspace")
+          }}
+        />
+      </div>
+    )
+  }
+
   return (
     <div className="u1-app">
       <div className="u1-backdrop" aria-hidden="true" />
@@ -836,12 +854,12 @@ export default function UiV1App() {
           </motion.div>
         </AnimatePresence>
 
-        {route.type !== "chat-room" && route.type !== "ai-gm" && (
+        {route.type !== "chat-room" && (
           <Dock route={route} onNavigate={navigateRoot} />
         )}
       </div>
 
-      {route.type !== "ai-gm" ? <AgentShell /> : null}
+      <AgentShell />
     </div>
   )
 }
