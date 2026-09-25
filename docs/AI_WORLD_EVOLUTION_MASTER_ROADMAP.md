@@ -1686,3 +1686,48 @@ Deferred to Stage 27:
 
 - generic typed Executor queue for all mutation classes;
 - canonical inventory/economy commits and loot idempotency.
+
+
+---
+
+## Stage 27 — Deterministic Executor + Inventory Commit
+
+**Status: IMPLEMENTED — 2026-09-25**
+
+The Junior model is now a planner, not the final mutation authority. Every
+post-turn tool proposal becomes one typed `agent_jobs` row with
+`agent_key=ai_world_executor` and `job_type=canonical_mutation`. The Executor
+itself is deterministic server code, so there is no third narrative/model
+decision capable of adding canon.
+
+Contracts:
+
+- one immutable post-turn intent maps to one typed Executor job;
+- retries reuse the same source-intent job contract instead of replanning a
+  different mutation silently;
+- legacy Stage 18 mutation families still execute through their transactional
+  server boundary, but are now reached through the Executor queue;
+- Stage 26 `materialize_location_cascade` is executable from post-turn location
+  intents, closing the old whitelist gap;
+- `inventory` is a first-class post-turn intent kind;
+- acquisition, pickup, spending, consumption or loss stated by the published GM
+  answer must produce an inventory intent; merely seeing an item does not;
+- `commit_inventory_delta` is the only inventory Executor operation;
+- D&D currency uses canonical cp/sp/ep/gp/pp keys and bulk stacks instead of
+  one inventory row per coin;
+- inventory writes go through Cheburashka RPCs and use deterministic command IDs
+  derived from the source player message + semantic delta;
+- replay/regenerate of the same source-message inventory effect therefore
+  replays the Cheburashka command receipt instead of granting it twice;
+- identical item/currency effects in one turn are aggregated as one quantity;
+- the player-turn gate remains closed until every blocking Executor job has
+  completed; failed execution leaves the existing Stage 18 recovery gate closed;
+- Junior receives a bounded canonical inventory snapshot so consume/remove
+  operations must reference real item UUIDs rather than hallucinated ones.
+
+Deferred to Stage 28:
+
+- location media dispatcher recovery;
+- persistent 16:9 location hero state and retry UI;
+- full cross-system E2E certification and reconciliation of older AI-world
+  scenes.

@@ -160,7 +160,7 @@ type RecoveryRequest = {
 
 type PostTurnIntent = {
   intentKey: string
-  kind: "location" | "npc" | "quest" | "memory" | "canonical_state" | "binding"
+  kind: "location" | "npc" | "quest" | "memory" | "canonical_state" | "binding" | "inventory"
   instruction: string
   evidence: string
 }
@@ -319,6 +319,61 @@ const STAGE18_POST_TURN_QUEST_TOOL_NAMES = new Set([
 const STAGE18_POST_TURN_MEMORY_TOOL_NAMES = new Set([
   "remember_campaign_fact",
 ])
+const STAGE27_INVENTORY_EXECUTOR_TOOL = {
+  type: "function",
+  function: {
+    name: "commit_inventory_delta",
+    description:
+      "Stage 27 post-turn inventory mutation. Use only for an item/currency gain, consumption or removal already established by the published GM answer. The deterministic Executor applies it through Cheburashka with source-message idempotency.",
+    parameters: {
+      type: "object",
+      additionalProperties: false,
+      properties: {
+        action: { type: "string", enum: ["grant", "consume", "remove"] },
+        character_id: { type: "string" },
+        item_id: {
+          type: "string",
+          description:
+            "Required for consume/remove. Must come from canonical_inventory_for_present_characters; never invent it.",
+        },
+        quantity: {
+          type: "integer",
+          minimum: 1,
+          description:
+            "For consume, amount removed from the existing stack. Aggregate identical deltas from this turn.",
+        },
+        item: {
+          type: "object",
+          additionalProperties: false,
+          properties: {
+            currency_key: {
+              type: "string",
+              enum: ["cp", "sp", "ep", "gp", "pp"],
+              description:
+                "Preferred for D&D coinage; the server canonicalizes the name/category and bulk-stacks it.",
+            },
+            name: { type: "string" },
+            quantity: { type: "integer", minimum: 1 },
+            category: {
+              type: "string",
+              enum: [
+                "equipment", "consumable", "tool", "book", "trinket",
+                "quest", "material", "currency", "container", "other",
+              ],
+            },
+            description: { type: "string" },
+            weight: { type: "number", minimum: 0 },
+            definition_id: { type: "string" },
+            stack_mode: { type: "string", enum: ["instance", "bulk_stack"] },
+            usage_mode: { type: "string", enum: ["none", "quantity", "charges"] },
+          },
+        },
+      },
+      required: ["action", "character_id"],
+    },
+  },
+} as const
+
 const STAGE18_POST_TURN_TOOLS = [
   ...VOSS_MANAGER_TOOLS.filter((tool) =>
     STAGE18_POST_TURN_MANAGER_TOOL_NAMES.has(tool.function.name)
@@ -329,12 +384,16 @@ const STAGE18_POST_TURN_TOOLS = [
   ...VOSS_MEMORY_WRITE_TOOLS.filter((tool) =>
     STAGE18_POST_TURN_MEMORY_TOOL_NAMES.has(tool.function.name)
   ),
+  STAGE27_INVENTORY_EXECUTOR_TOOL,
 ]
 
 const STAGE18_POST_TURN_WORKER_SYSTEM = [
   "Ты младший post-turn commit worker MEGANOT. Модель выбирается настройками кампании.",
   "Игрок УЖЕ увидел финальный ответ GM. Ты не ведёшь сцену и не можешь менять этот ответ.",
   "Тебе передаётся РОВНО ОДИН immutable intent. Выполни максимум ОДИН write-tool call.",
+  "Stage 27: ты ПЛАНИРОВЩИК, а не исполнитель. После твоего единственного tool call сервер создаёт typed job agent_key=ai_world_executor; сам Executor детерминированно выполняет мутацию без ещё одного LLM-решения.",
+  "Для inventory intent используй только commit_inventory_delta. Если опубликовано получение D&D-монет, предпочитай currency_key cp|sp|ep|gp|pp; одинаковые монеты/предметы одного результата агрегируй quantity, а не дроби на несколько независимых выдач.",
+  "Для consume/remove используй item_id только из canonical_inventory_for_present_characters. Если предмета там нет, не придумывай UUID и не вызывай мутацию.",
   "Для location intent Stage 26 разрешён materialize_location_cascade: это ОДНА серверная транзакционная мутация, хотя внутри она создаёт/переиспользует локацию, строит её непосредственный структурный слой, связывает переходы и при необходимости двигает PC.",
   "Если опубликованный ответ утверждает, что source_character вошёл/прибыл/остался в новой или другой постоянной локации, предпочитай materialize_location_cascade и обязательно передавай move_character_id=source_character.id. Не оставляй персонажа в старом character_world_state.",
   "В children передавай только непосредственных детей. Город → районы/крупные функциональные зоны; район → крупные кластеры/улицы/значимые места; таверна/постоялый двор → основные помещения; лес → крупные природные зоны/маршруты. Никогда не строй grandchildren в этом же вызове.",
@@ -753,7 +812,9 @@ const STAGE12_GAME_MASTER_SYSTEM = [
   "Для dawn target_character_ids должен быть пустым. Сервер сам переводит текущую локацию к dawn: если сейчас уже dawn, второй рассвет этого же campaign_day не срабатывает; иначе наступает следующий campaign_day. Dawn восстанавливает только физически находящихся в этой location_id персонажей.",
   "После recovery сервер перечитает канонический контекст и даст тебе продолжить ТОТ ЖЕ GM turn уже с обновлёнными ресурсами и временем. Не проси тот же recovery второй раз.",
   "Stage 18: НЕ задерживай финальный ответ ради обычного world bookkeeping. Если в уже написанном финальном ответе появился новый канонический факт, который можно записать ПОСЛЕ публикации, добавь bounded post_turn_intents. Игрок сначала увидит ответ, затем младший worker синхронизирует базу, а сервер до конца синхронизации не примет следующий free-form ход.",
-  "post_turn_intents — массив максимум 16 объектов {intent_key,kind,instruction,evidence}. intent_key короткий стабильный snake/kebab key без UUID. kind: location|npc|quest|memory|canonical_state|binding. instruction описывает ТОЛЬКО факт, уже установленный видимым ответом; evidence коротко указывает, где именно в ответе этот факт установлен.",
+  "post_turn_intents — массив максимум 16 объектов {intent_key,kind,instruction,evidence}. intent_key короткий стабильный snake/kebab key без UUID. kind: location|npc|quest|memory|canonical_state|binding|inventory. instruction описывает ТОЛЬКО факт, уже установленный видимым ответом; evidence коротко указывает, где именно в ответе этот факт установлен.",
+  "Stage 27: если финальный ответ устанавливает, что персонаж реально ПОЛУЧИЛ/ПОДОБРАЛ/ПОТРАТИЛ/ПОТЕРЯЛ предмет или валюту, обязательно добавь inventory post_turn_intent. Простое обнаружение/наблюдение предмета без получения не меняет inventory.",
+  "Для одинаковой валюты/предметов в одном результате делай один агрегированный inventory intent с устойчивым intent_key по смыслу эффекта. Regenerate не должен превращать одну и ту же награду в повторную выдачу.",
   "Post-turn intent НЕ может добавлять новый сюжетный результат после публикации. Нельзя через него придумывать награду, секрет, врага, NPC, исход проверки или событие, которого нет в финальном ответе.",
   "Для именованного NPC/квеста, впервые установленных самим финальным ответом, используй post_turn_intents вместо pre-response materialization, если их UUID не нужен для механики ЭТОГО ЖЕ ответа.",
   "Stage 26: если финальный ответ устанавливает, что source_character физически вошёл/прибыл/остался в новой постоянной локации, обязательно добавь ОДИН location post_turn_intent, в котором явно указаны destination, parent/источник если известны и требование переместить source_character. Junior выполнит это одним materialize_location_cascade и построит непосредственный слой destination.",
@@ -1149,7 +1210,9 @@ async function resolvePostTurnWorkerModel(
 
 function stage18ToolsForIntent(kind: PostTurnIntent["kind"]) {
   const names =
-    kind === "location"
+    kind === "inventory"
+      ? new Set(["commit_inventory_delta"])
+      : kind === "location"
       ? new Set([
           "materialize_location_cascade",
           "create_location",
@@ -1326,21 +1389,45 @@ async function runStage18Intent({
     throw new Error("stage18_worker_selected_disallowed_tool")
   }
 
-  const { data, error } = await admin.rpc(
-    "execute_ai_gm_post_turn_mutation_v3",
+  const { data: queuedData, error: queueError } = await admin.rpc(
+    "enqueue_ai_world_executor_job_v1",
     {
       p_intent_id: String(intentRow.id),
       p_commit_lease_token: commitLeaseToken,
       p_intent_lease_token: intentLeaseToken,
-      p_tool_name: toolName,
+      p_operation: toolName,
       p_args: toolArgs,
     },
   )
-  if (error) throw new Error(error.message)
+  if (queueError) throw new Error(queueError.message)
+
+  const queued = jsonRecord(queuedData)
+  if (queued.state === "completed") return queued
+
+  const executorJobId = String(queued.id || "")
+  if (!executorJobId) {
+    throw new Error("stage27_executor_job_id_missing")
+  }
+
+  const { data, error } = await admin.rpc(
+    "execute_ai_world_executor_job_v1",
+    {
+      p_job_id: executorJobId,
+      p_commit_lease_token: commitLeaseToken,
+      p_intent_lease_token: intentLeaseToken,
+    },
+  )
+  if (error) {
+    await admin.rpc("fail_ai_world_executor_job_v1", {
+      p_job_id: executorJobId,
+      p_error: error.message,
+    })
+    throw new Error(error.message)
+  }
 
   const execution = jsonRecord(data)
   if (execution.state !== "completed") {
-    throw new Error("stage18_atomic_mutation_not_completed")
+    throw new Error("stage27_executor_mutation_not_completed")
   }
   return execution
 }
@@ -1842,6 +1929,7 @@ const STAGE18_POST_TURN_KINDS = new Set([
   "memory",
   "canonical_state",
   "binding",
+  "inventory",
 ])
 
 function parseStage18PostTurnIntents(value: unknown): PostTurnIntent[] {

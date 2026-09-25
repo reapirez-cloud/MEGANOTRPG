@@ -27,6 +27,7 @@ export type Stage2GameChatContext = {
   presentCharacters: JsonRecord[]
   sheets: JsonRecord[]
   resourceStates: JsonRecord[]
+  inventoryItems: JsonRecord[]
   inventoryChargeItems: JsonRecord[]
   npcProfiles: JsonRecord[]
   npcIdentities: JsonRecord[]
@@ -1115,6 +1116,7 @@ export async function buildGameChatContextV2({
     sheetsResult,
     resourceStatesResult,
     inventoryChargesResult,
+    inventoryItemsResult,
     npcProfilesResult,
     npcIdentitiesResult,
     npcRuntimeResult,
@@ -1138,6 +1140,13 @@ export async function buildGameChatContextV2({
           .from("character_resource_states")
           .select("character_id,state_key,current,max_snapshot,label,recharge,temporary_max_bonus,updated_at")
           .in("character_id", relevantCharacterIds)
+      : Promise.resolve({ data: [], error: null }),
+    relevantCharacterIds.length
+      ? admin
+          .from("character_inventory_items")
+          .select("id,character_id,name,quantity,category,stack_mode,usage_mode,charges_current,charges_max,definition_id,holder_item_id,placement_kind,item_state,version,description,updated_at")
+          .in("character_id", relevantCharacterIds)
+          .limit(200)
       : Promise.resolve({ data: [], error: null }),
     relevantCharacterIds.length
       ? admin
@@ -1240,6 +1249,7 @@ export async function buildGameChatContextV2({
     sheetsResult.error ||
     resourceStatesResult.error ||
     inventoryChargesResult.error ||
+    inventoryItemsResult.error ||
     npcProfilesResult.error ||
     npcIdentitiesResult.error ||
     npcRuntimeResult.error ||
@@ -1507,6 +1517,7 @@ export async function buildGameChatContextV2({
     presentCharacters,
     sheets: rows(sheetsResult.data),
     resourceStates: rows(resourceStatesResult.data),
+    inventoryItems: rows(inventoryItemsResult.data),
     inventoryChargeItems: rows(inventoryChargesResult.data),
     npcProfiles: rows(npcProfilesResult.data),
     npcIdentities: rows(npcIdentitiesResult.data),
@@ -1788,6 +1799,23 @@ export function stage2ContextForPrompt(context: Stage2GameChatContext) {
         recharge: resource.recharge,
         temporary_max_bonus: resource.temporary_max_bonus,
       })).slice(0, 96),
+    canonical_inventory_for_present_characters:
+      context.inventoryItems.map((item) => ({
+        id: item.id,
+        character_id: item.character_id,
+        name: item.name,
+        quantity: item.quantity,
+        category: item.category,
+        stack_mode: item.stack_mode,
+        usage_mode: item.usage_mode,
+        charges_current: item.charges_current,
+        charges_max: item.charges_max,
+        definition_id: item.definition_id,
+        holder_item_id: item.holder_item_id,
+        placement_kind: item.placement_kind,
+        version: item.version,
+        item_state: item.item_state,
+      })).slice(0, 160),
     charged_inventory_items_for_present_characters:
       context.inventoryChargeItems.map((item) => ({
         id: item.id,
@@ -1905,6 +1933,7 @@ export function stage2ContextForPrompt(context: Stage2GameChatContext) {
   trimArray("faction_memberships", 24)
   trimArray("faction_reputations", 24)
   trimArray("canonical_resource_states_for_present_characters", 64)
+  trimArray("canonical_inventory_for_present_characters", 96)
   trimArray("charged_inventory_items_for_present_characters", 48)
 
   const memory = record(payload.relevant_long_term_memory)
@@ -1947,6 +1976,10 @@ export function stage2ContextForPrompt(context: Stage2GameChatContext) {
     canonical_resource_states_for_present_characters:
       Array.isArray(payload.canonical_resource_states_for_present_characters)
         ? payload.canonical_resource_states_for_present_characters.slice(0, 40)
+        : [],
+    canonical_inventory_for_present_characters:
+      Array.isArray(payload.canonical_inventory_for_present_characters)
+        ? payload.canonical_inventory_for_present_characters.slice(0, 64)
         : [],
     present_npc_profiles: payload.present_npc_profiles,
     present_npc_identity_fingerprints: payload.present_npc_identity_fingerprints,
