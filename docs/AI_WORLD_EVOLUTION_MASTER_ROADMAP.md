@@ -1786,3 +1786,20 @@ Certification evidence:
   finalized its lifecycle as completed;
 - authenticated location-media state returned the attached storage path and
   1536x1024 source dimensions, while the UI owns the final 16:9 presentation.
+
+---
+
+## Technical debt — Grok reasoning routing
+
+**Temporary production setting — 2026-09-25**
+
+- `grok-4.6` currently uses `reasoning_effort=medium` globally.
+- This is intentionally coarse while the AI-GM provider path is being stabilized; ordinary narration, routine adjudication and tool-routing should not burn `xhigh` latency by default.
+- Follow-up routing debt: choose reasoning by task semantics instead of by model alone.
+  - NPC-heavy consequential reasoning, stable NPC identity decisions and difficult social/behavioral adjudication should be eligible for `xhigh`.
+  - Quest planning, quest causal consistency and other genuinely long-horizon narrative planning should be eligible for `xhigh`.
+  - Ordinary GM replies, simple narration, routine D&D adjudication, Resolver/tool selection and other low-complexity turns should remain `medium`.
+- The future router must select effort per request/task and must not silently change the campaign-selected model.
+- Do not restore global Grok `xhigh`; implement semantic/task-based escalation first.
+
+**Debt is closed when:** Grok reasoning effort is explicitly routed per GM task, with `medium` as the normal path and `xhigh` reserved for NPC/quest decisions that demonstrably benefit from deeper reasoning.
