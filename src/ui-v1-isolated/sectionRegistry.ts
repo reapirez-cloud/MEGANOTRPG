@@ -19,7 +19,7 @@ export const worldHubSections: HubSection[] = [
   // Keep the stable technical route id "characters"; the player-facing World surface contains world characters.
   // Player-controlled characters are presented elsewhere as "Игроки"; storage may still use character_type = "npc".
   { id: "characters", title: "Персонажи", caption: "Известные персонажи и жители мира", tone: "ash", image: "/ui-v1/panels/world-characters.webp", state: "live" },
-  { id: "lore", title: "Лор", caption: "Статьи, записи и сведения о мире", tone: "steel", image: "/ui-v1/panels/world-lore.webp", state: "live" },
+  { id: "lore", title: "Лор", caption: "Статьи, новости и живая хроника мира", tone: "steel", image: "/ui-v1/panels/world-lore.webp", state: "live" },
   { id: "map", title: "Карта", caption: "Отдельный раздел карты мира", tone: "night", state: "placeholder" },
 ]
 
