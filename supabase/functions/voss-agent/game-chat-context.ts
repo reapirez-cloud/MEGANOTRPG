@@ -1272,10 +1272,12 @@ export async function buildGameChatContextV2({
         : "off",
     enabled: contentMode === "allowed" || contentMode === "adult_focused",
     updated_at: contentSetting.updated_at || null,
-    provider_boundary: {
-      provider_remains_authoritative: true,
-      no_provider_bypass: true,
-      graceful_refusal_preserves_canon: true,
+    permissions: {
+      mature_themes_allowed:
+        contentMode === "allowed" || contentMode === "adult_focused",
+      adult_focus: contentMode === "adult_focused",
+      no_automatic_fade_to_black:
+        contentMode === "allowed" || contentMode === "adult_focused",
     },
     invariants: {
       npc_agency_unchanged: true,
@@ -2056,7 +2058,7 @@ export function stage23ContentProfileTelemetry(
   return {
     stage23_content_mode: nullableString(profile.mode) || "off",
     stage23_content_enabled: profile.enabled === true,
-    stage23_provider_boundary: record(profile.provider_boundary),
+    stage23_content_permissions: record(profile.permissions),
   }
 }
 
