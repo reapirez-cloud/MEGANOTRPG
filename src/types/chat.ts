@@ -67,6 +67,9 @@ export type ChatMessage = {
   attachment_kind: "image" | null
   event_kind: ChatEventKind | null
   event_payload: ChatEventPayload | null
+  turn_command_id: string | null
+  turn_component: string | null
+  turn_order: number | null
   audience_scope: "scene" | "direct_pc"
   recipient_character_ids: string[]
 }
