@@ -30,11 +30,13 @@ test("chat dialogue stage 2 groups only nearby consecutive messages from the sam
   assert.match(feed, /if \(joinsNext\) return "first"/)
 })
 
-test("chat dialogue stage 2 removes the repeated player badge but preserves GM identity", async () => {
+test("chat dialogue stage 2 removes the repeated player badge and preserves human and AI identities", async () => {
   const item = await readFile(feedItemPath, "utf8")
 
-  assert.match(item, /showAuthor && gmAuthored/)
-  assert.match(item, /gmNarration \? "GM · Рассказчик" : "GM"/)
+  assert.match(item, /showAuthor && \(aiGmAuthored \|\| gmAuthored\)/)
+  assert.match(item, /"NPC · ИИ"/)
+  assert.match(item, /"ИИ · Рассказчик"/)
+  assert.match(item, /"GM · Рассказчик"/)
   assert.doesNotMatch(item, /: "Игрок"/)
   assert.match(item, /u1-chat-line__avatar-spacer/)
 })
