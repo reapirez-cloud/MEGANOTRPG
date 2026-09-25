@@ -3,7 +3,6 @@ import { useEffect, useState, type CSSProperties } from "react"
 import { useAIViewContextLayer } from "../ai/AIProvider"
 import CampaignMediaFrame from "../components/common/CampaignMediaFrame"
 import { supabase } from "../lib/supabase"
-import PlayerProfileMark from "./PlayerProfileMark"
 import { SnakeTrigger } from "./SnakeProvider"
 import { createCharacterSnakeActions } from "./characterSnakeActions"
 import {
@@ -412,7 +411,6 @@ export default function Workspace({
               <small>ГМ</small>
             </button>
           ) : null}
-          <PlayerProfileMark />
         </div>
       </header>
 
