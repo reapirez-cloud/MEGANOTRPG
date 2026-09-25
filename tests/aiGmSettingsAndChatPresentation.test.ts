@@ -17,6 +17,15 @@ const identityMigration = read(
   "supabase/migrations/20260925052000_ai_gm_visible_chat_identity_v1.sql",
 )
 
+test("AI GM settings are mounted outside the animated workspace stage", () => {
+  assert.match(app, /if \(route\.type === "ai-gm"\) \{[\s\S]*u1-app u1-app--ai-gm[\s\S]*<AiGmControl/)
+  assert.match(app, /if \(route\.type === "ai-gm"\) \{[\s\S]*return \([\s\S]*<\/div>[\s\S]*\)[\s\S]*\}[\s\S]*return \([\s\S]*className="u1-stage"/)
+  assert.doesNotMatch(
+    app.match(/if \(route\.type === "ai-gm"\) \{[\s\S]*?\n  \}/)?.[0] || "",
+    /u1-stage|u1-view|motion\.div|AgentShell|<Dock/,
+  )
+})
+
 test("AI GM settings are a dedicated full-screen route without the agent overlay", () => {
   assert.match(app, /route\.type !== "ai-gm" \? <AgentShell \/> : null/)
   assert.match(controlCss, /\.u1-ai-gm-control\s*\{[\s\S]*position:\s*fixed/)
