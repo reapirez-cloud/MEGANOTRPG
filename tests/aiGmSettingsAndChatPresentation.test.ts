@@ -49,6 +49,8 @@ test("profile header exposes only the square AI GM entry and no duplicate model 
   assert.match(workspace, /onClick={onOpenAiGm}/)
   assert.doesNotMatch(workspace, /PlayerProfileMark/)
   assert.doesNotMatch(workspace, /u1-ai-model-trigger/)
+  assert.match(control, /set_campaign_gm_model_v1/)
+  assert.match(control, /set_campaign_ai_junior_model_v1/)
 })
 
 test("dedicated behavior screen exposes campaign mode, 18 plus, director and runtime controls", () => {
