@@ -92,7 +92,25 @@ export function compareWorldTime(
 export function shiftWorldTime(position: WorldPosition, direction: -1 | 1): WorldPosition {
   const current = periodIndex.get(position.day_period) ?? 0
   const next = current + direction
-  if (next < 0) return { ...position, campaign_day: Math.max(1, position.campaign_day - 1), day_period: DAY_PERIODS[DAY_PERIODS.length - 1]!.value }
-  if (next >= DAY_PERIODS.length) return { ...position, campaign_day: position.campaign_day + 1, day_period: DAY_PERIODS[0]!.value }
-  return { ...position, day_period: DAY_PERIODS[next]!.value }
+
+  const shifted: WorldPosition =
+    next < 0
+      ? {
+          ...position,
+          campaign_day: Math.max(1, position.campaign_day - 1),
+          day_period: DAY_PERIODS[DAY_PERIODS.length - 1]!.value,
+        }
+      : next >= DAY_PERIODS.length
+        ? {
+            ...position,
+            campaign_day: position.campaign_day + 1,
+            day_period: DAY_PERIODS[0]!.value,
+          }
+        : { ...position, day_period: DAY_PERIODS[next]!.value }
+
+  if (typeof position.campaign_minute !== "number") return shifted
+  return {
+    ...shifted,
+    campaign_minute: legacyWorldTimeToCampaignMinute(shifted),
+  }
 }
