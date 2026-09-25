@@ -1223,12 +1223,13 @@
 .u1-entity-detail__hero {
   position: relative;
   width: 100%;
-  max-height: min(42dvh, 330px);
-  aspect-ratio: 16 / 7;
+  aspect-ratio: 16 / 9;
   overflow: hidden;
   border: 1px solid var(--u1-line-soft);
   border-radius: 10px;
-  background: #0d0f10;
+  background:
+    radial-gradient(circle at 72% 24%, rgba(202, 198, 184, .08), transparent 26%),
+    linear-gradient(145deg, #1a1c1d, #090b0c 78%);
 }
 
 .u1-entity-detail__hero img {
@@ -1238,13 +1239,84 @@
   object-fit: cover;
 }
 
-.u1-entity-detail__hero > span {
+.u1-entity-detail__hero-scrim {
   position: absolute;
   inset: 0;
   background:
     linear-gradient(180deg, transparent 54%, rgba(7,8,9,.52) 100%),
     linear-gradient(90deg, rgba(4,5,6,.16), transparent 48%);
   pointer-events: none;
+}
+
+.u1-entity-detail__hero-placeholder {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 8px;
+  padding: 18px;
+  color: var(--u1-text-muted);
+  text-align: center;
+  background:
+    linear-gradient(115deg, rgba(255,255,255,.035), transparent 42%),
+    repeating-linear-gradient(
+      135deg,
+      rgba(255,255,255,.018) 0,
+      rgba(255,255,255,.018) 1px,
+      transparent 1px,
+      transparent 10px
+    );
+}
+
+.u1-entity-detail__hero-placeholder strong {
+  color: var(--u1-text-soft);
+  font-size: 13px;
+  font-weight: 620;
+  letter-spacing: .015em;
+}
+
+.u1-entity-detail__hero-placeholder small {
+  max-width: 92%;
+  color: #ae8f8f;
+  font-size: 10px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.u1-entity-detail__hero-mark {
+  color: rgba(236, 233, 221, .42);
+  font-size: 28px;
+  line-height: 1;
+}
+
+.u1-entity-detail__hero-placeholder button {
+  min-height: 34px;
+  margin-top: 3px;
+  padding: 0 12px;
+  border: 1px solid var(--u1-line-soft);
+  border-radius: 8px;
+  color: var(--u1-text-soft);
+  background: rgba(15, 17, 18, .82);
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.u1-entity-detail__hero-placeholder button:disabled {
+  opacity: .58;
+  cursor: default;
+}
+
+.u1-entity-detail__hero[data-media-status="queued"] .u1-entity-detail__hero-mark,
+.u1-entity-detail__hero[data-media-status="running"] .u1-entity-detail__hero-mark {
+  animation: u1-location-media-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes u1-location-media-pulse {
+  0%, 100% { opacity: .34; transform: scale(.96); }
+  50% { opacity: .78; transform: scale(1.04); }
 }
 
 .u1-entity-detail__copy {
