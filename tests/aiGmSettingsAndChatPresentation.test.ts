@@ -66,6 +66,15 @@ test("dedicated behavior screen exposes campaign mode, 18 plus, director and run
   assert.match(control, /set_campaign_ai_gm_runtime_feature_v1/)
 })
 
+test("behavior screen explains hardcore economy and adult permission without provider jargon", () => {
+  assert.match(control, /реальный масштаб экономики/)
+  assert.match(control, /не просто занижены/)
+  const adultBlock =
+    control.match(/18\+ \/ ВЗРОСЛАЯ ТЕМАТИКА[\s\S]*?ФУНКЦИИ ИИ-МИРА/)?.[0] || ""
+  assert.match(adultBlock, /Разрешает ИИ использовать взрослые темы/)
+  assert.doesNotMatch(adultBlock, /провайдер|provider|policy|цензур/i)
+})
+
 test("AI GM messages are never classified as the viewer own outgoing message", () => {
   assert.match(chatEvents, /turn_command_id, turn_component, turn_order/)
   assert.match(chatModel, /message\.turn_component === "ai_gm_output"/)
