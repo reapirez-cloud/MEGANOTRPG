@@ -140,8 +140,8 @@ export default function ChatSurvivalDrawer({
     }
   }, [characterId, load])
 
-  const hunger = status?.survival?.hunger || {}
-  const fatigue = status?.survival?.fatigue || {}
+  const hunger: SurvivalTrack = status?.survival?.hunger || {}
+  const fatigue: SurvivalTrack = status?.survival?.fatigue || {}
   const satiety = clampPercent(hunger.value)
   const alertness = clampPercent(fatigue.value)
   const hungerStage = Math.max(0, Math.min(3, Number(hunger.stage || 0)))
