@@ -1611,7 +1611,7 @@ Deno.serve(async (req: Request) => {
               }
             : "auto",
         temperature: 0.55,
-        timeoutMs: isFreddyTurn ? 65_000 : 45_000,
+        timeoutMs: isFreddyTurn ? 90_000 : 45_000,
         allowOwnerOverride:
           developerMode &&
           isSystemAdmin &&
@@ -1619,11 +1619,19 @@ Deno.serve(async (req: Request) => {
       })
     } catch (error) {
       const failureDetail =
-        error instanceof Error ? error.message : String(error)
+        error instanceof ProviderGatewayError
+          ? (error.detail || error.message)
+          : error instanceof Error
+            ? error.message
+            : String(error)
       if (activeTurnJobId) {
         await persistTurnProgress("failed", {
           failure_stage: "provider_request",
           failure_detail: failureDetail.slice(0, 1000),
+          failure_code:
+            error instanceof ProviderGatewayError ? error.code : "provider_request_failed",
+          provider_status:
+            error instanceof ProviderGatewayError ? error.providerStatus : null,
         })
       }
       if (error instanceof ProviderGatewayError) {
