@@ -12,6 +12,15 @@ import type { InventoryItem } from "../types/characterSheet"
 import type { VisibilityMode } from "../types/world"
 import { useUiV1CampaignScope } from "./useUiV1SectionData"
 
+export type UiV1LocationMediaStatus =
+  | "idle"
+  | "pending"
+  | "queued"
+  | "running"
+  | "completed"
+  | "failed"
+  | "cancelled"
+
 export type UiV1Location = {
   id: string
   parent_location_id: string | null
@@ -20,6 +29,12 @@ export type UiV1Location = {
   description: string
   image_url: string | null
   display_image_url: string | null
+  media_status: UiV1LocationMediaStatus
+  media_generation: number
+  media_error: string | null
+  media_can_retry: boolean
+  media_width: number | null
+  media_height: number | null
   sort_order: number
   visibility_mode: VisibilityMode
 }
@@ -79,7 +94,20 @@ export function useUiV1Locations() {
     if (!scope.campaignId) return
 
     setLoading(true)
-    const [locationResult, sectionResult, linkResult, memberResult, storageResult] = await Promise.all([
+
+    await supabase.rpc("poke_ai_gm_media_recovery_v1", {
+      p_campaign_id: scope.campaignId,
+      p_limit: 8,
+    })
+
+    const [
+      locationResult,
+      sectionResult,
+      linkResult,
+      memberResult,
+      storageResult,
+      mediaStateResult,
+    ] = await Promise.all([
       supabase
         .from("locations")
         .select("id, parent_location_id, name, summary, description, image_url, sort_order, visibility_mode")
@@ -105,20 +133,69 @@ export function useUiV1Locations() {
         p_campaign_id: scope.campaignId,
         p_location_id: null,
       }),
+      supabase.rpc("list_ai_gm_location_media_states_v1", {
+        p_campaign_id: scope.campaignId,
+      }),
     ])
 
-    const firstError = locationResult.error || sectionResult.error || linkResult.error || memberResult.error || storageResult.error
+    const firstError =
+      locationResult.error ||
+      sectionResult.error ||
+      linkResult.error ||
+      memberResult.error ||
+      storageResult.error ||
+      mediaStateResult.error
     if (firstError) {
       setError(firstError.message)
       setLoading(false)
       return
     }
 
+    const mediaStateByLocation = new Map(
+      ((mediaStateResult.data || []) as Array<Record<string, unknown>>).map(
+        (row) => [String(row.location_id || ""), row],
+      ),
+    )
+
     const resolvedLocations = await Promise.all(
-      (locationResult.data || []).map(async (location) => ({
-        ...location,
-        display_image_url: await resolveCampaignMediaUrl(location.image_url),
-      })),
+      (locationResult.data || []).map(async (location) => {
+        const media = mediaStateByLocation.get(String(location.id))
+        const mediaPath =
+          typeof media?.media_path === "string" && media.media_path.trim()
+            ? media.media_path
+            : location.image_url
+        const rawStatus =
+          typeof media?.status === "string" ? media.status : "idle"
+        const mediaStatus: UiV1LocationMediaStatus =
+          rawStatus === "pending" ||
+          rawStatus === "queued" ||
+          rawStatus === "running" ||
+          rawStatus === "completed" ||
+          rawStatus === "failed" ||
+          rawStatus === "cancelled"
+            ? rawStatus
+            : "idle"
+
+        return {
+          ...location,
+          display_image_url: await resolveCampaignMediaUrl(mediaPath),
+          media_status: mediaStatus,
+          media_generation: Number(media?.generation || 0),
+          media_error:
+            typeof media?.last_error === "string" && media.last_error.trim()
+              ? media.last_error
+              : null,
+          media_can_retry: media?.can_retry === true,
+          media_width:
+            Number.isFinite(Number(media?.media_width))
+              ? Number(media?.media_width)
+              : null,
+          media_height:
+            Number.isFinite(Number(media?.media_height))
+              ? Number(media?.media_height)
+              : null,
+        }
+      }),
     )
 
     const visibleSections = (sectionResult.data || []) as UiV1LocationSection[]
@@ -227,6 +304,25 @@ export function useUiV1Locations() {
     }),
     "Не удалось сохранить локацию.",
   ), [gmContext, mutate])
+
+  const retryLocationMedia = useCallback(async (
+    locationId: string,
+  ): Promise<MutationResult> => {
+    if (!scope.canManage) {
+      return { ok: false, error: "Только GM или владелец может повторить генерацию арта." }
+    }
+
+    const { error: retryError } = await supabase.rpc(
+      "retry_ai_gm_location_media_v1",
+      { p_location_id: locationId },
+    )
+    if (retryError) {
+      return { ok: false, error: retryError.message }
+    }
+
+    await load()
+    return { ok: true }
+  }, [load, scope.canManage])
 
   const archiveLocation = useCallback((locationId: string) => mutate(
     () => oracle.world.setLocationArchived(gmContext(), locationId, true),
@@ -482,6 +578,7 @@ export function useUiV1Locations() {
     refresh: load,
     createLocation,
     updateLocation,
+    retryLocationMedia,
     archiveLocation,
     deleteLocation,
     createTransition,
