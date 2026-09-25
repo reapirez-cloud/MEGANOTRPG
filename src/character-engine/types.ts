@@ -94,10 +94,18 @@ export type StateCondition =
       value: number
     }
 
+export type ResourceCondition = {
+  kind: "resource"
+  key: string
+  operator: "GT" | "GTE" | "LT" | "LTE"
+  value: number
+}
+
 export type CharacterCondition =
   | { kind: "always" }
   | { kind: "hp_below_percent"; percent: number }
   | StateCondition
+  | ResourceCondition
   | { kind: "all"; conditions: CharacterCondition[] }
   | { kind: "any"; conditions: CharacterCondition[] }
   | { kind: "not"; condition: CharacterCondition }
