@@ -344,8 +344,118 @@ const STAGE18_POST_TURN_WORKER_SYSTEM = [
   "После успешного tool call не вызывай второй tool.",
 ].join("\n")
 
+const REQUEST_PLAYER_ROLL_TOOL = {
+  type: "function",
+  function: {
+    name: "request_player_roll",
+    description:
+      "Request a canonical player-character check. The server will normalize the D&D mechanic, create the roll request, and the owning client will auto-roll using the real character sheet. Use this instead of inventing a d20 result.",
+    parameters: {
+      type: "object",
+      additionalProperties: false,
+      properties: {
+        roll_request: {
+          type: "object",
+          additionalProperties: false,
+          properties: {
+            character_id: { type: "string" },
+            adjudication_mode: {
+              type: "string",
+              enum: ["check", "impossible_exact"],
+            },
+            uncertainty_scope: {
+              type: "string",
+              enum: ["character_performance", "world_discovery"],
+            },
+            canonical_evidence: {
+              type: "array",
+              maxItems: 12,
+              items: {
+                type: "object",
+                additionalProperties: false,
+                properties: {
+                  kind: {
+                    type: "string",
+                    enum: [
+                      "location",
+                      "npc",
+                      "scene_actor",
+                      "quest_target",
+                      "memory_fact",
+                      "item_definition",
+                    ],
+                  },
+                  id: { type: "string" },
+                },
+                required: ["kind", "id"],
+              },
+            },
+            resolver_decision_key: { type: "string" },
+            exact_goal: { type: "string" },
+            semantic_check: { type: "string" },
+            logical_difficulty: {
+              type: "string",
+              enum: [
+                "very_easy",
+                "easy",
+                "moderate",
+                "hard",
+                "very_hard",
+                "nearly_impossible",
+              ],
+            },
+            dc_visibility: {
+              type: "string",
+              enum: ["public", "hidden"],
+            },
+            success_envelope: { type: "string" },
+            failure_envelope: { type: "string" },
+            partial_success_envelope: { type: "string" },
+            label: { type: "string" },
+            reason: { type: "string" },
+          },
+          required: [
+            "character_id",
+            "adjudication_mode",
+            "uncertainty_scope",
+            "exact_goal",
+            "semantic_check",
+            "logical_difficulty",
+            "dc_visibility",
+            "failure_envelope",
+            "label",
+            "reason",
+          ],
+        },
+        social_leverage_analysis: {
+          type: "object",
+          additionalProperties: false,
+          properties: {
+            target_npc_id: { type: "string" },
+            classification: {
+              type: "string",
+              enum: [
+                "no_leverage",
+                "weak_leverage",
+                "credible_leverage",
+                "decisive_leverage",
+                "blocked_by_identity",
+              ],
+            },
+            causal_basis: { type: "string" },
+            why_roll_or_no_roll: { type: "string" },
+          },
+        },
+        reason: { type: "string" },
+      },
+      required: ["roll_request"],
+    },
+  },
+} as const
+
 const PRIMARY_GM_SCENE_ACTOR_TOOLS = [
   RESOLVE_RANDOM_DECISION_TOOL,
+  REQUEST_PLAYER_ROLL_TOOL,
   {
     type: "function",
     function: {
@@ -3107,6 +3217,7 @@ async function requestPrimaryGmDecision({
     { role: "user", content: userContent },
   ]
   const toolRuns: JsonRecord[] = []
+  let forceFinalWithoutTools = false
   const primaryTools = runtimeSettings.npcIdentity
     ? PRIMARY_GM_SCENE_ACTOR_TOOLS
     : PRIMARY_GM_SCENE_ACTOR_TOOLS.filter(
@@ -3117,7 +3228,7 @@ async function requestPrimaryGmDecision({
     const payload = await requestChatCompletion({
       model: route.model,
       messages,
-      ...(route.model.supports_tools
+      ...(route.model.supports_tools && !forceFinalWithoutTools
         ? {
             tools: primaryTools as unknown as Array<Record<string, unknown>>,
             toolChoice: "auto",
@@ -3176,7 +3287,57 @@ async function requestPrimaryGmDecision({
       const args = parseProviderToolArguments(call.function?.arguments)
       let result: JsonRecord
 
-      if (name === "resolve_random_decision") {
+      if (name === "request_player_roll") {
+        const rawRoll =
+          Object.keys(jsonRecord(args.roll_request)).length
+            ? jsonRecord(args.roll_request)
+            : args
+        result = { status: "converted_to_player_roll_reaction" }
+        toolRuns.push({ name, arguments: args, result })
+        claimed.result = {
+          ...claimed.result,
+          scene_actor_tool_runs: toolRuns,
+          runtime_stage: 12,
+        }
+        await admin
+          .from("agent_jobs")
+          .update({
+            result: claimed.result,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", claimed.id)
+          .eq("status", "running")
+
+        return {
+          raw: JSON.stringify({
+            reaction_mode: "request_player_roll",
+            world_materialization: false,
+            world_materialization_task: "",
+            post_turn_intents: [],
+            messages: [],
+            body: "",
+            npc_character_id: null,
+            intent_adjudication: null,
+            roll_request: rawRoll,
+            npc_action: null,
+            npc_roll: null,
+            recovery: null,
+            social_leverage_analysis:
+              Object.keys(jsonRecord(args.social_leverage_analysis)).length
+                ? jsonRecord(args.social_leverage_analysis)
+                : null,
+            reason:
+              typeof args.reason === "string" && args.reason.trim()
+                ? args.reason.trim().slice(0, 240)
+                : typeof rawRoll.reason === "string"
+                  ? String(rawRoll.reason).slice(0, 240)
+                  : "primary_gm_requested_player_roll_tool",
+          }),
+          context,
+          completed: false,
+          toolRuns,
+        }
+      } else if (name === "resolve_random_decision") {
         result = jsonRecord(
           await executeRandomDecision(
             {
@@ -3659,6 +3820,18 @@ async function requestPrimaryGmDecision({
         .eq("id", claimed.id)
         .eq("status", "running")
 
+      const resultPlan = jsonRecord(result.plan)
+      const terminalToolSignal =
+        result.roll_replayed === true ||
+        result.commit_replayed === true ||
+        resultPlan.execution_state === "completed" ||
+        result.error === "primary_gm_scene_actor_tool_not_allowed" ||
+        result.error === "player_turn_requires_one_execution_tool_per_provider_round"
+
+      if (terminalToolSignal) {
+        forceFinalWithoutTools = true
+      }
+
       const serialized = JSON.stringify(result)
       messages.push({
         role: "tool",
@@ -3671,6 +3844,14 @@ async function requestPrimaryGmDecision({
                 truncated: true,
                 preview: serialized.slice(0, 12000),
               }),
+      })
+    }
+
+    if (forceFinalWithoutTools) {
+      messages.push({
+        role: "system",
+        content:
+          "TOOL LOOP GUARD: сервер уже получил terminal/replayed/completed результат или отклонил недопустимый tool. Больше НЕ вызывай tools в этом ходу. Немедленно верни финальный JSON по контракту, используя уже полученный канонический результат. Если нужен бросок PC, верни reaction_mode=request_player_roll с roll_request.",
       })
     }
   }
