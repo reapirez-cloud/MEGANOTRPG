@@ -54,7 +54,7 @@ export const AI_SURVIVAL_STAGES = [
     id: 2,
     key: "d20-food-sleep",
     title: "D20 + food + sleep/rest mechanics",
-    status: "planned",
+    status: "implemented",
     requiredArtifacts: [
       "normal/advantage/disadvantage authoritative d20 mode",
       "survival pressure integrated into intended d20 tests",
@@ -63,19 +63,21 @@ export const AI_SURVIVAL_STAGES = [
       "short/long rest time advancement",
       "dawn boundary integration",
       "optional canonical route travel duration",
+      "bounded AI-directed heavy-exertion depletion",
     ],
     acceptance: [
       "Survival disadvantage is rolled mechanically rather than narrated",
       "Both survival causes are preserved in roll provenance",
       "Food cannot restore above 100 and cannot be consumed twice",
       "Sleep/rest cannot recover without advancing game time",
+      "Heavy exertion may add bounded depletion but can never directly write resource values",
     ],
   },
   {
     id: 3,
     key: "ai-status-drawer",
     title: "AI GM + player status drawer",
-    status: "planned",
+    status: "implemented",
     requiredArtifacts: [
       "AI-world status drawer replacing the human-GM control drawer",
       "exact time/location/satiety/alertness presentation",
