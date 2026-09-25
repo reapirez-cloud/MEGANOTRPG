@@ -117,10 +117,7 @@ export default function AiGmTurnStatus({ roomId }: { roomId: string }) {
           p_request_id: pendingRollId,
         })
         .then(({ error: rollError }) => {
-          if (rollError) {
-            console.warn("[ai-gm] automatic player roll failed", rollError.message)
-            return
-          }
+          if (rollError) return
           window.dispatchEvent(
             new CustomEvent(CHAT_MESSAGE_SENT_EVENT, {
               detail: { roomId },
