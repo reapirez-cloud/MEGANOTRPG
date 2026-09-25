@@ -841,7 +841,7 @@ export default function UiV1App() {
         )}
       </div>
 
-      <AgentShell />
+      {route.type !== "ai-gm" ? <AgentShell /> : null}
     </div>
   )
 }
