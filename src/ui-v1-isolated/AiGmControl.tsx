@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
 
 import { useAI } from "../ai/AIProvider"
-import AgentShell from "../ai/AgentShell"
 import { supabase } from "../lib/supabase"
 import "./ai-gm-control.css"
 
@@ -443,17 +442,6 @@ export default function AiGmControl({
               )}
 
               {error && <div className="u1-ai-gm-control__error">{error}</div>}
-
-              <section className="u1-ai-gm-assistant" aria-label="AI GM">
-                <div className="u1-ai-gm-assistant__intro">
-                  <span>AI GM</span>
-                  <strong>Ассистент и управление компанией</strong>
-                  <small>
-                    Чаты, файлы, генерации и инструменты теперь живут здесь. Плавающий круглый интерфейс отключён.
-                  </small>
-                </div>
-                <AgentShell embedded />
-              </section>
 
             </>
           )}

@@ -1692,37 +1692,3 @@
 .u1-agent-director-text textarea:disabled {
   opacity: .52;
 }
-
-/* AI GM unified surface: AgentShell is embedded inside the dedicated AI GM route. */
-.u1-agent-panel[data-embedded] {
-  position: relative;
-  z-index: 1;
-  inset: auto;
-  width: 100%;
-  min-width: 0;
-  height: min(68dvh, 760px);
-  max-height: none;
-  border: 1px solid rgba(197, 203, 207, 0.16);
-  transform: none;
-  opacity: 1;
-  pointer-events: auto;
-  visibility: visible;
-  box-shadow: none;
-}
-
-.u1-agent-panel[data-embedded] .u1-agent-panel__header {
-  flex: 0 0 auto;
-}
-
-@media (max-width: 720px) {
-  .u1-agent-panel[data-embedded] {
-    inset: auto;
-    width: 100%;
-    min-width: 0;
-    height: min(70dvh, 720px);
-    max-height: none;
-    border: 1px solid rgba(197, 203, 207, 0.16);
-    transform: none;
-    box-shadow: none;
-  }
-}
