@@ -1,6 +1,7 @@
 import type {
   CharacterCondition,
   CharacterState,
+  ResourceCondition,
   StateCondition,
   StateFactValue,
 } from "./types.ts"
@@ -24,6 +25,25 @@ function hasFact(state: CharacterState, key: string) {
 
 function getFact(state: CharacterState, key: string): StateFactValue | undefined {
   return state.facts?.[key]
+}
+
+function evaluateResourceCondition(
+  condition: ResourceCondition,
+  state: CharacterState,
+): boolean {
+  const actual = state.resources?.[condition.key]?.current
+  if (typeof actual !== "number" || !Number.isFinite(actual)) return false
+
+  switch (condition.operator) {
+    case "GT":
+      return actual > condition.value
+    case "GTE":
+      return actual >= condition.value
+    case "LT":
+      return actual < condition.value
+    case "LTE":
+      return actual <= condition.value
+  }
 }
 
 function evaluateStateCondition(condition: StateCondition, state: CharacterState): boolean {
@@ -79,6 +99,9 @@ export function evaluateCondition(
 
     case "state":
       return evaluateStateCondition(condition, context.state)
+
+    case "resource":
+      return evaluateResourceCondition(condition, context.state)
 
     case "all":
       return condition.conditions.every((child) => evaluateCondition(child, context))
