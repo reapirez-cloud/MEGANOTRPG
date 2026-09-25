@@ -14,6 +14,10 @@ const security = readFileSync(
   new URL("../supabase/migrations/20260924165849_ai_world_evolution_stage21_behavior_security_v3.sql", import.meta.url),
   "utf8",
 )
+const modeSemantics = readFileSync(
+  new URL("../supabase/migrations/20260925113000_ai_gm_immersive_presentation_and_mode_semantics_v1.sql", import.meta.url),
+  "utf8",
+)
 const context = readFileSync(
   new URL("../supabase/functions/voss-agent/game-chat-context.ts", import.meta.url),
   "utf8",
@@ -146,9 +150,10 @@ test("Brutal profile is strict but explicitly non-adversarial", () => {
 })
 
 test("Brutal preserves economic scale without poverty bias", () => {
-  assert.match(foundation, /economic_scale/)
-  assert.match(foundation, /wages_prices_rewards/)
-  assert.match(foundation, /poverty_bias/)
+  assert.match(modeSemantics, /economic_scale/)
+  assert.match(modeSemantics, /wages_prices_rewards/)
+  assert.match(modeSemantics, /poverty_bias/)
+  assert.match(modeSemantics, /large_windfalls/)
   assert.match(runtime, /экономика обязана сохранять масштаб мира/)
   assert.match(runtime, /Hardcore НЕ означает искусственно делать PC нищим/)
 })
