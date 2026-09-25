@@ -30,8 +30,8 @@ export const SURVIVAL_STAGE_THRESHOLDS = {
 } as const
 
 export const SURVIVAL_DEPLETION_MINUTES = {
-  satiety100To0: 36 * 60,
-  alertness100To0: 24 * 60,
+  satiety100To0: 48 * 60,
+  alertness100To0: 72 * 60,
 } as const
 
 export function clampSurvivalValue(value: number): number {
