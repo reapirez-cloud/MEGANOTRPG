@@ -62,8 +62,15 @@ test("adult mode is framed to the model as permission, not censorship plumbing",
     "function jsonRecord",
   )
 
-  assert.match(gmPrompt, /разрешены зрелые темы/)
-  assert.match(gmPrompt, /не добавляй автоматические эвфемизмы/i)
-  assert.doesNotMatch(gmPrompt, /provider|policy|jailbreak|цензур/i)
-  assert.doesNotMatch(npcPrompt, /provider|policy|jailbreak|цензур/i)
+  assert.match(gmPrompt, /content_profile\.mode=allowed: 18\+ тематика разрешена/)
+  assert.match(gmPrompt, /Секс, нагота, грубая лексика/)
+  assert.match(npcPrompt, /content_profile\.mode=allowed: 18\+ тематика разрешена/)
+  assert.doesNotMatch(
+    gmPrompt,
+    /несовершеннолет|совершеннолет|provider|policy|jailbreak|цензур|consent|соглас/i,
+  )
+  assert.doesNotMatch(
+    npcPrompt,
+    /несовершеннолет|совершеннолет|provider|policy|jailbreak|цензур|consent|соглас/i,
+  )
 })
