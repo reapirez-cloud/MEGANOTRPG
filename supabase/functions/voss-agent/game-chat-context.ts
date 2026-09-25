@@ -14,6 +14,7 @@ export type Stage2GameChatContext = {
   room: JsonRecord
   sourceCharacter: JsonRecord
   sourceLocation: JsonRecord | null
+  sourceLocationChildren: JsonRecord[]
   currentGameTime: {
     campaignDay: number | null
     dayPeriod: string | null
@@ -817,7 +818,7 @@ export async function buildGameChatContextV2({
   const locationsResult = locationIds.length
     ? await admin
         .from("locations")
-        .select("id,name,summary,parent_location_id,visibility_mode,background_simulation_scope,lifecycle_state")
+        .select("id,name,summary,parent_location_id,visibility_mode,background_simulation_scope,lifecycle_state,archetype,scale,structure_roles,structure_state,coverage_manifest,structured_at")
         .eq("campaign_id", campaignId)
         .in("id", locationIds)
     : { data: [], error: null }
@@ -874,6 +875,23 @@ export async function buildGameChatContextV2({
     sourceLocationBase,
     background.source_location_snapshot,
   )
+
+  const sourceLocationChildrenResult = sourceLocationId
+    ? await admin
+        .from("locations")
+        .select("id,name,summary,parent_location_id,visibility_mode,background_simulation_scope,lifecycle_state,archetype,scale,structure_roles,structure_state,coverage_manifest,structured_at")
+        .eq("campaign_id", campaignId)
+        .eq("parent_location_id", sourceLocationId)
+        .eq("lifecycle_state", "active")
+        .order("sort_order", { ascending: true })
+        .order("name", { ascending: true })
+        .limit(40)
+    : { data: [], error: null }
+
+  if (sourceLocationChildrenResult.error) {
+    throw new Error(sourceLocationChildrenResult.error.message)
+  }
+  const sourceLocationChildren = rows(sourceLocationChildrenResult.data)
 
   const sceneActorsResult = sourceLocationId
     ? await admin
@@ -1479,6 +1497,7 @@ export async function buildGameChatContextV2({
       bio: sourceCharacter.bio,
     },
     sourceLocation,
+    sourceLocationChildren,
     currentGameTime: {
       campaignDay: currentDay,
       dayPeriod: currentPeriod,
@@ -1721,8 +1740,34 @@ export function stage2ContextForPrompt(context: Stage2GameChatContext) {
           parent_location_id: context.sourceLocation.parent_location_id,
           lifecycle_state: context.sourceLocation.lifecycle_state,
           temporal_status: context.sourceLocation.temporal_status,
+          archetype: context.sourceLocation.archetype,
+          scale: context.sourceLocation.scale,
+          structure_roles: context.sourceLocation.structure_roles,
+          structure_state: context.sourceLocation.structure_state,
+          coverage_manifest: context.sourceLocation.coverage_manifest,
+          structured_at: context.sourceLocation.structured_at,
         }
       : null,
+    source_location_structure: {
+      needs_cascade:
+        Boolean(context.sourceLocation) &&
+        !["materialized", "detailed"].includes(
+          String(context.sourceLocation?.structure_state || "stub"),
+        ),
+      direct_children: context.sourceLocationChildren.map((item) => ({
+        id: item.id,
+        name: item.name,
+        summary: boundedText(item.summary, 500),
+        archetype: item.archetype,
+        scale: item.scale,
+        structure_roles: item.structure_roles,
+        structure_state: item.structure_state,
+        visibility_mode: item.visibility_mode,
+        background_simulation_scope: item.background_simulation_scope,
+      })),
+      rule:
+        "When an entered location is incomplete, materialize exactly one immediate structural layer. Do not recursively expand grandchildren unless a child is itself physically entered in the same canonical turn.",
+    },
     source_character_knowledge: {
       known_locations: context.sourceKnowledge.knownLocations,
       known_npcs: context.sourceKnowledge.knownNpcs,
@@ -1892,6 +1937,7 @@ export function stage2ContextForPrompt(context: Stage2GameChatContext) {
     room: payload.room,
     source_character: payload.source_character,
     source_location: payload.source_location,
+    source_location_structure: payload.source_location_structure,
     source_character_knowledge: payload.source_character_knowledge,
     participating_players: payload.participating_players,
     characters_physically_present_with_source:

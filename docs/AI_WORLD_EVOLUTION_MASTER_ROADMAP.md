@@ -1649,3 +1649,40 @@ Explicitly deferred:
 - cascade location topology/materialization: Stage 26;
 - executor and inventory canonical commits: Stage 27;
 - location media repair and final cross-system E2E: Stage 28.
+
+
+---
+
+## Stage 26 — Cascade World Builder
+
+**Status: IMPLEMENTED — 2026-09-25**
+
+The AI-world now materializes geography as a bounded hierarchy instead of a
+single narrow trail of places directly touched by narration.
+
+Contracts:
+
+- every location carries archetype, scale, structure roles/state and a coverage
+  manifest;
+- an entered/current location is expanded exactly one structural level down;
+- city/settlement expansion creates districts or major functional zones, never
+  every house or NPC;
+- district expansion creates major clusters/streets/sites, not room trees;
+- tavern/inn/building expansion creates its immediate functional rooms/zones;
+- forests, caves and dungeons expand into major immediate zones/branches;
+- server-side archetype coverage requires core functions or a written omission
+  reason instead of trusting the model to declare an incomplete city complete;
+- materialize_location_cascade is one service-only transactional tool for
+  create/reuse + direct children + transitions + optional PC movement;
+- post-turn location commits can therefore create a newly narrated destination,
+  build its immediate topology and update character_world_state with one tool
+  call;
+- current source locations left as legacy stubs are automatically scheduled for
+  one-level cascade materialization before the next normal GM continuation;
+- direct structural children are mandatory topology, not speculative
+  world-bloat; grandchildren remain lazy until physically entered/needed.
+
+Deferred to Stage 27:
+
+- generic typed Executor queue for all mutation classes;
+- canonical inventory/economy commits and loot idempotency.

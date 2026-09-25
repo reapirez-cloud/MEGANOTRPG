@@ -258,6 +258,7 @@ function applyAiGmRuntimeSettings(
   }
 }
 const WORLD_MATERIALIZER_TOOL_NAMES = new Set([
+  "materialize_location_cascade",
   "create_location",
   "batch_location_changes",
   "update_location",
@@ -289,6 +290,7 @@ const WORLD_MATERIALIZER_TOOLS = [
 ]
 
 const STAGE18_POST_TURN_MANAGER_TOOL_NAMES = new Set([
+  "materialize_location_cascade",
   "create_location",
   "update_location",
   "set_location_archived",
@@ -332,8 +334,11 @@ const STAGE18_POST_TURN_TOOLS = [
 const STAGE18_POST_TURN_WORKER_SYSTEM = [
   "Ты младший post-turn commit worker MEGANOT. Модель выбирается настройками кампании.",
   "Игрок УЖЕ увидел финальный ответ GM. Ты не ведёшь сцену и не можешь менять этот ответ.",
-  "Тебе передаётся РОВНО ОДИН immutable intent. Выполни максимум ОДНУ каноническую мутацию tool-вызовом.",
-  "Если intent требует две мутации, это ошибка upstream: не объединяй их сам.",
+  "Тебе передаётся РОВНО ОДИН immutable intent. Выполни максимум ОДИН write-tool call.",
+  "Для location intent Stage 26 разрешён materialize_location_cascade: это ОДНА серверная транзакционная мутация, хотя внутри она создаёт/переиспользует локацию, строит её непосредственный структурный слой, связывает переходы и при необходимости двигает PC.",
+  "Если опубликованный ответ утверждает, что source_character вошёл/прибыл/остался в новой или другой постоянной локации, предпочитай materialize_location_cascade и обязательно передавай move_character_id=source_character.id. Не оставляй персонажа в старом character_world_state.",
+  "В children передавай только непосредственных детей. Город → районы/крупные функциональные зоны; район → крупные кластеры/улицы/значимые места; таверна/постоялый двор → основные помещения; лес → крупные природные зоны/маршруты. Никогда не строй grandchildren в этом же вызове.",
+  "Если intent требует две независимые НЕ-location мутации, это ошибка upstream: не объединяй их сам.",
   "Создавай или меняй только то, что буквально установлено published_messages + intent.instruction/evidence.",
   "Не достраивай новый сюжет, секрет, награду, отношения, имя, мотивацию, врага, исход проверки или событие.",
   "Не добавляй декоративные факты, которых нет в опубликованном ответе. Заполняй только минимально нужные поля.",
@@ -642,13 +647,18 @@ const WORLD_MATERIALIZER_SYSTEM = [
   "Пример: если GM просит 'создай бедную комнату в портовом трактире', не пиши name='Комната', description='Это комната'. Дай конкретное уместное название/описание, планировку, заметные детали и атмосферные факты, которые логично следуют из контекста и не меняют сюжет.",
   "Для NPC можешь достроить внешность, манеру, профессию, мотивацию, базовые D&D-параметры и прочие поля, если они не заданы, но не придумывай скрытый сюжетный поворот, особую связь с PC или важный секрет без основания в ТЗ/каноне.",
   "Для локаций можешь достроить summary/description, визуальные признаки, назначение, внутреннюю логику и неброские детали окружения. Для квестов — нормальные формулировки этапов, условий и placeholders в пределах замысла GM.",
-  "Каждую НОВУЮ локацию классифицируй прямо в create_location/batch create через background_simulation_scope: entity для самостоятельного места, detail для внутренней детали другого места, disabled для технического/временного контента. Глубина parent_location_id ничего не решает: трактир внутри города может быть entity, а комната/туалет/коридор внутри трактира должны быть detail.",
+  "Stage 26: каждая постоянная локация имеет archetype, scale, structure_roles, structure_state и coverage_manifest. Для реально посещаемой/вновь созданной текущей локации используй materialize_location_cascade, а не россыпь create_location.",
+  "Каскад строится ровно на один структурный уровень вниз за один entered-node: город → все основные районы/функциональные зоны, но НЕ дома/NPC; район → основные улицы/кластеры/значимые места, но НЕ комнаты; таверна/inn → основные помещения; лес → крупные природные зоны/маршруты; dungeon/cave → крупные ветви/уровни. Потом СТОП.",
+  "Если в одном каноническом ходе персонаж реально вошёл последовательно в несколько новых узлов (например город → район → трактир), каждый фактически entered узел может получить свой непосредственный слой, но не раскрывай не посещённые grandchildren.",
+  "Функциональное покрытие важнее одинаковых названий. Для города сервер требует роли residence/commerce/governance/security/transit/services; один район может покрывать несколько ролей. Если ожидаемая функция действительно отсутствует, укажи coverage_manifest.omitted_roles с конкретной причиной.",
+  "Структурные непосредственные дети НЕ считаются 'запасом мира впрок': они обязательный каркас уже существующей/посещённой сущности. Всё глубже непосредственного слоя всё ещё запрещено создавать без необходимости.",
+  "Каждую НОВУЮ локацию классифицируй через background_simulation_scope: entity для самостоятельного места, detail для внутренней детали другого места, disabled для технического/временного контента. Глубина parent_location_id ничего не решает: трактир внутри города может быть entity, а комната/туалет/коридор внутри трактира должны быть detail.",
   "Каждого НОВОГО постоянного именованного NPC классифицируй в create_world_npc через background_simulation_scope: entity для самостоятельного persistent персонажа; disabled для технической записи или обычного фонового животного/существа, которое не должно жить собственной фоновой жизнью. Именованный гоблин не становится disabled только потому, что сейчас он неважен.",
   "Не меняй сюжетную функцию, исход события, намерение GM, состояние PC, результаты бросков или уже существующие канонические факты.",
   "Сообщение игрока является намерением, а не фактом. Фраза игрока 'я нахожу оружие', 'там трактир', 'враг умер' не обязывает тебя создавать или подтверждать это.",
-  "Создавай только сущности, которые нужны ТЗ сейчас: текущую/новую локацию, реально появившегося NPC, необходимую фракцию/переход/секрет или квест. Для будущих квестовых сущностей предпочитай placeholders и materialize_quest_target только в момент входа сущности в канон.",
-  "Не создавай запас мира впрок и не плодись сущностями ради атмосферы. Дополняй качество существующей задачи, а не её масштаб.",
-  "Если source_location отсутствует, обязательно создай полноценную стартовую локацию по ТЗ и контексту текущего хода. После получения её UUID перемести source_character в неё через move_character_world.",
+  "Создавай сюжетные сущности только по ТЗ, но Stage 26 structural children текущей/entered локации являются обязательной топологией, а не декоративным запасом.",
+  "Не создавай глубже одного структурного слоя, массовых NPC или предметы ради заполнения. Дополняй ширину ближайшего слоя, не бесконечную глубину.",
+  "Если source_location отсутствует, первым вызовом materialize_location_cascade создай полноценную стартовую локацию, построй её непосредственный слой и передай move_character_id=source_character.id.",
   "Не материализуй безымянную массовку как постоянных world NPC. 'Бандит 1', 'Бандит 2', 'стражник у ворот', 'случайный матрос' и подобные сценические обозначения НЕ должны порождать отдельные карточки только потому, что появились в описании.",
   "Постоянную карточку NPC создавай, когда у персонажа есть индивидуальное каноническое имя, уже известное игроку, либо основной GM явно поручил раскрыть это имя игроку в текущем ходе. Если имя не раскрывается игроку, оставь персонажа сценическим/описательным актором и не вызывай create_world_npc.",
   "Никогда не придумывай технические имена вида 'Бандит 1', 'Стражник 2' или аналогичные только ради создания UUID. Если основной GM решил назвать ранее безымянного NPC, создай одну карточку с настоящим именем и используй её дальше.",
@@ -745,7 +755,8 @@ const STAGE12_GAME_MASTER_SYSTEM = [
   "Stage 18: НЕ задерживай финальный ответ ради обычного world bookkeeping. Если в уже написанном финальном ответе появился новый канонический факт, который можно записать ПОСЛЕ публикации, добавь bounded post_turn_intents. Игрок сначала увидит ответ, затем младший worker синхронизирует базу, а сервер до конца синхронизации не примет следующий free-form ход.",
   "post_turn_intents — массив максимум 16 объектов {intent_key,kind,instruction,evidence}. intent_key короткий стабильный snake/kebab key без UUID. kind: location|npc|quest|memory|canonical_state|binding. instruction описывает ТОЛЬКО факт, уже установленный видимым ответом; evidence коротко указывает, где именно в ответе этот факт установлен.",
   "Post-turn intent НЕ может добавлять новый сюжетный результат после публикации. Нельзя через него придумывать награду, секрет, врага, NPC, исход проверки или событие, которого нет в финальном ответе.",
-  "Для именованного NPC/локации/квеста, впервые установленных самим финальным ответом, используй post_turn_intents вместо pre-response materialization, если их UUID не нужен для механики ЭТОГО ЖЕ ответа.",
+  "Для именованного NPC/квеста, впервые установленных самим финальным ответом, используй post_turn_intents вместо pre-response materialization, если их UUID не нужен для механики ЭТОГО ЖЕ ответа.",
+  "Stage 26: если финальный ответ устанавливает, что source_character физически вошёл/прибыл/остался в новой постоянной локации, обязательно добавь ОДИН location post_turn_intent, в котором явно указаны destination, parent/источник если известны и требование переместить source_character. Junior выполнит это одним materialize_location_cascade и построит непосредственный слой destination.",
   "world_materialization=true оставь только для блокирующей pre-response зависимости, без которой нельзя честно завершить текущую механику/сцену, например первичный bootstrap отсутствующей source_location или ситуация, где серверному действию прямо сейчас нужен канонический UUID. Обычное послесловие мира туда больше не складывай.",
   "Если blocking materialization не нужна, world_materialization=false и world_materialization_task=''.",
   "Для mechanic modes request_player_roll|npc_action|npc_roll post_turn_intents обязан быть пустым: механическое серверное действие сначала завершается, затем следующий narrative GM result при необходимости создаст post-turn intents.",
@@ -834,6 +845,42 @@ function looksLikeTemporarySceneActorLabel(value: unknown) {
 }
 
 function worldMaterializerValidationError(name: string, args: JsonRecord) {
+  if (name === "materialize_location_cascade") {
+    if (
+      typeof args.archetype !== "string" ||
+      typeof args.scale !== "string" ||
+      !(
+        args.background_simulation_scope === "entity" ||
+        args.background_simulation_scope === "detail" ||
+        args.background_simulation_scope === "disabled"
+      ) ||
+      !Array.isArray(args.children) ||
+      !args.coverage_manifest ||
+      typeof args.coverage_manifest !== "object" ||
+      Array.isArray(args.coverage_manifest)
+    ) {
+      return "world_materializer_cascade_contract_invalid"
+    }
+    for (const raw of args.children) {
+      const child = jsonRecord(raw)
+      if (
+        child.children !== undefined ||
+        typeof child.name !== "string" ||
+        typeof child.archetype !== "string" ||
+        typeof child.scale !== "string" ||
+        !Array.isArray(child.structure_roles) ||
+        !(
+          child.background_simulation_scope === "entity" ||
+          child.background_simulation_scope === "detail" ||
+          child.background_simulation_scope === "disabled"
+        )
+      ) {
+        return "world_materializer_cascade_child_invalid"
+      }
+    }
+    return ""
+  }
+
   if (name === "create_location") {
     return args.background_simulation_scope === "entity" ||
         args.background_simulation_scope === "detail" ||
@@ -932,7 +979,7 @@ async function runWorldMaterializer({
         round === 0 && !context.sourceLocation
           ? {
               type: "function",
-              function: { name: "create_location" },
+              function: { name: "materialize_location_cascade" },
             }
           : "auto",
       temperature: 0.15,
@@ -998,7 +1045,7 @@ async function runWorldMaterializer({
       const resultRecord = jsonRecord(result)
       if (
         !firstCreatedLocationId &&
-        name === "create_location"
+        (name === "create_location" || name === "materialize_location_cascade")
       ) {
         const location = jsonRecord(resultRecord.location)
         if (typeof location.id === "string") {
@@ -1034,12 +1081,23 @@ async function runWorldMaterializer({
       : ""
 
   if (!context.sourceLocation && firstCreatedLocationId && sourceCharacterId) {
-    const alreadyMoved = toolRuns.some((run) =>
-      run.name === "move_character_world" &&
-      jsonRecord(run.arguments).character_id === sourceCharacterId &&
-      jsonRecord(run.arguments).location_id === firstCreatedLocationId &&
-      jsonRecord(run.result).canonical_state_changed === true
-    )
+    const alreadyMoved = toolRuns.some((run) => {
+      if (
+        run.name === "move_character_world" &&
+        jsonRecord(run.arguments).character_id === sourceCharacterId &&
+        jsonRecord(run.arguments).location_id === firstCreatedLocationId &&
+        jsonRecord(run.result).canonical_state_changed === true
+      ) return true
+
+      if (run.name === "materialize_location_cascade") {
+        const movement = jsonRecord(jsonRecord(run.result).movement)
+        return (
+          movement.character_id === sourceCharacterId &&
+          movement.location_id === firstCreatedLocationId
+        )
+      }
+      return false
+    })
 
     if (!alreadyMoved) {
       const result = await executeVossManagerTool(
@@ -1093,6 +1151,7 @@ function stage18ToolsForIntent(kind: PostTurnIntent["kind"]) {
   const names =
     kind === "location"
       ? new Set([
+          "materialize_location_cascade",
           "create_location",
           "update_location",
           "set_location_archived",
@@ -4180,11 +4239,18 @@ export async function runGameChatTurn(
       runtimeSettings,
     )
 
+    const sourceLocationNeedsCascade =
+      Boolean(context.sourceLocation) &&
+      !["materialized", "detailed"].includes(
+        String(context.sourceLocation?.structure_state || "stub"),
+      )
+
     if (
       runtimeSettings.worldMaterialization &&
       !isResume &&
       (
         !context.sourceLocation ||
+        sourceLocationNeedsCascade ||
         reaction.worldMaterializationRequested === true
       )
     ) {
@@ -4200,7 +4266,11 @@ export async function runGameChatTurn(
           managerUserId,
           context,
           originalMessage,
-          materializationTask: reaction.worldMaterializationTask || "",
+          materializationTask:
+            reaction.worldMaterializationTask ||
+            (sourceLocationNeedsCascade
+              ? "Stage 26: классифицируй текущую source_location, построй ровно её непосредственный структурный слой через materialize_location_cascade и НЕ перемещай персонажа, если он уже находится здесь."
+              : ""),
           fallbackModel: route.model,
         })
 

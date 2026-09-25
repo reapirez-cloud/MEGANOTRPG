@@ -806,6 +806,126 @@ export const VOSS_MANAGER_TOOLS = [
   {
     type: "function",
     function: {
+      name: "materialize_location_cascade",
+      description:
+        "AI-world internal composite mutation. Create or reuse one canonical location, materialize exactly its immediate structural child layer, validate archetype coverage, connect transitions, and optionally move the source PC there. Never nest children inside children in one call.",
+      parameters: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          location_id: { type: "string" },
+          parent_location_id: { type: "string" },
+          source_location_id: { type: "string" },
+          move_character_id: { type: "string" },
+          campaign_day: { type: "integer", minimum: 1 },
+          day_period: {
+            type: "string",
+            enum: ["dawn", "morning", "day", "late_day", "evening", "night", "deep_night"],
+          },
+          name: { type: "string" },
+          summary: { type: "string" },
+          description: { type: "string" },
+          visibility_mode: {
+            type: "string",
+            enum: ["always", "discover", "private"],
+          },
+          background_simulation_scope: {
+            type: "string",
+            enum: ["entity", "detail", "disabled"],
+          },
+          archetype: {
+            type: "string",
+            enum: [
+              "world", "region", "city", "town", "village", "district",
+              "neighborhood", "road", "forest", "wilderness", "port",
+              "building", "tavern", "inn", "shop", "temple", "manor",
+              "castle", "dungeon", "cave", "room", "site", "other",
+            ],
+          },
+          scale: {
+            type: "string",
+            enum: [
+              "world", "region", "settlement", "district",
+              "site", "building", "room", "detail",
+            ],
+          },
+          structure_roles: {
+            type: "array",
+            maxItems: 16,
+            items: { type: "string" },
+          },
+          coverage_manifest: {
+            type: "object",
+            additionalProperties: true,
+            description:
+              "Coverage notes for this immediate layer. Use omitted_roles={role: reason} only when a normally expected structural role genuinely does not exist in this specific location.",
+          },
+          children: {
+            type: "array",
+            maxItems: 24,
+            description:
+              "Immediate children only. Never include grandchildren. A city gets districts, not houses; a district gets major clusters/sites, not every room; a tavern/inn gets its main functional rooms.",
+            items: {
+              type: "object",
+              additionalProperties: false,
+              properties: {
+                name: { type: "string" },
+                summary: { type: "string" },
+                description: { type: "string" },
+                visibility_mode: {
+                  type: "string",
+                  enum: ["always", "discover", "private"],
+                },
+                background_simulation_scope: {
+                  type: "string",
+                  enum: ["entity", "detail", "disabled"],
+                },
+                archetype: {
+                  type: "string",
+                  enum: [
+                    "world", "region", "city", "town", "village", "district",
+                    "neighborhood", "road", "forest", "wilderness", "port",
+                    "building", "tavern", "inn", "shop", "temple", "manor",
+                    "castle", "dungeon", "cave", "room", "site", "other",
+                  ],
+                },
+                scale: {
+                  type: "string",
+                  enum: [
+                    "world", "region", "settlement", "district",
+                    "site", "building", "room", "detail",
+                  ],
+                },
+                structure_roles: {
+                  type: "array",
+                  minItems: 1,
+                  maxItems: 16,
+                  items: { type: "string" },
+                },
+              },
+              required: [
+                "name",
+                "archetype",
+                "scale",
+                "background_simulation_scope",
+                "structure_roles",
+              ],
+            },
+          },
+        },
+        required: [
+          "archetype",
+          "scale",
+          "background_simulation_scope",
+          "coverage_manifest",
+          "children",
+        ],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
       name: "create_location",
       description:
         "GM/Admin only. Create a canonical location/zone in the campaign world. May be nested under an existing parent location.",
@@ -826,6 +946,35 @@ export const VOSS_MANAGER_TOOLS = [
             enum: ["entity", "detail", "disabled"],
             description:
               "entity = independently simulated whole place; detail = internal fragment of another place; disabled = never selected.",
+          },
+          archetype: {
+            type: "string",
+            enum: [
+              "world", "region", "city", "town", "village", "district",
+              "neighborhood", "road", "forest", "wilderness", "port",
+              "building", "tavern", "inn", "shop", "temple", "manor",
+              "castle", "dungeon", "cave", "room", "site", "other",
+            ],
+          },
+          scale: {
+            type: "string",
+            enum: [
+              "world", "region", "settlement", "district",
+              "site", "building", "room", "detail",
+            ],
+          },
+          structure_roles: {
+            type: "array",
+            maxItems: 16,
+            items: { type: "string" },
+          },
+          structure_state: {
+            type: "string",
+            enum: ["stub", "materialized", "detailed"],
+          },
+          coverage_manifest: {
+            type: "object",
+            additionalProperties: true,
           },
         },
         required: ["name"],
@@ -854,6 +1003,35 @@ export const VOSS_MANAGER_TOOLS = [
           background_simulation_scope: {
             type: "string",
             enum: ["entity", "detail", "disabled"],
+          },
+          archetype: {
+            type: "string",
+            enum: [
+              "world", "region", "city", "town", "village", "district",
+              "neighborhood", "road", "forest", "wilderness", "port",
+              "building", "tavern", "inn", "shop", "temple", "manor",
+              "castle", "dungeon", "cave", "room", "site", "other",
+            ],
+          },
+          scale: {
+            type: "string",
+            enum: [
+              "world", "region", "settlement", "district",
+              "site", "building", "room", "detail",
+            ],
+          },
+          structure_roles: {
+            type: "array",
+            maxItems: 16,
+            items: { type: "string" },
+          },
+          structure_state: {
+            type: "string",
+            enum: ["stub", "materialized", "detailed"],
+          },
+          coverage_manifest: {
+            type: "object",
+            additionalProperties: true,
           },
         },
         required: ["location_id"],
@@ -894,6 +1072,21 @@ export const VOSS_MANAGER_TOOLS = [
                 background_simulation_scope: {
                   type: "string",
                   enum: ["entity", "detail", "disabled"],
+                },
+                archetype: { type: "string" },
+                scale: { type: "string" },
+                structure_roles: {
+                  type: "array",
+                  maxItems: 16,
+                  items: { type: "string" },
+                },
+                structure_state: {
+                  type: "string",
+                  enum: ["stub", "materialized", "detailed"],
+                },
+                coverage_manifest: {
+                  type: "object",
+                  additionalProperties: true,
                 },
               },
               required: ["op"],
@@ -992,6 +1185,39 @@ function record(value: unknown): JsonRecord {
   return value && typeof value === "object" && !Array.isArray(value)
     ? value as JsonRecord
     : {}
+}
+
+const LOCATION_ARCHETYPES = new Set([
+  "world", "region", "city", "town", "village", "district", "neighborhood",
+  "road", "forest", "wilderness", "port", "building", "tavern", "inn",
+  "shop", "temple", "manor", "castle", "dungeon", "cave", "room",
+  "site", "other",
+])
+const LOCATION_SCALES = new Set([
+  "world", "region", "settlement", "district", "site", "building", "room",
+  "detail",
+])
+const LOCATION_STRUCTURE_STATES = new Set([
+  "stub", "materialized", "detailed",
+])
+
+function locationEnum(
+  value: unknown,
+  allowed: Set<string>,
+  fallback: string,
+) {
+  const normalized = typeof value === "string" ? value.trim().toLowerCase() : ""
+  return allowed.has(normalized) ? normalized : fallback
+}
+
+function locationRoles(value: unknown, fallback: string[] = []) {
+  if (!Array.isArray(value)) return fallback
+  return [...new Set(
+    value
+      .filter((item): item is string => typeof item === "string")
+      .map((item) => item.trim().toLowerCase().slice(0, 64))
+      .filter(Boolean),
+  )].slice(0, 16)
 }
 
 const CHARACTER_SHEET_KEYS = new Set(Object.keys(CHARACTER_SHEET_PROPERTIES))
@@ -2160,6 +2386,54 @@ async function setLocationSecretState(
   return { secret: data, canonical_state_changed: true }
 }
 
+async function materializeLocationCascade(
+  context: VossManagerToolContext,
+  args: JsonRecord,
+) {
+  if (!context.internalService) {
+    return { error: "location_cascade_internal_service_only" }
+  }
+
+  const input: JsonRecord = {}
+  for (const key of [
+    "location_id",
+    "parent_location_id",
+    "source_location_id",
+    "move_character_id",
+    "campaign_day",
+    "day_period",
+    "name",
+    "summary",
+    "description",
+    "visibility_mode",
+    "background_simulation_scope",
+    "archetype",
+    "scale",
+    "structure_roles",
+    "coverage_manifest",
+    "children",
+  ]) {
+    if (Object.prototype.hasOwnProperty.call(args, key)) input[key] = args[key]
+  }
+
+  const { data, error } = await context.admin.rpc(
+    "ai_gm_materialize_location_cascade_v1",
+    {
+      p_campaign_id: context.campaignId,
+      p_actor_user_id: context.userId,
+      p_input: input,
+    },
+  )
+
+  if (error) return { error: error.message }
+  return {
+    cascade: data,
+    location: record(data).location,
+    movement: record(data).movement,
+    canonical_state_changed: record(data).canonical_state_changed === true,
+  }
+}
+
 async function createLocation(
   context: VossManagerToolContext,
   args: JsonRecord,
@@ -2177,6 +2451,15 @@ async function createLocation(
       args.background_simulation_scope === "detail"
       ? args.background_simulation_scope
       : "disabled"
+  const archetype = locationEnum(args.archetype, LOCATION_ARCHETYPES, "site")
+  const scale = locationEnum(args.scale, LOCATION_SCALES, "site")
+  const structureRoles = locationRoles(args.structure_roles)
+  const structureState = locationEnum(
+    args.structure_state,
+    LOCATION_STRUCTURE_STATES,
+    scale === "room" || scale === "detail" ? "materialized" : "stub",
+  )
+  const coverageManifest = record(args.coverage_manifest)
 
   if (parentLocationId) {
     const { data: parent, error: parentError } = await managerClient(context)
@@ -2202,8 +2485,17 @@ async function createLocation(
       background_simulation_scope: backgroundSimulationScope,
       lifecycle_state: "active",
       created_by: context.userId,
+      archetype,
+      scale,
+      structure_roles: structureRoles,
+      structure_state: structureState,
+      coverage_manifest: coverageManifest,
+      structured_at:
+        structureState === "materialized" || structureState === "detailed"
+          ? new Date().toISOString()
+          : null,
     })
-    .select("id,parent_location_id,name,summary,description,visibility_mode,background_simulation_scope,lifecycle_state")
+    .select("id,parent_location_id,name,summary,description,visibility_mode,background_simulation_scope,lifecycle_state,archetype,scale,structure_roles,structure_state,coverage_manifest,structured_at")
     .single()
 
   if (error) return { error: error.message }
@@ -2219,7 +2511,7 @@ async function updateLocation(
 
   const { data: current, error: readError } = await managerClient(context)
     .from("locations")
-    .select("id,parent_location_id,name,summary,description,visibility_mode,background_simulation_scope,lifecycle_state")
+    .select("id,parent_location_id,name,summary,description,visibility_mode,background_simulation_scope,lifecycle_state,archetype,scale,structure_roles,structure_state,coverage_manifest,structured_at")
     .eq("campaign_id", context.campaignId)
     .eq("id", locationId)
     .maybeSingle()
@@ -2257,6 +2549,29 @@ async function updateLocation(
       args.background_simulation_scope === "disabled"
       ? args.background_simulation_scope
       : current.background_simulation_scope
+  const archetype = locationEnum(
+    args.archetype,
+    LOCATION_ARCHETYPES,
+    String(current.archetype || "site"),
+  )
+  const scale = locationEnum(
+    args.scale,
+    LOCATION_SCALES,
+    String(current.scale || "site"),
+  )
+  const structureRoles =
+    args.structure_roles === undefined
+      ? locationRoles(current.structure_roles)
+      : locationRoles(args.structure_roles)
+  const structureState = locationEnum(
+    args.structure_state,
+    LOCATION_STRUCTURE_STATES,
+    String(current.structure_state || "stub"),
+  )
+  const coverageManifest =
+    args.coverage_manifest === undefined
+      ? record(current.coverage_manifest)
+      : record(args.coverage_manifest)
 
   const { data, error } = await managerClient(context)
     .from("locations")
@@ -2267,11 +2582,20 @@ async function updateLocation(
       description: args.description === undefined ? current.description : text(args.description, 12000),
       visibility_mode: visibility,
       background_simulation_scope: backgroundSimulationScope,
+      archetype,
+      scale,
+      structure_roles: structureRoles,
+      structure_state: structureState,
+      coverage_manifest: coverageManifest,
+      structured_at:
+        structureState === "materialized" || structureState === "detailed"
+          ? current.structured_at || new Date().toISOString()
+          : null,
       updated_at: new Date().toISOString(),
     })
     .eq("campaign_id", context.campaignId)
     .eq("id", locationId)
-    .select("id,parent_location_id,name,summary,description,visibility_mode,background_simulation_scope,lifecycle_state")
+    .select("id,parent_location_id,name,summary,description,visibility_mode,background_simulation_scope,lifecycle_state,archetype,scale,structure_roles,structure_state,coverage_manifest,structured_at")
     .maybeSingle()
 
   if (error) return { error: error.message }
@@ -2338,6 +2662,11 @@ async function batchLocationChanges(
       "description",
       "visibility_mode",
       "background_simulation_scope",
+      "archetype",
+      "scale",
+      "structure_roles",
+      "structure_state",
+      "coverage_manifest",
     ]) {
       if (Object.prototype.hasOwnProperty.call(operation, key)) {
         callArgs[key] = operation[key]
@@ -2513,6 +2842,9 @@ export async function executeVossManagerTool(
     if (name === "set_character_life_state") return await setCharacterLifeState(context, args)
     if (name === "set_character_publication") return await setCharacterPublication(context, args)
     if (name === "delete_campaign_character") return await deleteCampaignCharacter(context, args)
+    if (name === "materialize_location_cascade") {
+      return await materializeLocationCascade(context, args)
+    }
     if (name === "create_location") return await createLocation(context, args)
     if (name === "update_location") return await updateLocation(context, args)
     if (name === "batch_location_changes") return await batchLocationChanges(context, args)
