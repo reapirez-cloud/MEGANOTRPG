@@ -85,7 +85,10 @@ export default function ChatRoomScreen({ roomId }: { roomId: string }) {
   const presentation = chatRoomPresentationState(model)
   const aiSurvivalCharacterId =
     model.viewer.aiGameMasterEnabled === true
-      ? model.viewer.playerCharacterId
+      ? (
+          model.viewer.playerCharacterId ||
+          (model.identity?.kind === "character" ? model.identity.character.id : null)
+        )
       : null
   const aiSurvivalMode = Boolean(aiSurvivalCharacterId)
 
