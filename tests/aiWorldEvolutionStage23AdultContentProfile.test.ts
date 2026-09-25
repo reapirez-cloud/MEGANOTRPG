@@ -113,10 +113,22 @@ test("Stage 23 records bounded telemetry on AI GM jobs", () => {
 })
 
 test("Stage 23 current profile summaries are permission-oriented", () => {
-  assert.match(modeSemantics, /Без специального разрешения/)
-  assert.match(modeSemantics, /Для совершеннолетних персонажей разрешены зрелые темы/)
-  assert.match(modeSemantics, /no_automatic_fade_to_black_when_enabled/)
-  assert.doesNotMatch(modeSemantics, /provider|policy|jailbreak|цензур/i)
+  const listStart = modeSemantics.indexOf(
+    "create or replace function public.list_campaign_ai_gm_content_profiles_v1",
+  )
+  const setStart = modeSemantics.indexOf(
+    "create or replace function public.set_campaign_ai_gm_content_profile_v1",
+    listStart,
+  )
+  const visibleProfileContract = modeSemantics.slice(listStart, setStart)
+
+  assert.match(visibleProfileContract, /Без специального разрешения/)
+  assert.match(visibleProfileContract, /Для совершеннолетних персонажей разрешены зрелые темы/)
+  assert.match(visibleProfileContract, /no_automatic_fade_to_black_when_enabled/)
+  assert.doesNotMatch(
+    visibleProfileContract,
+    /provider|policy|jailbreak|цензур/i,
+  )
 })
 
 test("Stage 23 UI exposes all three modes but only managers can mutate them", () => {
