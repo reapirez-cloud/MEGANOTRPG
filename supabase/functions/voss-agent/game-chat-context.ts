@@ -1276,8 +1276,6 @@ export async function buildGameChatContextV2({
       mature_themes_allowed:
         contentMode === "allowed" || contentMode === "adult_focused",
       adult_focus: contentMode === "adult_focused",
-      no_automatic_fade_to_black:
-        contentMode === "allowed" || contentMode === "adult_focused",
     },
     invariants: {
       npc_agency_unchanged: true,
