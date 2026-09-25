@@ -81,18 +81,20 @@ export function resolveSurvivalRollPressure(input: {
   const fatigue = resolveSurvivalTrack(input.alertness)
   const sources: SurvivalRollPressure["sources"] = []
 
-  if (hunger.stage > 0) {
+  if (hunger.stage !== 0) {
+    const stage: Exclude<SurvivalStage, 0> = hunger.stage
     sources.push({
       source: "hunger",
-      stage: hunger.stage,
+      stage,
       flatPenalty: hunger.flatPenalty,
     })
   }
 
-  if (fatigue.stage > 0) {
+  if (fatigue.stage !== 0) {
+    const stage: Exclude<SurvivalStage, 0> = fatigue.stage
     sources.push({
       source: "fatigue",
-      stage: fatigue.stage,
+      stage,
       flatPenalty: fatigue.flatPenalty,
     })
   }
