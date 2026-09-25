@@ -3219,7 +3219,11 @@ async function requestPrimaryGmDecision({
   const toolRuns: JsonRecord[] = []
   const replayMechanicsLocked =
     claimed.result.replay_mechanics_locked === true
-  let forceFinalWithoutTools = replayMechanicsLocked
+  const resolvedRollContinuationLocked =
+    isResume &&
+    Object.keys(jsonRecord(claimed.result.last_roll_result)).length > 0
+  let forceFinalWithoutTools =
+    replayMechanicsLocked || resolvedRollContinuationLocked
   const primaryTools = runtimeSettings.npcIdentity
     ? PRIMARY_GM_SCENE_ACTOR_TOOLS
     : PRIMARY_GM_SCENE_ACTOR_TOOLS.filter(
@@ -3251,6 +3255,27 @@ async function requestPrimaryGmDecision({
       if (!raw) throw new Error("ai_gm_provider_empty_answer")
 
       const semanticPreview = parseJsonObject(raw)
+
+      if (resolvedRollContinuationLocked && !replayMechanicsLocked) {
+        const resumedMode = String(semanticPreview?.reaction_mode || "")
+        const resumedMaterialization =
+          semanticPreview?.world_materialization === true
+        const forbiddenResumedMode =
+          resumedMode === "request_player_roll" ||
+          resumedMode === "npc_action" ||
+          resumedMode === "npc_roll" ||
+          resumedMode === "recovery"
+
+        if (forbiddenResumedMode || resumedMaterialization) {
+          messages.push({ role: "assistant", content: raw })
+          messages.push({
+            role: "system",
+            content:
+              "POST-ROLL MECHANICS LOCK: сервер уже зафиксировал player roll и его outcome для ЭТОГО ЖЕ GM turn. Не проси новый бросок, не вызывай NPC mechanic/recovery и не материализуй новый блокирующий канон. Заверши ход видимым narration/dialogue/environment/none по уже полученному last_roll_result. post_turn_intents разрешены только для фактов, реально установленных этим финальным видимым ответом.",
+          })
+          continue
+        }
+      }
 
       if (replayMechanicsLocked) {
         const replayMode = String(semanticPreview?.reaction_mode || "")
