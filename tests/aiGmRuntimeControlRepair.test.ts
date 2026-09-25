@@ -76,16 +76,17 @@ test("orphaned GM jobs recover after the hosted wall-clock while provider timeou
   assert.match(status, /action: "game_chat_turn_resume"/)
 })
 
-test("dedicated AI button routes managers to the AI GM control page while Freddy stays Freddy", () => {
+test("dedicated AI button routes managers to the unified AI GM control page", () => {
   assert.match(app, /type: "ai-gm"/)
   assert.match(app, /<AiGmControl/)
   assert.match(workspace, /className="u1-workspace__ai-button"/)
   assert.match(workspace, /is_ai_world_campaign_v1/)
   assert.match(workspace, /onOpenAiGm/)
   assert.match(app, /onOpenAiGm=\{\(\) => go\("ai-gm"\)\}/)
-  assert.match(app, /<AgentShell \/>/)
-  assert.doesNotMatch(shell, /onOpenControl/)
-  assert.match(shell, /setOpen\(\(value\) => !value\)/)
+  assert.doesNotMatch(app, /<AgentShell \/>/)
+  assert.match(control, /<AgentShell embedded \/>/)
+  assert.match(shell, /embedded = false/)
+  assert.match(shell, /\{!embedded && \([\s\S]*className="u1-agent-orb"/)
 })
 
 test("AI GM model and behavior controls open as separate routed screens", () => {
