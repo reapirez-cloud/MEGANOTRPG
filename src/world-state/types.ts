@@ -4,6 +4,12 @@ export type WorldPosition = {
   location_id: string | null
   campaign_day: number
   day_period: DayPeriod
+  /**
+   * Exact AI-world clock: elapsed minutes from Day 1 00:00.
+   * Optional during the compatibility migration while legacy callers still
+   * construct day/period-only values.
+   */
+  campaign_minute?: number
 }
 
 export type CharacterWorldState = WorldPosition & {
