@@ -2,6 +2,7 @@ import { AnimatePresence, motion } from "motion/react"
 import { useCallback, useEffect, useRef, useState } from "react"
 
 import { useAIViewContextLayer } from "../ai/AIProvider"
+import AgentShell from "../ai/AgentShell"
 import AiGmControl, { type AiGmControlPage } from "./AiGmControl"
 import ChatCatalog from "./ChatCatalog"
 import ChatRoomScreen from "./chat-room/ChatRoomScreen"
@@ -825,6 +826,7 @@ export default function UiV1App() {
             if (!navigateAppBack()) go("workspace")
           }}
         />
+        <AgentShell />
       </div>
     )
   }
@@ -858,6 +860,7 @@ export default function UiV1App() {
         )}
       </div>
 
+      <AgentShell />
     </div>
   )
 }
