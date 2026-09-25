@@ -324,7 +324,7 @@ const STAGE27_INVENTORY_EXECUTOR_TOOL = {
   function: {
     name: "commit_inventory_delta",
     description:
-      "Stage 27 post-turn inventory mutation. Use only for an item/currency gain, consumption or removal already established by the published GM answer. The deterministic Executor applies it through Cheburashka with source-message idempotency.",
+      "Stage 27 post-turn inventory mutation. For grant, pass a semantic item card. The deterministic Item Registry MUST search existing system/campaign definitions before authoring anything; only the resolved definition_id + revision reaches Cheburashka. Consume/remove still reference an existing canonical inventory item UUID.",
     parameters: {
       type: "object",
       additionalProperties: false,
@@ -352,7 +352,15 @@ const STAGE27_INVENTORY_EXECUTOR_TOOL = {
               description:
                 "Preferred for D&D coinage; the server canonicalizes the name/category and bulk-stacks it.",
             },
-            name: { type: "string" },
+            canonical_name: {
+              type: "string",
+              description:
+                "Canonical reusable item name, without scene-only adjectives. For a truly named/unique object keep its real proper name and set unique_identity/identity_key.",
+            },
+            name: {
+              type: "string",
+              description: "Compatibility alias for canonical_name.",
+            },
             quantity: { type: "integer", minimum: 1 },
             category: {
               type: "string",
@@ -362,9 +370,59 @@ const STAGE27_INVENTORY_EXECUTOR_TOOL = {
               ],
             },
             description: { type: "string" },
-            weight: { type: "number", minimum: 0 },
-            definition_id: { type: "string" },
-            stack_mode: { type: "string", enum: ["instance", "bulk_stack"] },
+            summary: { type: "string" },
+            semantic_role: {
+              type: "string",
+              description:
+                "Stable physical/semantic role such as weapon.sword, tool.rope, consumable.potion, currency.coin, material.herb, quest.key.",
+            },
+            aliases: {
+              type: "array",
+              maxItems: 12,
+              items: { type: "string" },
+              description:
+                "Short alternate names useful for future lookup. Do not stuff prose here.",
+            },
+            tags: {
+              type: "array",
+              maxItems: 12,
+              items: { type: "string" },
+              description:
+                "Small normalized catalog tags used for sorting/filtering, e.g. weapon, mundane, metal.",
+            },
+            unique_identity: {
+              type: "boolean",
+              description:
+                "True only when published canon establishes this exact object/type as a distinct identity rather than a standard reusable item.",
+            },
+            identity_key: {
+              type: "string",
+              description:
+                "Stable in-world identity for a genuinely unique item, e.g. archmage-velors-obsidian-key. Never use a random UUID.",
+            },
+            definition_id: {
+              type: "string",
+              description:
+                "Optional only when this exact canonical definition UUID is already present in context. Never invent it.",
+            },
+            inventory_profile: {
+              type: "object",
+              additionalProperties: true,
+              description:
+                "Physical Chasovoy profile for a genuinely new definition. Existing definitions ignore it. packing_mode is instance|bulk_stack; Cheburashka row stack_mode is derived server-side.",
+            },
+            mechanics: {
+              type: "array",
+              items: { type: "object" },
+              description:
+                "Only mechanics explicitly established by published canon. Never invent mechanics merely to classify the item.",
+            },
+            item_state: {
+              type: "object",
+              additionalProperties: true,
+              description:
+                "Optional concrete-instance state established by published canon.",
+            },
             usage_mode: { type: "string", enum: ["none", "quantity", "charges"] },
           },
         },
@@ -392,7 +450,11 @@ const STAGE18_POST_TURN_WORKER_SYSTEM = [
   "Игрок УЖЕ увидел финальный ответ GM. Ты не ведёшь сцену и не можешь менять этот ответ.",
   "Тебе передаётся РОВНО ОДИН immutable intent. Выполни максимум ОДИН write-tool call.",
   "Stage 27: ты ПЛАНИРОВЩИК, а не исполнитель. После твоего единственного tool call сервер создаёт typed job agent_key=ai_world_executor; сам Executor детерминированно выполняет мутацию без ещё одного LLM-решения.",
-  "Для inventory intent используй только commit_inventory_delta. Если опубликовано получение D&D-монет, предпочитай currency_key cp|sp|ep|gp|pp; одинаковые монеты/предметы одного результата агрегируй quantity, а не дроби на несколько независимых выдач.",
+  "Для inventory intent используй только commit_inventory_delta. Для grant ты не создаёшь definition напрямую: дай semantic card, после чего серверный Item Registry ОБЯЗАН сначала искать system/campaign definitions и только при реальном отсутствии создать одну campaign-definition. Лишь resolved definition_id + revision передаются Cheburashka.",
+  "Сразу классифицируй grant: canonical_name, category, semantic_role, короткие aliases/tags. Это каталогизация, а не новая механика. Не добавляй сценовые эпитеты в canonical_name: «окровавленный меч из канавы» для обычного longsword должен резолвиться как стандартный длинный меч, если опубликованный канон не установил отдельную идентичность.",
+  "Для действительно уникального/именного предмета ставь unique_identity=true и стабильный identity_key, основанный на его канонической личности, а не на случайном UUID. Повторное появление той же вещи должно находить ту же definition.",
+  "Если опубликовано получение D&D-монет, используй currency_key cp|sp|ep|gp|pp; сервер ищет системное определение номинала. Не создавай новую definition монеты.",
+  "Для нового нестандартного предмета без существующей definition передай inventory_profile по правилам Chasovoy. packing_mode=bulk_stack означает физический стек, но внутренний Cheburashka stack_mode сервер выведет сам.",
   "Для consume/remove используй item_id только из canonical_inventory_for_present_characters. Если предмета там нет, не придумывай UUID и не вызывай мутацию.",
   "Для location intent Stage 26 разрешён materialize_location_cascade: это ОДНА серверная транзакционная мутация, хотя внутри она создаёт/переиспользует локацию, строит её непосредственный структурный слой, связывает переходы и при необходимости двигает PC.",
   "Если опубликованный ответ утверждает, что source_character вошёл/прибыл/остался в новой или другой постоянной локации, предпочитай materialize_location_cascade и обязательно передавай move_character_id=source_character.id. Не оставляй персонажа в старом character_world_state.",

@@ -1713,13 +1713,27 @@ Contracts:
 - acquisition, pickup, spending, consumption or loss stated by the published GM
   answer must produce an inventory intent; merely seeing an item does not;
 - `commit_inventory_delta` is the only inventory Executor operation;
-- D&D currency uses canonical cp/sp/ep/gp/pp keys and bulk stacks instead of
-  one inventory row per coin;
-- inventory writes go through Cheburashka RPCs and use deterministic command IDs
-  derived from the source player message + semantic delta;
-- replay/regenerate of the same source-message inventory effect therefore
-  replays the Cheburashka command receipt instead of granting it twice;
-- identical item/currency effects in one turn are aggregated as one quantity;
+- grant no longer authors a physical inventory row first. Junior emits a
+  semantic item card; the server Item Registry searches system definitions,
+  campaign definitions, stable semantic keys, exact normalized names and
+  aliases before authoring anything;
+- genuinely new items receive one stable campaign definition keyed by semantic
+  identity and are immediately catalogued by category, semantic role, aliases
+  and tags; future equivalent requests reuse that definition instead of
+  creating UUID garbage;
+- standard D&D currency cp/sp/ep/gp/pp resolves to system definitions before
+  Cheburashka is called;
+- only resolved `definition_id + definition_revision` crosses the Cheburashka
+  boundary; Chasovoy remains the source of reusable item identity and physical
+  profile, while Cheburashka only owns concrete stacks/instances;
+- physical `packing_mode=bulk_stack` maps to Cheburashka
+  `stack_mode=stack`; they are deliberately different contracts;
+- inventory writes use an outer source-message delta receipt plus deterministic
+  Cheburashka sub-command IDs, so regenerate/retry cannot grant, spend or remove
+  the same effect twice;
+- stackable grants fill/reuse stacks by canonical definition and split at the
+  definition's stack_max; instance grants create separate physical instances
+  while still sharing one reusable definition;
 - the player-turn gate remains closed until every blocking Executor job has
   completed; failed execution leaves the existing Stage 18 recovery gate closed;
 - Junior receives a bounded canonical inventory snapshot so consume/remove
