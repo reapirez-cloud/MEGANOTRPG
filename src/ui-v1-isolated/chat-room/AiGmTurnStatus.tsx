@@ -316,7 +316,8 @@ export default function AiGmTurnStatus({ roomId }: { roomId: string }) {
     status.job_id &&
     status.campaign_id &&
     (status.job_status === "queued" || status.job_status === "running") &&
-    status.phase !== "waiting_for_roll",
+    status.phase !== "waiting_for_roll" &&
+    status.phase !== "applying",
   )
 
   return (
