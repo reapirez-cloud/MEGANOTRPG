@@ -698,6 +698,54 @@ function payloadNumber(
   return null
 }
 
+const ABILITY_LABELS: Record<string, string> = {
+  str: "Сила",
+  strength: "Сила",
+  dex: "Ловкость",
+  dexterity: "Ловкость",
+  con: "Телосложение",
+  constitution: "Телосложение",
+  int: "Интеллект",
+  intelligence: "Интеллект",
+  wis: "Мудрость",
+  wisdom: "Мудрость",
+  cha: "Харизма",
+  charisma: "Харизма",
+}
+
+const SKILL_LABELS: Record<string, string> = {
+  athletics: "Атлетика",
+  acrobatics: "Акробатика",
+  sleight_of_hand: "Ловкость рук",
+  "sleight-of-hand": "Ловкость рук",
+  stealth: "Скрытность",
+  arcana: "Магия",
+  history: "История",
+  investigation: "Расследование",
+  nature: "Природа",
+  religion: "Религия",
+  animal_handling: "Уход за животными",
+  "animal-handling": "Уход за животными",
+  insight: "Проницательность",
+  medicine: "Медицина",
+  perception: "Внимательность",
+  survival: "Выживание",
+  deception: "Обман",
+  intimidation: "Запугивание",
+  performance: "Выступление",
+  persuasion: "Убеждение",
+}
+
+function localizedAbility(value: string | null) {
+  if (!value) return "характеристика"
+  return ABILITY_LABELS[value.toLocaleLowerCase("en-US")] || value
+}
+
+function localizedSkill(value: string | null) {
+  if (!value) return "Навык"
+  return SKILL_LABELS[value.toLocaleLowerCase("en-US")] || value
+}
+
 function RollRequestCard({ event }: { event: UiChatEvent }) {
   const payload = isRecord(event.game?.payload) ? event.game!.payload! : {}
   const requestId = readString(payload, "requestId", "request_id")
@@ -785,15 +833,17 @@ function RollRequestCard({ event }: { event: UiChatEvent }) {
     }
   }
 
+  const abilityLabel = localizedAbility(abilityKey)
   const kindLabel =
     requestType === "skill"
-      ? skillKey || "Навык"
+      ? "Проверка · " + localizedSkill(skillKey) +
+        (abilityKey ? " (" + abilityLabel + ")" : "")
       : requestType === "ability"
-        ? abilityKey || "Характеристика"
+        ? "Проверка · " + abilityLabel
         : requestType === "save"
-          ? "Спасбросок · " + (abilityKey || "характеристика")
+          ? "Спасбросок · " + abilityLabel
           : requestType === "attack"
-            ? "Атака · " + (attackKind || "атака")
+            ? "Бросок атаки · " + (attackKind || "атака")
             : "Особая проверка"
 
   return (
