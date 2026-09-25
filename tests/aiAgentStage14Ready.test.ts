@@ -213,13 +213,16 @@ test("Developer Mode raw token stays in React memory", () => {
   assert.doesNotMatch(provider, /sessionStorage\.setItem\([^\n]*devSession/i)
 })
 
-test("UI 1.0 has one global AgentShell under one AI and Snake provider stack", () => {
+test("UI 1.0 keeps AgentShell routed under the shared AI and Snake provider stack", () => {
   const main = read("src/ui-v1-isolated/main.tsx")
   const app = read("src/ui-v1-isolated/UiV1App.tsx")
+  const control = read("src/ui-v1-isolated/AiGmControl.tsx")
 
   assert.match(main, /<AIProvider>/)
   assert.match(main, /<SnakeProvider>/)
-  assert.equal((app.match(/<AgentShell\b/g) || []).length, 1)
+  assert.equal((app.match(/<AgentShell\b/g) || []).length, 0)
+  assert.equal((control.match(/<AgentShell\b/g) || []).length, 1)
+  assert.match(control, /<AgentShell embedded \/>/)
 })
 
 test("Snake touch interaction requires a long press and suppresses the follow-up click", () => {
