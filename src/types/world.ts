@@ -73,3 +73,29 @@ export type CampaignUpdate = {
   body: string
   published_at: string
 }
+
+
+export type WorldLoreCategory = "news" | "chronicle" | "history" | "world_event" | "rumor"
+
+export type WorldLoreEntry = {
+  id: string
+  campaign_id: string
+  category: WorldLoreCategory
+  title: string
+  summary: string
+  body: string
+  source_kind: "memory_fact" | "background_event" | "campaign_event" | "manual"
+  source_id: string
+  source_entry_key: string
+  location_id: string | null
+  campaign_day: number | null
+  day_period: "dawn" | "morning" | "day" | "afternoon" | "evening" | "night" | null
+  occurred_at: string
+  visibility: "campaign" | "characters" | "gm"
+  visible_character_ids: string[]
+  importance: number
+  tags: string[]
+  provenance: Record<string, unknown>
+  created_at: string
+  updated_at: string
+}
