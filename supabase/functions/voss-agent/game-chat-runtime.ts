@@ -429,7 +429,7 @@ const STAGE27_INVENTORY_EXECUTOR_TOOL = {
               type: "object",
               additionalProperties: true,
               description:
-                "Physical Chasovoy profile for a genuinely new definition. Existing definitions ignore it. packing_mode is instance|bulk_stack; Cheburashka row stack_mode is derived server-side.",
+                "Optional physical hints for a genuinely new definition. Existing definitions ignore it. The server injects semantic_role and fills a safe compact 1x1 baseline when shape fields are omitted; complete explicit shape profiles are preserved. packing_mode is instance|bulk_stack; Cheburashka row stack_mode is derived server-side.",
             },
             mechanics: {
               type: "array",
@@ -1113,15 +1113,18 @@ async function requestJuniorCompletionWithFallback({
   >
   allowProviderFallback?: boolean
 }) {
+  const effectiveReasoningEffort: JuniorReasoningEffort =
+    model.model_key === "gpt-5.6-luna" ? "high" : reasoningEffort
+
   try {
     return {
       payload: await requestChatCompletion({
         ...request,
         model,
-        reasoningEffort,
+        reasoningEffort: effectiveReasoningEffort,
       }),
       model,
-      reasoningEffort,
+      reasoningEffort: effectiveReasoningEffort,
       providerFallback: false,
     }
   } catch (error) {
@@ -1131,15 +1134,17 @@ async function requestJuniorCompletionWithFallback({
       excludeModelKey: model.model_key,
     })
     const fallbackModel = fallbackRoute.model
+    const fallbackReasoningEffort: JuniorReasoningEffort =
+      fallbackModel.model_key === "gpt-5.6-luna" ? "high" : "low"
 
     return {
       payload: await requestChatCompletion({
         ...request,
         model: fallbackModel,
-        reasoningEffort: "low",
+        reasoningEffort: fallbackReasoningEffort,
       }),
       model: fallbackModel,
-      reasoningEffort: "low" as const,
+      reasoningEffort: fallbackReasoningEffort,
       providerFallback: true,
     }
   }
