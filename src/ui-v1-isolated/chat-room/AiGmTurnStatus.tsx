@@ -93,6 +93,10 @@ async function wakeGameTurn(status: AiGmStatus) {
 export default function AiGmTurnStatus({ roomId }: { roomId: string }) {
   const [status, setStatus] = useState<AiGmStatus | null>(null)
   const [recovering, setRecovering] = useState(false)
+  const [controlBusy, setControlBusy] = useState<"" | "cancel" | "inspect" | "edit">("")
+  const [controlError, setControlError] = useState("")
+  const [editing, setEditing] = useState(false)
+  const [editText, setEditText] = useState("")
   const wakeAttemptRef = useRef<string>("")
   const autoRollAttemptRef = useRef<string>("")
 
@@ -165,6 +169,113 @@ export default function AiGmTurnStatus({ roomId }: { roomId: string }) {
     }
   }, [refresh, roomId])
 
+  const invokeTurnControl = useCallback(async (
+    mode: "inspect" | "cancel" | "edit_resend",
+    editedBody?: string,
+  ) => {
+    if (!status?.job_id || !status.campaign_id) {
+      throw new Error("Активный ход ИИ-ГМ не найден.")
+    }
+
+    const result = await supabase.functions.invoke("voss-agent", {
+      body: {
+        campaignId: status.campaign_id,
+        action: "game_chat_turn_control",
+        jobId: status.job_id,
+        controlMode: mode,
+        editedBody: mode === "edit_resend" ? editedBody : undefined,
+      },
+    })
+
+    const data =
+      result.data && typeof result.data === "object" && !Array.isArray(result.data)
+        ? result.data as Record<string, unknown>
+        : {}
+    const errorMessage =
+      typeof data.error === "string"
+        ? data.error
+        : result.error?.message || ""
+
+    if (result.error || data.accepted === false || errorMessage) {
+      throw new Error(errorMessage || "Не удалось изменить активный ход.")
+    }
+
+    return data
+  }, [status])
+
+  const cancelActiveTurn = useCallback(async () => {
+    if (controlBusy || !status?.job_id) return
+    setControlBusy("cancel")
+    setControlError("")
+    try {
+      await invokeTurnControl("cancel")
+      setEditing(false)
+      setEditText("")
+      wakeAttemptRef.current = ""
+      window.dispatchEvent(
+        new CustomEvent(CHAT_MESSAGE_SENT_EVENT, {
+          detail: { roomId },
+        }),
+      )
+      await refresh()
+    } catch (error) {
+      setControlError(
+        error instanceof Error ? error.message : "Ход не удалось остановить.",
+      )
+    } finally {
+      setControlBusy("")
+    }
+  }, [controlBusy, invokeTurnControl, refresh, roomId, status?.job_id])
+
+  const openEdit = useCallback(async () => {
+    if (controlBusy || !status?.job_id) return
+    setControlBusy("inspect")
+    setControlError("")
+    try {
+      const data = await invokeTurnControl("inspect")
+      if (data.can_edit !== true) {
+        throw new Error(
+          typeof data.blocked_reason === "string" && data.blocked_reason
+            ? data.blocked_reason
+            : "Этот ход уже нельзя редактировать до ответа.",
+        )
+      }
+      setEditText(typeof data.source_body === "string" ? data.source_body : "")
+      setEditing(true)
+    } catch (error) {
+      setControlError(
+        error instanceof Error ? error.message : "Сообщение не открылось.",
+      )
+    } finally {
+      setControlBusy("")
+    }
+  }, [controlBusy, invokeTurnControl, status?.job_id])
+
+  const saveEdit = useCallback(async () => {
+    const body = editText.trim()
+    if (!body || controlBusy) return
+    setControlBusy("edit")
+    setControlError("")
+    try {
+      await invokeTurnControl("edit_resend", body)
+      setEditing(false)
+      setEditText("")
+      wakeAttemptRef.current = ""
+      window.dispatchEvent(
+        new CustomEvent(CHAT_MESSAGE_SENT_EVENT, {
+          detail: { roomId },
+        }),
+      )
+      await refresh()
+    } catch (error) {
+      setControlError(
+        error instanceof Error ? error.message : "Сообщение не переотправлено.",
+      )
+    } finally {
+      setControlBusy("")
+    }
+  }, [controlBusy, editText, invokeTurnControl, refresh, roomId])
+
   const recover = useCallback(async () => {
     if (
       recovering ||
@@ -200,6 +311,13 @@ export default function AiGmTurnStatus({ roomId }: { roomId: string }) {
 
   const failed =
     status.phase === "failed" || status.phase === "post_turn_failed"
+  const interruptible = Boolean(
+    status.active === true &&
+    status.job_id &&
+    status.campaign_id &&
+    (status.job_status === "queued" || status.job_status === "running") &&
+    status.phase !== "waiting_for_roll",
+  )
 
   return (
     <div
@@ -224,6 +342,61 @@ export default function AiGmTurnStatus({ roomId }: { roomId: string }) {
         >
           {recovering ? "Повтор…" : "Повторить"}
         </button>
+      ) : null}
+
+      {interruptible ? (
+        <div className="u1-ai-gm-status__actions">
+          <button
+            type="button"
+            data-tone="danger"
+            disabled={Boolean(controlBusy)}
+            onClick={() => void cancelActiveTurn()}
+          >
+            {controlBusy === "cancel" ? "Стоп…" : "Остановить шуршание"}
+          </button>
+          <button
+            type="button"
+            disabled={Boolean(controlBusy)}
+            onClick={() => void openEdit()}
+          >
+            {controlBusy === "inspect" ? "Открываю…" : "Редактировать"}
+          </button>
+        </div>
+      ) : null}
+
+      {controlError ? (
+        <small className="u1-ai-gm-status__error">{controlError}</small>
+      ) : null}
+
+      {editing && interruptible ? (
+        <div className="u1-ai-gm-status__editor">
+          <textarea
+            value={editText}
+            maxLength={4000}
+            autoFocus
+            disabled={Boolean(controlBusy)}
+            onChange={(event) => setEditText(event.target.value)}
+          />
+          <div>
+            <button
+              type="button"
+              disabled={Boolean(controlBusy)}
+              onClick={() => {
+                setEditing(false)
+                setControlError("")
+              }}
+            >
+              Отмена
+            </button>
+            <button
+              type="button"
+              disabled={Boolean(controlBusy) || !editText.trim()}
+              onClick={() => void saveEdit()}
+            >
+              {controlBusy === "edit" ? "Переотправляю…" : "Сохранить и отправить"}
+            </button>
+          </div>
+        </div>
       ) : null}
     </div>
   )
