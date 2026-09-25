@@ -311,14 +311,19 @@ export default function AiGmTurnStatus({ roomId }: { roomId: string }) {
 
   const failed =
     status.phase === "failed" || status.phase === "post_turn_failed"
-  const interruptible = Boolean(
+  const preAnswerControlsVisible = Boolean(
     status.active === true &&
     status.job_id &&
     status.campaign_id &&
     (status.job_status === "queued" || status.job_status === "running") &&
-    status.phase !== "waiting_for_roll" &&
+    status.phase !== "waiting_for_roll",
+  )
+  const interruptible = Boolean(
+    preAnswerControlsVisible &&
     status.phase !== "applying",
   )
+  const atomicMutationInFlight =
+    preAnswerControlsVisible && status.phase === "applying"
 
   return (
     <div
@@ -345,19 +350,21 @@ export default function AiGmTurnStatus({ roomId }: { roomId: string }) {
         </button>
       ) : null}
 
-      {interruptible ? (
+      {preAnswerControlsVisible ? (
         <div className="u1-ai-gm-status__actions">
           <button
             type="button"
             data-tone="danger"
-            disabled={Boolean(controlBusy)}
+            disabled={Boolean(controlBusy) || !interruptible}
+            title={atomicMutationInFlight ? "Завершается короткая серверная операция" : undefined}
             onClick={() => void cancelActiveTurn()}
           >
             {controlBusy === "cancel" ? "Стоп…" : "Остановить шуршание"}
           </button>
           <button
             type="button"
-            disabled={Boolean(controlBusy)}
+            disabled={Boolean(controlBusy) || !interruptible}
+            title={atomicMutationInFlight ? "Редактирование откроется сразу после серверной операции" : undefined}
             onClick={() => void openEdit()}
           >
             {controlBusy === "inspect" ? "Открываю…" : "Редактировать"}
@@ -365,17 +372,23 @@ export default function AiGmTurnStatus({ roomId }: { roomId: string }) {
         </div>
       ) : null}
 
+      {atomicMutationInFlight ? (
+        <small className="u1-ai-gm-status__hint">
+          Сервер применяет короткое действие. Стоп и редактирование включатся сразу после него.
+        </small>
+      ) : null}
+
       {controlError ? (
         <small className="u1-ai-gm-status__error">{controlError}</small>
       ) : null}
 
-      {editing && interruptible ? (
+      {editing && preAnswerControlsVisible ? (
         <div className="u1-ai-gm-status__editor">
           <textarea
             value={editText}
             maxLength={4000}
             autoFocus
-            disabled={Boolean(controlBusy)}
+            disabled={Boolean(controlBusy) || !interruptible}
             onChange={(event) => setEditText(event.target.value)}
           />
           <div>
@@ -391,7 +404,7 @@ export default function AiGmTurnStatus({ roomId }: { roomId: string }) {
             </button>
             <button
               type="button"
-              disabled={Boolean(controlBusy) || !editText.trim()}
+              disabled={Boolean(controlBusy) || !interruptible || !editText.trim()}
               onClick={() => void saveEdit()}
             >
               {controlBusy === "edit" ? "Переотправляю…" : "Сохранить и отправить"}
