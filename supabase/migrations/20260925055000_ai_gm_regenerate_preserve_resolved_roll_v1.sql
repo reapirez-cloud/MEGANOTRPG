@@ -7,7 +7,7 @@ CREATE OR REPLACE FUNCTION private.reserve_ai_gm_replay_preserving_roll_v1(p_cam
  LANGUAGE plpgsql
  SECURITY DEFINER
  SET search_path TO ''
-AS $function$
+AS $function$;
 declare
   v_mode text := lower(trim(coalesce(p_mode,'')));
   v_message public.chat_messages%rowtype;
@@ -335,7 +335,7 @@ begin
     'inherited_roll_message_id',v_roll.roll_message_id
   );
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.reserve_ai_gm_replay_v1(p_campaign_id uuid, p_user_id uuid, p_source_chat_message_id bigint, p_mode text, p_edited_body text DEFAULT NULL::text)
@@ -343,7 +343,7 @@ CREATE OR REPLACE FUNCTION public.reserve_ai_gm_replay_v1(p_campaign_id uuid, p_
  LANGUAGE plpgsql
  SECURITY DEFINER
  SET search_path TO ''
-AS $function$
+AS $function$;
 begin
   return private.reserve_ai_gm_replay_preserving_roll_v1(
     p_campaign_id,
@@ -353,7 +353,7 @@ begin
     p_edited_body
   );
 end;
-$function$
+$function$;
 
 
 revoke all on function private.reserve_ai_gm_replay_preserving_roll_v1(uuid,uuid,bigint,text,text)
