@@ -158,3 +158,223 @@
   min-height: 230px;
   line-height: 1.55;
 }
+
+
+/* Living Lore */
+.world-lore-feed {
+  display: grid;
+  gap: 14px;
+  padding: 2px 0 28px;
+}
+
+.world-lore-feed__head {
+  padding: 18px 18px 4px;
+}
+
+.world-lore-feed__head small {
+  display: block;
+  margin-bottom: 5px;
+  color: rgba(231, 228, 220, .52);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+}
+
+.world-lore-feed__head h2 {
+  margin: 0;
+  color: #f0ede5;
+  font-size: clamp(24px, 7vw, 34px);
+  line-height: 1.02;
+}
+
+.world-lore-feed__head p {
+  max-width: 640px;
+  margin: 8px 0 0;
+  color: rgba(231, 228, 220, .62);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.world-lore-filters {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 4px 18px 8px;
+  scrollbar-width: none;
+}
+
+.world-lore-filters::-webkit-scrollbar {
+  display: none;
+}
+
+.world-lore-filters button {
+  flex: 0 0 auto;
+  min-height: 34px;
+  padding: 0 13px;
+  border: 1px solid rgba(232, 229, 220, .1);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, .025);
+  color: rgba(236, 233, 225, .58);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 750;
+}
+
+.world-lore-filters button.is-active {
+  border-color: rgba(232, 229, 220, .24);
+  background: rgba(232, 229, 220, .1);
+  color: #f2efe7;
+}
+
+.world-lore-timeline {
+  display: grid;
+  padding: 0 14px 12px;
+}
+
+.world-lore-entry {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  min-width: 0;
+}
+
+.world-lore-entry__rail {
+  position: relative;
+  display: flex;
+  justify-content: center;
+}
+
+.world-lore-entry__rail::after {
+  position: absolute;
+  top: 18px;
+  bottom: -10px;
+  width: 1px;
+  content: "";
+  background: rgba(225, 220, 208, .09);
+}
+
+.world-lore-entry:last-child .world-lore-entry__rail::after {
+  display: none;
+}
+
+.world-lore-entry__rail span {
+  position: relative;
+  z-index: 1;
+  width: 7px;
+  height: 7px;
+  margin-top: 20px;
+  border: 1px solid rgba(238, 234, 222, .42);
+  border-radius: 50%;
+  background: #111211;
+  box-shadow: 0 0 0 4px #111211;
+}
+
+.world-lore-entry__card {
+  min-width: 0;
+  margin: 0 0 12px 4px;
+  padding: 15px 16px 14px;
+  border: 1px solid rgba(233, 229, 219, .08);
+  border-radius: 16px;
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, .032), rgba(255, 255, 255, .012)),
+    rgba(14, 15, 14, .9);
+  box-shadow: 0 12px 34px rgba(0, 0, 0, .15);
+}
+
+.world-lore-entry__card > header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.world-lore-entry__meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.world-lore-entry__meta span {
+  padding: 4px 7px;
+  border: 1px solid rgba(236, 232, 221, .12);
+  border-radius: 7px;
+  color: rgba(243, 239, 228, .82);
+  font-size: 9px;
+  font-weight: 850;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+}
+
+.world-lore-entry__meta small,
+.world-lore-entry__source {
+  color: rgba(234, 230, 220, .42);
+  font-size: 10px;
+}
+
+.world-lore-entry__source {
+  flex: 0 0 auto;
+  padding-top: 3px;
+  text-align: right;
+}
+
+.world-lore-entry__card h3 {
+  margin: 12px 0 6px;
+  color: #f0ede5;
+  font-size: 17px;
+  line-height: 1.2;
+}
+
+.world-lore-entry__card > p,
+.world-lore-entry__body {
+  margin: 0;
+  white-space: pre-wrap;
+  color: rgba(232, 228, 218, .68);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.world-lore-entry__body {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(232, 228, 218, .07);
+  color: rgba(232, 228, 218, .56);
+}
+
+.world-lore-entry__card footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 12px;
+}
+
+.world-lore-entry__card footer span {
+  padding: 4px 7px;
+  border-radius: 7px;
+  background: rgba(255, 255, 255, .035);
+  color: rgba(232, 228, 218, .42);
+  font-size: 9px;
+}
+
+.world-lore-empty {
+  margin: 4px 14px 22px;
+}
+
+@media (min-width: 720px) {
+  .world-lore-feed {
+    max-width: 860px;
+    margin: 0 auto;
+  }
+
+  .world-lore-timeline {
+    padding-inline: 18px;
+  }
+
+  .world-lore-entry {
+    grid-template-columns: 24px minmax(0, 1fr);
+  }
+
+  .world-lore-entry__card {
+    padding: 18px 20px;
+  }
+}
