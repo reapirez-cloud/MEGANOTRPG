@@ -51,13 +51,13 @@ Initial period mapping:
 - evening: 18:00–21:59
 - night: 22:00–23:59
 
-Normal conversational scene advancement is eventually capped at +5 minutes.
+Normal conversational scene advancement is capped at +5 minutes.
 Long actions, travel and sleep use explicit elapsed duration.
 
 Initial tuning constants are deliberately centralized and versionable:
 
-- satiety 100 -> 0 in 36 hours without food;
-- alertness 100 -> 0 in 24 hours awake.
+- satiety 100 -> 0 in 48 hours without food;
+- alertness 100 -> 0 in 72 hours continuously awake.
 
 Sub-minute resource fractions are carried server-side so repeated five-minute scenes cannot round survival drain to zero forever.
 
@@ -94,9 +94,9 @@ Done when minute state is authoritative, survival can tick deterministically, an
 
 ## Stage 2 — D20 + food + sleep/rest mechanics
 
-**Status: PLANNED**
+**Status: IMPLEMENTED — 2026-09-25**
 
-Implement as one mechanical layer:
+Implemented as one mechanical layer:
 
 - universal `normal / advantage / disadvantage` d20 mode;
 - survival pressure applied to all intended d20 tests through the authoritative roll path;
@@ -106,13 +106,14 @@ Implement as one mechanical layer:
 - sleep duration + alertness restoration;
 - short/long rest advancing real game time;
 - dawn crossing processed from exact time;
-- optional canonical `travel_minutes` on location transitions.
+- optional canonical `travel_minutes` on location transitions;
+- bounded AI-directed extra satiety/alertness depletion for genuinely heavy exertion.
 
-No item-name guessing for food. Food semantics attach to canonical item definitions/state.
+Food amount is a semantic AI decision over a real canonical inventory item, while the server owns the 0–100 bounds and atomic consume+restore transaction. Heavy exertion may only deplete through bounded `extra_*_depletion`; the AI never writes resource values directly.
 
 ## Stage 3 — AI GM + player status drawer
 
-**Status: PLANNED**
+**Status: IMPLEMENTED — 2026-09-25**
 
 AI-world only:
 
