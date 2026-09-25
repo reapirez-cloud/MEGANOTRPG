@@ -281,6 +281,25 @@ const WORLD_MATERIALIZER_ALL_TOOL_NAMES = new Set([
   ...WORLD_MATERIALIZER_TOOL_NAMES,
   ...WORLD_MATERIALIZER_QUEST_TOOL_NAMES,
 ])
+function strictWorldMaterializerToolSchema(tool: unknown) {
+  const copy = JSON.parse(JSON.stringify(tool)) as any
+  const name = String(copy?.function?.name || "")
+  const parameters = copy?.function?.parameters
+  if (!parameters || typeof parameters !== "object") return copy
+
+  const required = Array.isArray(parameters.required)
+    ? parameters.required.filter((value: unknown) => typeof value === "string")
+    : []
+
+  const extraRequired =
+    name === "create_location" || name === "create_world_npc"
+      ? ["background_simulation_scope"]
+      : []
+
+  parameters.required = [...new Set([...required, ...extraRequired])]
+  return copy
+}
+
 const WORLD_MATERIALIZER_TOOLS = [
   ...VOSS_MANAGER_TOOLS.filter((tool) =>
     WORLD_MATERIALIZER_TOOL_NAMES.has(tool.function.name)
@@ -288,7 +307,7 @@ const WORLD_MATERIALIZER_TOOLS = [
   ...VOSS_QUEST_TOOLS.filter((tool) =>
     WORLD_MATERIALIZER_QUEST_TOOL_NAMES.has(tool.function.name)
   ),
-]
+].map(strictWorldMaterializerToolSchema)
 
 const STAGE18_POST_TURN_MANAGER_TOOL_NAMES = new Set([
   "materialize_location_cascade",
@@ -629,11 +648,15 @@ const REQUEST_PLAYER_ROLL_TOOL = {
             "character_id",
             "adjudication_mode",
             "uncertainty_scope",
+            "canonical_evidence",
+            "resolver_decision_key",
             "exact_goal",
             "semantic_check",
             "logical_difficulty",
             "dc_visibility",
+            "success_envelope",
             "failure_envelope",
+            "partial_success_envelope",
             "label",
             "reason",
           ],
@@ -3881,6 +3904,36 @@ async function priorResolverRunsForRegenerate({
   return prior ? resolverRunsFromJobResult(prior.result) : []
 }
 
+const RETRYABLE_RANDOM_DECISION_CONTRACT_ERRORS = new Set([
+  "random_decision_key_invalid",
+  "random_decision_kind_invalid",
+  "random_decision_claim_basis_invalid",
+  "random_decision_question_required",
+  "random_decision_reason_required",
+  "random_decision_target_scope_invalid",
+  "random_decision_target_id_required",
+  "random_decision_band_count_invalid",
+  "random_decision_bands_invalid",
+  "random_decision_bands_must_cover_d100",
+  "random_decision_discovery_rarity_required",
+  "random_decision_search_category_required",
+  "random_decision_discovery_presence_flags_required",
+  "random_decision_discovery_world_existence_required",
+  "random_decision_discovery_world_existence_mismatch",
+  "random_decision_discovery_probability_too_high",
+])
+
+const TERMINAL_RANDOM_DECISION_CONTRACT_ERRORS = new Set([
+  "random_decision_player_specific_claim_unknown",
+])
+
+function isRandomDecisionModelContractError(code: string) {
+  return (
+    RETRYABLE_RANDOM_DECISION_CONTRACT_ERRORS.has(code) ||
+    TERMINAL_RANDOM_DECISION_CONTRACT_ERRORS.has(code)
+  )
+}
+
 async function requestPrimaryGmDecision({
   admin,
   campaignId,
@@ -3949,6 +4002,7 @@ async function requestPrimaryGmDecision({
     Object.keys(jsonRecord(claimed.result.last_roll_result)).length > 0
   let forceFinalWithoutTools =
     replayMechanicsLocked || resolvedRollContinuationLocked || regenerateCanonLocked
+  let resolverContractRetryUsed = false
   const primaryTools = runtimeSettings.npcIdentity
     ? PRIMARY_GM_SCENE_ACTOR_TOOLS
     : PRIMARY_GM_SCENE_ACTOR_TOOLS.filter(
@@ -4062,6 +4116,16 @@ async function requestPrimaryGmDecision({
     })
 
     let playerTurnMutationUsedThisRound = false
+    const resolverCallIndex = calls.findIndex(
+      (call) => call.function?.name === "resolve_random_decision",
+    )
+    let resolverRoundState:
+      | "none"
+      | "resolved"
+      | "retryable_rejection"
+      | "terminal_rejection" = "none"
+    let resolverRoundError = ""
+
     for (let index = 0; index < calls.length; index += 1) {
       const call = calls[index]
       const callId = call.id || `scene-tool-${round}-${index}`
@@ -4070,7 +4134,14 @@ async function requestPrimaryGmDecision({
       const args = parseProviderToolArguments(call.function?.arguments)
       let result: JsonRecord
 
-      if (name === "request_player_roll") {
+      if (resolverCallIndex >= 0 && index !== resolverCallIndex) {
+        result = {
+          error: "tool_skipped_due_to_resolver_exclusive_round",
+          skipped: true,
+          instruction:
+            "A Resolver call is exclusive within its provider round. Re-evaluate after the Resolver receipt before issuing any dependent tool.",
+        }
+      } else if (name === "request_player_roll") {
         const rawRoll =
           Object.keys(jsonRecord(args.roll_request)).length
             ? jsonRecord(args.roll_request)
@@ -4148,19 +4219,40 @@ async function requestPrimaryGmDecision({
               args,
             ),
           )
+          resolverRoundState = "resolved"
         } catch (error) {
           const message =
             error instanceof Error ? error.message : String(error || "")
-          if (message.startsWith("random_decision_")) {
+
+          if (!isRandomDecisionModelContractError(message)) {
+            throw error
+          }
+
+          resolverRoundError = message
+          const canRetryStructurally =
+            RETRYABLE_RANDOM_DECISION_CONTRACT_ERRORS.has(message) &&
+            !resolverContractRetryUsed
+
+          if (canRetryStructurally) {
+            resolverContractRetryUsed = true
+            resolverRoundState = "retryable_rejection"
             result = {
               error: message,
               random_decision_rejected: true,
+              retryable_structural_contract_error: true,
               instruction:
-                "Do not retry or remap this resolver call in the same provider turn. Finish from already-established canon/mechanics, or return a non-committal observable response if the uncertainty is still unresolved.",
+                "This Resolver proposal failed its server contract. Do not execute any sibling tools from the same provider response. The server will allow one corrected Resolver proposal in the next provider round.",
+            }
+          } else {
+            resolverRoundState = "terminal_rejection"
+            result = {
+              error: message,
+              random_decision_rejected: true,
+              retryable_structural_contract_error: false,
+              instruction:
+                "Do not retry or remap this Resolver uncertainty again in this GM turn. Finish from already-established canon/mechanics, or return a non-committal observable response if the uncertainty is still unresolved.",
             }
             forceFinalWithoutTools = true
-          } else {
-            throw error
           }
         }
       } else if (name === "advance_player_turn_plan") {
@@ -4634,9 +4726,14 @@ async function requestPrimaryGmDecision({
         .eq("status", "running")
 
       const resultPlan = jsonRecord(result.plan)
+      const resolverReceiptReturned =
+        name === "resolve_random_decision" &&
+        !result.error &&
+        typeof result.decision_key === "string" &&
+        Boolean(result.decision_key)
       const terminalToolSignal =
-        result.roll_replayed === true ||
-        result.commit_replayed === true ||
+        (!resolverReceiptReturned && result.roll_replayed === true) ||
+        (!resolverReceiptReturned && result.commit_replayed === true) ||
         resultPlan.execution_state === "completed" ||
         result.error === "primary_gm_scene_actor_tool_not_allowed" ||
         result.error === "player_turn_requires_one_execution_tool_per_provider_round"
@@ -4660,11 +4757,31 @@ async function requestPrimaryGmDecision({
       })
     }
 
+    if (resolverRoundState === "retryable_rejection") {
+      messages.push({
+        role: "system",
+        content:
+          "RESOLVER STRUCTURAL CORRECTION. Предыдущий resolve_random_decision был отклонён серверным контрактом с ошибкой: " +
+          resolverRoundError +
+          ". Разрешена РОВНО ОДНА исправленная попытка в новом provider-round. Для world_discovery обязательно передай rarity_class, search_category, 2..8 gapless outcome_bands 1..100; у КАЖДОГО band должны быть target_present:boolean и payload.stage17_world_existence='exists'|'absent', согласованные друг с другом. Не вызывай другие tools одновременно с Resolver.",
+      })
+      continue
+    }
+
+    if (resolverRoundState === "resolved") {
+      messages.push({
+        role: "system",
+        content:
+          "RESOLVER RECEIPT COMMITTED. Перечитай возвращённый matched_outcome и decision_key. Не бросай Resolver повторно. Если matched_outcome устанавливает существование цели и теперь остаётся неопределённость навыка персонажа, запроси request_player_roll в НОВОМ provider-round и передай полный resolver_decision_key. Если цель отсутствует, заверши ход без декоративного d20.",
+      })
+      continue
+    }
+
     if (forceFinalWithoutTools) {
       messages.push({
         role: "system",
         content:
-          "TOOL LOOP GUARD: сервер уже получил terminal/replayed/completed результат или отклонил недопустимый tool. Больше НЕ вызывай tools в этом ходу. Немедленно верни финальный JSON по контракту, используя уже полученный канонический результат. Если нужен бросок PC, верни reaction_mode=request_player_roll с roll_request.",
+          "TOOL LOOP GUARD: сервер уже получил terminal/replayed/completed результат или отклонил недопустимый tool. Больше НЕ вызывай tools в этом ходу. Немедленно верни финальный JSON по контракту, используя уже полученный канонический результат. Если нужен бросок PC и существование цели уже доказано каноном/Resolver receipt, верни reaction_mode=request_player_roll с roll_request.",
       })
     }
   }
