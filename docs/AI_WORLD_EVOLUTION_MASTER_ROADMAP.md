@@ -1751,7 +1751,7 @@ Deferred to Stage 28:
 
 ## Stage 28 — Location Media Recovery + Causal Certification
 
-**Status: IMPLEMENTED — 2026-09-25**
+**Status: READY — 2026-09-25**
 
 Stage 28 closes the remaining media/UI debt after the causal runtime rebuild.
 
@@ -1778,5 +1778,11 @@ Contracts:
   private lifecycle tables or the dispatch token;
 - Stage 27 is certified READY before this stage begins.
 
-Final certification requires the Stage 28 commit to pass the full repository CI
-and the live queued-location recovery to reach a terminal worker state.
+Certification evidence:
+
+- full repository CI passed on the Stage 28 implementation;
+- the previously stranded live location job was redispatched after the dispatcher
+  repair, generated one hero asset, attached it through media_bindings and
+  finalized its lifecycle as completed;
+- authenticated location-media state returned the attached storage path and
+  1536x1024 source dimensions, while the UI owns the final 16:9 presentation.
