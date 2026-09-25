@@ -1,5 +1,11 @@
 .u1-ai-gm-control {
-  min-height: 100%;
+  position: fixed;
+  z-index: 120;
+  inset: 0;
+  width: 100%;
+  height: var(--u1-viewport-height, 100dvh);
+  min-height: 0;
+  box-sizing: border-box;
   padding:
     calc(var(--u1-telegram-content-safe-top, 0px) + 12px)
     14px
@@ -9,6 +15,8 @@
     radial-gradient(circle at 50% -10%, rgba(126, 137, 147, 0.12), transparent 34%),
     linear-gradient(180deg, rgba(12, 14, 16, 0.96), rgba(8, 10, 11, 0.99));
   overflow-y: auto;
+  overscroll-behavior: contain;
+  isolation: isolate;
 }
 
 .u1-ai-gm-control__header {
