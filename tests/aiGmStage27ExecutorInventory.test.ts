@@ -13,6 +13,9 @@ const migration = read(
 const registry = read(
   "supabase/migrations/20260925103000_ai_gm_stage27_item_registry_v2.sql",
 )
+const retryBatchMigration = read(
+  "supabase/migrations/20260925153500_ai_gm_executor_retry_and_inventory_batch_v1.sql",
+)
 const roadmap = read("docs/AI_WORLD_EVOLUTION_MASTER_ROADMAP.md")
 
 test("Stage 27 introduces a typed deterministic Executor queue", () => {
@@ -97,4 +100,20 @@ test("Stage 27 is recorded in the master roadmap", () => {
     roadmap,
     /## Stage 27 — Deterministic Executor \+ Inventory Commit[\s\S]*\*\*Status: READY/,
   )
+})
+
+test("Stage 27 retries use a fresh executor slot per intent lease", () => {
+  assert.match(retryBatchMigration, /source_intent_lease_token/)
+  assert.match(retryBatchMigration, /agent_jobs_executor_source_intent_lease_uidx/)
+  assert.doesNotMatch(retryBatchMigration, /agent_jobs_executor_source_intent_uidx ON/)
+})
+
+test("Stage 27 can atomically settle purchases and trades", () => {
+  assert.match(runtime, /"batch"/)
+  assert.match(runtime, /consume currency \+ grant item/)
+  assert.match(runtime, /Сервер выполнит все deltas атомарно/)
+  assert.match(retryBatchMigration, /v_action='batch'/)
+  assert.match(retryBatchMigration, /jsonb_array_length\(v_args->'deltas'\)>16/)
+  assert.match(retryBatchMigration, /inventory_executor_batch_character_mismatch/)
+  assert.match(retryBatchMigration, /public\.ai_gm_commit_inventory_delta_v1\([\s\S]*v_batch_delta/)
 })
