@@ -71,7 +71,7 @@ test("behavior screen explains hardcore economy and adult permission without pro
   assert.match(control, /не просто занижены/)
   const adultBlock =
     control.match(/18\+ \/ ВЗРОСЛАЯ ТЕМАТИКА[\s\S]*?ФУНКЦИИ ИИ-МИРА/)?.[0] || ""
-  assert.match(adultBlock, /Разрешает ИИ использовать взрослые темы/)
+  assert.match(adultBlock, /Разрешает ИИ использовать взрослые\s+темы/)
   assert.doesNotMatch(adultBlock, /провайдер|provider|policy|цензур/i)
 })
 
