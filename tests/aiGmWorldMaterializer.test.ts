@@ -39,10 +39,10 @@ test("world materializer exposes creation tools but no destructive world tools",
   )
 })
 
-test("empty AI world gets a canonical location and server movement fallback", () => {
+test("empty AI world gets a canonical cascade location and server movement fallback", () => {
   assert.match(
     runtime,
-    /round === 0 && !context\.sourceLocation[\s\S]*name: "create_location"/,
+    /round === 0 && !context\.sourceLocation[\s\S]*name: "materialize_location_cascade"/,
   )
   assert.match(runtime, /firstCreatedLocationId/)
   assert.match(runtime, /server_fallback: true/)
@@ -62,8 +62,9 @@ test("primary GM hands intent and constraints while Flash enriches implementatio
   assert.match(runtime, /slice\(0, 2000\)/)
   assert.match(runtime, /ТЕХНИЧЕСКОЕ ЗАДАНИЕ ОСНОВНОГО ИИ-ГМ/)
   assert.match(runtime, /МОЖЕШЬ и ДОЛЖЕН дополнять недостающие безопасные детали/)
-  assert.match(runtime, /Дополняй качество существующей задачи, а не её масштаб/)
-  assert.match(runtime, /materializationTask: reaction\.worldMaterializationTask/)
+  assert.match(runtime, /Дополняй ширину ближайшего слоя, не бесконечную глубину/)
+  assert.match(runtime, /reaction\.worldMaterializationTask \|\|/)
+  assert.match(runtime, /sourceLocationNeedsCascade/)
 })
 
 test("Flash creation worker can materialize quests and hidden location state", () => {
