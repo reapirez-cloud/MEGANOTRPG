@@ -72,7 +72,8 @@ test("Stage 27 catalog prevents definition spam", () => {
 
 test("Stage 27 reuses canonical D&D currency definitions", () => {
   assert.match(registry, /r\.data->>'denomination'/)
-  assert.match(registry, /currency-gold-coin/)
+  assert.match(registry, /d\.scope='system'/)
+  assert.match(registry, /v_currency_key<>'+'/)
   assert.match(registry, /currency-electrum-coin/)
   assert.match(registry, /currency-platinum-coin/)
   assert.match(runtime, /currency_key cp\|sp\|ep\|gp\|pp/)
