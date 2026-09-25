@@ -3,7 +3,7 @@ import { useCallback, useEffect, useRef, useState } from "react"
 
 import { useAIViewContextLayer } from "../ai/AIProvider"
 import AgentShell from "../ai/AgentShell"
-import AiGmControl from "./AiGmControl"
+import AiGmControl, { type AiGmControlPage } from "./AiGmControl"
 import ChatCatalog from "./ChatCatalog"
 import ChatRoomScreen from "./chat-room/ChatRoomScreen"
 
@@ -44,7 +44,7 @@ type SectionId =
 type Route =
   | { type: "root"; space: RootSpace }
   | { type: "chat-room"; roomId: string }
-  | { type: "ai-gm" }
+  | { type: "ai-gm"; page: AiGmControlPage }
   | { type: "section"; section: SectionId; subsection?: string; tail: string[] }
   | { type: "workspace"; page: "character"; characterId: string }
   | { type: "workspace"; page: "manage"; section?: WorkshopSection }
@@ -103,7 +103,9 @@ function parseRoute(): Route {
   const raw = window.location.hash.replace(/^#\/?/, "")
   const path = raw.split("?")[0]
 
-  if (path === "ai-gm") return { type: "ai-gm" }
+  if (path === "ai-gm") return { type: "ai-gm", page: "overview" }
+  if (path === "ai-gm/models") return { type: "ai-gm", page: "models" }
+  if (path === "ai-gm/behavior") return { type: "ai-gm", page: "behavior" }
   if (path === "workspace") return { type: "root", space: "workspace" }
   if (path === "workspace/manage") return { type: "workspace", page: "manage" }
   if (path.startsWith("workspace/manage/")) {
@@ -171,7 +173,7 @@ function softHaptic() {
 function routeKey(route: Route) {
   if (route.type === "root") return `root:${route.space}`
   if (route.type === "chat-room") return `chat-room:${route.roomId}`
-  if (route.type === "ai-gm") return "ai-gm"
+  if (route.type === "ai-gm") return "ai-gm:" + route.page
   if (route.type === "section") {
     if (route.section === "knowledge-base" && route.subsection === "classes") {
       return "section:knowledge-base:classes"
@@ -226,13 +228,22 @@ function aiRouteContext(route: Route) {
   }
 
   if (route.type === "ai-gm") {
+    const titles: Record<AiGmControlPage, string> = {
+      overview: "Настройки ИИ-ГМ",
+      models: "Модели компании",
+      behavior: "Настройки поведения ИИ",
+    }
     return {
       screen: "ai-gm-control",
       route: window.location.hash || "#/ai-gm",
-      title: "Управление ИИ-ГМ",
-      text: "Открыт отдельный пульт моделей, поведения и директорских настроек ИИ-ГМ.",
+      title: titles[route.page],
+      text:
+        route.page === "overview"
+          ? "Открыто меню настроек ИИ-ГМ."
+          : "Открыт отдельный экран настройки ИИ-ГМ.",
       facts: {
         surface: "ai-gm-control",
+        page: route.page,
       },
     }
   }
@@ -686,7 +697,13 @@ function Screen({ route }: { route: Route }) {
   if (route.type === "ai-gm") {
     return (
       <AiGmControl
+        page={route.page}
+        onNavigate={(page) => go("ai-gm/" + page)}
         onBack={() => {
+          if (route.page !== "overview") {
+            go("ai-gm")
+            return
+          }
           if (!navigateAppBack()) go("workspace")
         }}
       />
