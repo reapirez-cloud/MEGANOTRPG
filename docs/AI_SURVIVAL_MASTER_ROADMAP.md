@@ -130,18 +130,19 @@ The player never manually presses “give rest” in an AI-run world. The AI/run
 
 ## Stage 4 — Cooperative time + rollback + certification
 
-**Status: PLANNED**
+**Status: CERTIFIED — 2026-09-25**
 
-Finish operational safety:
+Operational safety completed:
 
-- shared scene advances all participating PCs coherently;
+- shared scene advances the runtime-authoritative physically present PC set coherently;
 - split parties keep independent exact clocks;
 - colocated convergence keeps idle-life semantics;
-- regenerate/retry cannot double-advance time or double-drain survival;
-- undo/revision rolls back time and survival together;
+- retry inside one revision replays the receipt without advancing time twice;
+- regenerate uses a new revision-scoped idempotency key after the old revision is rolled back;
+- undo/revision rolls back room/character time, hunger, fatigue, depletion remainders, food consumption, rest resources and rest/preparation sessions together;
 - long actions crossing dawn/day boundaries remain idempotent;
-- focused regression tests for time, roll pressure, food, sleep, co-op and rollback;
-- release only after the full four-stage contract is certified.
+- transactional certification covers single-PC rollback, co-op convergence, full food restoration, long-rest restoration and regenerate idempotency;
+- Stage 4 certification closes the four-stage survival implementation contract.
 
 ## Explicit non-goals for MVP
 
