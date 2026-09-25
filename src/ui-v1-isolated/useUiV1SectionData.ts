@@ -199,6 +199,14 @@ export type WorldLorePreview = {
   id: string
   title: string
   summary: string
+  body: string
+  category: "article" | "news" | "chronicle" | "history" | "world_event" | "rumor"
+  source_kind: "world_article" | "memory_fact" | "background_event" | "campaign_event" | "manual"
+  campaign_day: number | null
+  day_period: "dawn" | "morning" | "day" | "afternoon" | "evening" | "night" | null
+  occurred_at: string | null
+  importance: number
+  tags: string[]
 }
 
 export type KnowledgeCatalogRow = {
@@ -462,7 +470,7 @@ export function useUiV1WorldData() {
     if (!scope.campaignId) return
 
     setLoading(true)
-    const [locationResult, characterResult, loreResult] = await Promise.all([
+    const [locationResult, characterResult, articleResult, livingLoreResult] = await Promise.all([
       supabase
         .from("locations")
         .select("id, name, summary")
@@ -474,12 +482,22 @@ export function useUiV1WorldData() {
       }),
       supabase
         .from("world_articles")
-        .select("id, title, summary")
+        .select("id, title, summary, body, updated_at")
         .eq("campaign_id", scope.campaignId)
         .order("sort_order", { ascending: true }),
+      supabase
+        .from("world_lore_entries")
+        .select("id, title, summary, body, category, source_kind, campaign_day, day_period, occurred_at, importance, tags")
+        .eq("campaign_id", scope.campaignId)
+        .order("occurred_at", { ascending: false })
+        .limit(240),
     ])
 
-    const firstError = locationResult.error || characterResult.error || loreResult.error
+    const firstError =
+      locationResult.error ||
+      characterResult.error ||
+      articleResult.error ||
+      livingLoreResult.error
     if (firstError) {
       setError(firstError.message)
       setCharacters([])
@@ -490,7 +508,36 @@ export function useUiV1WorldData() {
           ? characterResult.data as WorldCharacterPreview[]
           : [],
       )
-      setLore((loreResult.data || []) as WorldLorePreview[])
+
+      const livingLore = (livingLoreResult.data || []).map((item) => ({
+        id: String(item.id),
+        title: String(item.title || ""),
+        summary: String(item.summary || ""),
+        body: String(item.body || ""),
+        category: item.category as WorldLorePreview["category"],
+        source_kind: item.source_kind as WorldLorePreview["source_kind"],
+        campaign_day: typeof item.campaign_day === "number" ? item.campaign_day : null,
+        day_period: (item.day_period || null) as WorldLorePreview["day_period"],
+        occurred_at: item.occurred_at || null,
+        importance: Number(item.importance || 0),
+        tags: Array.isArray(item.tags) ? item.tags.map(String) : [],
+      } satisfies WorldLorePreview))
+
+      const authoredLore = (articleResult.data || []).map((item) => ({
+        id: `article:${item.id}`,
+        title: String(item.title || ""),
+        summary: String(item.summary || ""),
+        body: String(item.body || ""),
+        category: "article",
+        source_kind: "world_article",
+        campaign_day: null,
+        day_period: null,
+        occurred_at: item.updated_at || null,
+        importance: 3,
+        tags: [],
+      } satisfies WorldLorePreview))
+
+      setLore([...livingLore, ...authoredLore])
       setError(null)
     }
     setLoading(false)
@@ -549,6 +596,11 @@ export function useUiV1WorldData() {
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "world_articles", filter: `campaign_id=eq.${scope.campaignId}` },
+        reload,
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "world_lore_entries", filter: `campaign_id=eq.${scope.campaignId}` },
         reload,
       )
       .subscribe()
