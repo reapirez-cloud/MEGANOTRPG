@@ -36,6 +36,11 @@ export type UiChatEvent = {
     url: string
     kind: "image"
   } | null
+  source: {
+    aiGm: boolean
+    turnCommandId: string | null
+    turnComponent: string | null
+  }
   game: {
     label: string | null
     detail: string | null
@@ -113,6 +118,7 @@ export function normalizeChatEvent(
   isGmAuthor: boolean,
 ): UiChatEvent {
   let type: UiChatEventType
+  const aiGmOutput = message.turn_component === "ai_gm_output"
 
   if (message.event_kind === "roll") {
     type = "roll"
@@ -128,6 +134,8 @@ export function normalizeChatEvent(
     type = normalizeActionType(message.event_payload)
   } else if (message.attachment_url) {
     type = "media"
+  } else if (aiGmOutput && !message.character_id) {
+    type = "gm_message"
   } else if (!message.user_id && !message.character_id) {
     type = "system"
   } else if (isGmAuthor && !message.character_id) {
@@ -155,7 +163,7 @@ export function normalizeChatEvent(
         message.author_name.trim() ||
         (type === "system" ? "Система" : isGmAuthor ? "Рассказчик" : "Персонаж"),
       avatarUrl: message.author_avatar_url,
-      isGm: isGmAuthor,
+      isGm: isGmAuthor && !(aiGmOutput && Boolean(message.character_id)),
     },
     body: message.body.trim(),
     createdAt: message.created_at,
@@ -163,6 +171,11 @@ export function normalizeChatEvent(
     audience: {
       scope: message.audience_scope === "direct_pc" ? "direct_pc" : "scene",
       recipientCharacterIds: message.recipient_character_ids || [],
+    },
+    source: {
+      aiGm: aiGmOutput,
+      turnCommandId: message.turn_command_id,
+      turnComponent: message.turn_component,
     },
     media:
       message.attachment_url && message.attachment_kind === "image"
