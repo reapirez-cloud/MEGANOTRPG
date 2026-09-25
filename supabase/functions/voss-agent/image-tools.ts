@@ -73,7 +73,7 @@ export const VOSS_IMAGE_TOOLS = [
             type: "string",
             enum: ["icon", "ui_preview", "portrait", "panel", "hero_art", "master_art"],
             description:
-              "Semantic purpose. Use icon for inventory/item visuals and interface icons: it maps to low quality (50K). Every other purpose maps to high quality (150K). Never request raw quality settings.",
+              "Semantic purpose. Outside AI-world, icon maps to low quality and other purposes use their normal profile. Inside an AI-world slot, the slot policy may force low quality and a campaign visual style. Never request raw quality settings.",
           },
           variants: {
             type: "integer",
@@ -345,6 +345,46 @@ async function visibleReferenceIds(
 
 function exactVariants(args: JsonRecord) {
   return intBetween(args.variants, 1, 2, 1)
+}
+
+type AiWorldImagePolicy = {
+  quality: "low" | "high"
+  basePrompt: string
+}
+
+async function resolveAiWorldImagePolicy(
+  admin: SupabaseClient,
+  campaignId: string,
+): Promise<AiWorldImagePolicy | null> {
+  const { data, error } = await admin
+    .from("ai_world_slots")
+    .select("image_quality,image_base_prompt")
+    .eq("campaign_id", campaignId)
+    .maybeSingle()
+
+  if (error) throw new Error(error.message)
+  if (!data) return null
+
+  const quality =
+    data.image_quality === "high" ? "high" : "low"
+  const basePrompt =
+    typeof data.image_base_prompt === "string"
+      ? data.image_base_prompt.trim().slice(0, 2400)
+      : ""
+
+  return { quality, basePrompt }
+}
+
+function applyImagePolicyPrompt(
+  prompt: string,
+  policy: AiWorldImagePolicy | null,
+) {
+  if (!policy?.basePrompt) return prompt
+  return [
+    policy.basePrompt,
+    "Subject, scene and canon requested for this image:",
+    prompt,
+  ].join("\n\n").slice(0, 8400)
 }
 
 async function reserveImageJob(
@@ -819,6 +859,7 @@ async function insertOutput(
   output: GeneratedImagePayload,
   variantIndex: number,
   profile: ReturnType<typeof imageProfileForPurpose>,
+  effectivePrompt: string,
 ): Promise<StoredOutput> {
   const assetId = crypto.randomUUID()
   const bytes = decodeBase64(output.b64Json)
@@ -855,7 +896,7 @@ async function insertOutput(
     width: profile.width,
     height: profile.height,
     variant_index: variantIndex,
-    prompt: stringValue(input.prompt, 6000),
+    prompt: effectivePrompt,
     review: {
       revised_prompt: output.revisedPrompt,
     },
@@ -1198,10 +1239,18 @@ export async function processAgentImageJob({
   if (!claimed?.id) return
 
   const input = record(job.input)
-  const prompt = stringValue(input.prompt, 6000)
+  const rawPrompt = stringValue(input.prompt, 6000)
   const purpose = normalizeImagePurpose(input.purpose)
   const refs = referenceIds(input.reference_asset_ids)
-  const profile = imageProfileForPurpose(purpose, refs.length > 0)
+  const baseProfile = imageProfileForPurpose(purpose, refs.length > 0)
+  const aiWorldPolicy = await resolveAiWorldImagePolicy(
+    admin,
+    String(job.campaign_id || ""),
+  )
+  const prompt = applyImagePolicyPrompt(rawPrompt, aiWorldPolicy)
+  const profile = aiWorldPolicy
+    ? { ...baseProfile, quality: aiWorldPolicy.quality }
+    : baseProfile
   const requested = intBetween(job.requested_outputs, 1, 2, 1)
   const autoLifecycle = input.surface === "ai_gm_media_stage9_v1"
   const outputs: StoredOutput[] = []
@@ -1285,6 +1334,7 @@ export async function processAgentImageJob({
           generated,
           outputs.length + 1,
           profile,
+          prompt,
         )
         outputs.push(output)
 
