@@ -5,16 +5,20 @@ import test from "node:test"
 const read = (path: string) =>
   readFileSync(new URL("../" + path, import.meta.url), "utf8")
 
-test("Stage 10 mounts exactly one global agent shell inside UiV1App", () => {
+test("Stage 10 keeps the assistant inside the dedicated AI GM surface", () => {
   const entry = read("src/ui-v1-isolated/main.tsx")
   const app = read("src/ui-v1-isolated/UiV1App.tsx")
+  const control = read("src/ui-v1-isolated/AiGmControl.tsx")
 
   assert.match(entry, /<AIProvider>/)
   assert.match(entry, /<SnakeProvider>/)
   assert.doesNotMatch(entry, /<VossDock\s*\/>/)
   assert.doesNotMatch(entry, /<AgentShell\s*\/>/)
-  assert.match(app, /import AgentShell from "\.\.\/ai\/AgentShell"/)
-  assert.equal((app.match(/<AgentShell\b/g) || []).length, 1)
+  assert.doesNotMatch(app, /import AgentShell from/)
+  assert.equal((app.match(/<AgentShell\b/g) || []).length, 0)
+  assert.match(control, /import AgentShell from "\.\.\/ai\/AgentShell"/)
+  assert.equal((control.match(/<AgentShell\b/g) || []).length, 1)
+  assert.match(control, /<AgentShell embedded \/>/)
 })
 
 test("global Voss launcher is draggable and snaps to the nearest viewport edge", () => {
