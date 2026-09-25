@@ -1095,6 +1095,86 @@ function jsonRecord(value: unknown): JsonRecord {
     : {}
 }
 
+function isExplicitEnvironmentMediaRequest(message: string) {
+  const text = message
+    .toLocaleLowerCase("ru-RU")
+    .replace(/\s+/g, " ")
+    .trim()
+
+  if (!text) return false
+
+  return (
+    /(?:^|[.!?]\s*)(?:где\s+(?:вообще\s+)?я|осмотреться|оглядеться)(?:\b|[?!.,;:])/u.test(text) ||
+    /(?:как|что).{0,40}(?:выглядит|выглядит вокруг|находится вокруг|вокруг меня|окружает меня)/u.test(text) ||
+    /(?:покажи|показать|пришли|прислать|сгенерируй|нарисуй).{0,80}(?:арт|изображ|картин|окруж|мест|локац|пейзаж|вид)/u.test(text) ||
+    /(?:арт|изображ|картин).{0,80}(?:мест|локац|окруж|здесь|тут|вокруг)/u.test(text) ||
+    /(?:where am i|look around|show me (?:the )?(?:place|location|surroundings|environment)|what does (?:this|the) place look like)/u.test(text)
+  )
+}
+
+async function requestEnvironmentMediaForTurn({
+  admin,
+  claimed,
+  context,
+  sourceMessageId,
+}: {
+  admin: SupabaseClient
+  claimed: ClaimedJob
+  context: Stage2GameChatContext
+  sourceMessageId: number
+}) {
+  const locationId = String(context.sourceLocation?.id || "")
+  const characterId = String(context.sourceCharacter?.id || "")
+  if (!locationId || !characterId) {
+    return {
+      status: "source_location_missing",
+      requested: false,
+    }
+  }
+
+  const sourceRoomId =
+    typeof claimed.input.room_id === "string" && claimed.input.room_id
+      ? claimed.input.room_id
+      : null
+  const revisionKey =
+    typeof claimed.input.turn_revision_id === "string" &&
+      claimed.input.turn_revision_id
+      ? claimed.input.turn_revision_id
+      : String(claimed.input.turn_revision_no || "1")
+  const publicationKey =
+    ("explicit_environment_request:" +
+      sourceMessageId +
+      ":" +
+      revisionKey).slice(0, 220)
+
+  const { data, error } = await admin.rpc(
+    "request_ai_gm_location_media_v2",
+    {
+      p_location_id: locationId,
+      p_source_character_id: characterId,
+      p_source_room_id: sourceRoomId,
+      p_publication_key: publicationKey,
+    },
+  )
+
+  if (error) {
+    return {
+      status: "request_failed",
+      requested: true,
+      error: error.message,
+      location_id: locationId,
+      publication_key: publicationKey,
+    }
+  }
+
+  return {
+    ...jsonRecord(data),
+    requested: true,
+    location_id: locationId,
+    publication_key: publicationKey,
+  }
+}
+
 function providerMessage(payload: any): {
   content?: string | null
   tool_calls?: ProviderToolCall[]
@@ -4983,6 +5063,30 @@ export async function runGameChatTurn(
 
     let context = initialContext
     let freshWorldPreMaterialized = false
+    const explicitEnvironmentMediaRequested =
+      !isResume && isExplicitEnvironmentMediaRequest(originalMessage)
+
+    if (explicitEnvironmentMediaRequested && context.sourceLocation) {
+      const environmentMedia = await requestEnvironmentMediaForTurn({
+        admin,
+        claimed,
+        context,
+        sourceMessageId,
+      })
+      claimed.result = {
+        ...claimed.result,
+        environment_media_request: environmentMedia,
+      }
+      await admin
+        .from("agent_jobs")
+        .update({
+          result: claimed.result,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", jobId)
+        .eq("status", "running")
+    }
+
     const firstMessageBootstrapOnly =
       runtimeSettings.worldMaterialization &&
       !isResume &&
