@@ -71,8 +71,11 @@ test("behavior screen explains hardcore economy and adult permission without pro
   assert.match(control, /не просто занижены/)
   const adultBlock =
     control.match(/18\+ \/ ВЗРОСЛАЯ ТЕМАТИКА[\s\S]*?ФУНКЦИИ ИИ-МИРА/)?.[0] || ""
-  assert.match(adultBlock, /Разрешает ИИ использовать взрослые\s+темы/)
-  assert.doesNotMatch(adultBlock, /провайдер|provider|policy|цензур/i)
+  assert.match(adultBlock, /Разрешает взрослые темы/)
+  assert.doesNotMatch(
+    adultBlock,
+    /несовершеннолет|совершеннолет|провайдер|provider|policy|цензур|consent|fade-to-black/i,
+  )
 })
 
 test("AI GM messages are never classified as the viewer own outgoing message", () => {
