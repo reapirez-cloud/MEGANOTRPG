@@ -344,13 +344,41 @@ const STAGE27_INVENTORY_EXECUTOR_TOOL = {
   function: {
     name: "commit_inventory_delta",
     description:
-      "Stage 27 post-turn inventory mutation. For grant, pass a semantic item card. The deterministic Item Registry MUST search existing system/campaign definitions before authoring anything; only the resolved definition_id + revision reaches Cheburashka. Consume/remove still reference an existing canonical inventory item UUID.",
+      "Stage 27 post-turn inventory mutation. Use action=batch with deltas[] when one published inventory intent has multiple linked effects such as purchase/trade (consume currency + grant item). For grant, pass a semantic item card. The deterministic Item Registry MUST search existing system/campaign definitions before authoring anything; only the resolved definition_id + revision reaches Cheburashka. Consume/remove still reference an existing canonical inventory item UUID.",
     parameters: {
       type: "object",
       additionalProperties: false,
       properties: {
-        action: { type: "string", enum: ["grant", "consume", "remove"] },
+        action: { type: "string", enum: ["grant", "consume", "remove", "batch"] },
         character_id: { type: "string" },
+        deltas: {
+          type: "array",
+          minItems: 1,
+          maxItems: 16,
+          description:
+            "Required for action=batch. Linked inventory changes from this single immutable intent are committed atomically. Each delta inherits the top-level character_id when omitted. Aggregate duplicate deltas instead of repeating them.",
+          items: {
+            type: "object",
+            additionalProperties: false,
+            properties: {
+              action: { type: "string", enum: ["grant", "consume", "remove"] },
+              character_id: { type: "string" },
+              item_id: {
+                type: "string",
+                description:
+                  "Required for consume/remove and must come from canonical inventory.",
+              },
+              quantity: { type: "integer", minimum: 1 },
+              item: {
+                type: "object",
+                additionalProperties: true,
+                description:
+                  "Semantic grant card using the same fields as top-level item: currency_key/canonical_name/category/semantic_role/aliases/tags/inventory_profile/etc.",
+              },
+            },
+            required: ["action"],
+          },
+        },
         item_id: {
           type: "string",
           description:
@@ -547,7 +575,7 @@ const STAGE18_POST_TURN_WORKER_SYSTEM = [
   "Игрок УЖЕ увидел финальный ответ GM. Ты не ведёшь сцену и не можешь менять этот ответ.",
   "Тебе передаётся РОВНО ОДИН immutable intent. Выполни максимум ОДИН write-tool call.",
   "Stage 27: ты ПЛАНИРОВЩИК, а не исполнитель. После твоего единственного tool call сервер создаёт typed job agent_key=ai_world_executor; сам Executor детерминированно выполняет мутацию без ещё одного LLM-решения.",
-  "Для inventory intent используй только commit_inventory_delta. Для grant ты не создаёшь definition напрямую: дай semantic card, после чего серверный Item Registry ОБЯЗАН сначала искать system/campaign definitions и только при реальном отсутствии создать одну campaign-definition. Лишь resolved definition_id + revision передаются Cheburashka.",
+  "Для inventory intent используй только commit_inventory_delta. Если один опубликованный intent содержит несколько СВЯЗАННЫХ изменений инвентаря (покупка: списать валюту + выдать товар; обмен; расход ресурса + получение результата), сделай РОВНО ОДИН commit_inventory_delta с action=batch и deltas[]. Сервер выполнит все deltas атомарно или не применит ни один. Для grant ты не создаёшь definition напрямую: дай semantic card, после чего серверный Item Registry ОБЯЗАН сначала искать system/campaign definitions и только при реальном отсутствии создать одну campaign-definition. Лишь resolved definition_id + revision передаются Cheburashka.",
   "AI Survival: если immutable intent имеет intent_key=survival_turn или instruction.operation=commit_survival_turn, используй ТОЛЬКО commit_survival_turn и буквально перенеси structured arguments из instruction. Не пересчитывай время, еду, сон или нагрузку сам.",
   "В survival food используй только item_id из canonical_inventory_for_present_characters. Не создавай второй inventory intent для той же съеденной еды: commit_survival_turn списывает её атомарно сам.",
   "Stage 4 co-op: participant_character_ids уже вычислены runtime из физически присутствующих PC и immutable intent. Копируй их без изменений. shared_sleep/shared_rest/shared_exertion тоже копируй буквально из intent, не расширяй область эффекта сам.",
@@ -559,7 +587,7 @@ const STAGE18_POST_TURN_WORKER_SYSTEM = [
   "Для location intent Stage 26 разрешён materialize_location_cascade: это ОДНА серверная транзакционная мутация, хотя внутри она создаёт/переиспользует локацию, строит её непосредственный структурный слой, связывает переходы и при необходимости двигает PC.",
   "Если опубликованный ответ утверждает, что source_character вошёл/прибыл/остался в новой или другой постоянной локации, предпочитай materialize_location_cascade и обязательно передавай move_character_id=source_character.id. Не оставляй персонажа в старом character_world_state.",
   "В children передавай только непосредственных детей. Город → районы/крупные функциональные зоны; район → крупные кластеры/улицы/значимые места; таверна/постоялый двор → основные помещения; лес → крупные природные зоны/маршруты. Никогда не строй grandchildren в этом же вызове.",
-  "Если intent требует две независимые НЕ-location мутации, это ошибка upstream: не объединяй их сам.",
+  "Если inventory intent требует несколько связанных изменений, используй action=batch. Если НЕ-inventory intent требует две независимые НЕ-location мутации, это ошибка upstream: не объединяй их сам.",
   "Создавай или меняй только то, что буквально установлено published_messages + intent.instruction/evidence.",
   "Не достраивай новый сюжет, секрет, награду, отношения, имя, мотивацию, врага, исход проверки или событие.",
   "Не добавляй декоративные факты, которых нет в опубликованном ответе. Заполняй только минимально нужные поля.",
