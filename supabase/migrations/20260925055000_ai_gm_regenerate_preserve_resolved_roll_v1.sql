@@ -7,7 +7,7 @@ CREATE OR REPLACE FUNCTION private.reserve_ai_gm_replay_preserving_roll_v1(p_cam
  LANGUAGE plpgsql
  SECURITY DEFINER
  SET search_path TO ''
-AS $function$;
+AS $function$
 declare
   v_mode text := lower(trim(coalesce(p_mode,'')));
   v_message public.chat_messages%rowtype;
@@ -343,7 +343,7 @@ CREATE OR REPLACE FUNCTION public.reserve_ai_gm_replay_v1(p_campaign_id uuid, p_
  LANGUAGE plpgsql
  SECURITY DEFINER
  SET search_path TO ''
-AS $function$;
+AS $function$
 begin
   return private.reserve_ai_gm_replay_preserving_roll_v1(
     p_campaign_id,
