@@ -4,6 +4,7 @@ import assert from "node:assert/strict"
 import {
   resolveSurvivalRollPressure,
   resolveSurvivalStage,
+  SURVIVAL_DEPLETION_MINUTES,
 } from "../src/ai-survival/engine.ts"
 import {
   campaignMinuteToWorldTime,
@@ -63,4 +64,10 @@ test("resource conditions read canonical runtime resources", () => {
     ),
     true,
   )
+})
+
+
+test("survival pacing avoids turning the campaign into a cooking simulator", () => {
+  assert.equal(SURVIVAL_DEPLETION_MINUTES.satiety100To0, 48 * 60)
+  assert.equal(SURVIVAL_DEPLETION_MINUTES.alertness100To0, 72 * 60)
 })
