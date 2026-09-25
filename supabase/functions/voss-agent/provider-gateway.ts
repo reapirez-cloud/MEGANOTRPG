@@ -198,6 +198,8 @@ export async function requestChatCompletion(input: ChatRequest) {
       ? null
       : reasoningEffortForModel(input.model)
 
+  let deepSeekCompatibilityMode = false
+
   for (let attempt = 0; attempt <= retryCount; attempt += 1) {
     const controller = new AbortController()
     const timeout = setTimeout(() => controller.abort(), timeoutMs)
@@ -214,8 +216,10 @@ export async function requestChatCompletion(input: ChatRequest) {
         body: JSON.stringify({
           model: providerModel,
           messages: input.messages,
-          temperature: input.temperature ?? 0.55,
-          ...(reasoningEffort
+          ...(!deepSeekCompatibilityMode
+            ? { temperature: input.temperature ?? 0.55 }
+            : {}),
+          ...(reasoningEffort && !deepSeekCompatibilityMode
             ? { reasoning_effort: reasoningEffort }
             : {}),
           ...(input.responseFormat
@@ -259,6 +263,24 @@ export async function requestChatCompletion(input: ChatRequest) {
 
     if (!response.ok) {
       const detail = (await response.text()).slice(0, 1200)
+
+      // DeepSeek-compatible gateways are not perfectly uniform. Some expose
+      // reasoning_effort, while others reject OpenAI-style reasoning/temperature
+      // fields with 400/422. Keep the selected model and tools, but retry once
+      // with the optional tuning fields omitted instead of failing Freddy before
+      // he can even request capabilities.
+      const deepSeekShapeMismatch =
+        input.model.provider_key === "deepseek" &&
+        (response.status === 400 || response.status === 422) &&
+        Boolean(reasoningEffort) &&
+        !deepSeekCompatibilityMode
+
+      if (deepSeekShapeMismatch && attempt < retryCount) {
+        deepSeekCompatibilityMode = true
+        await new Promise((resolve) => setTimeout(resolve, 120))
+        continue
+      }
+
       const providerTimedOut =
         response.status === 504 || response.status === 524
 
