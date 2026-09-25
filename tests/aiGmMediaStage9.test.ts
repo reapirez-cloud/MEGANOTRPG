@@ -14,6 +14,12 @@ const indexMigration = read(
 const worker = read("supabase/functions/ai-gm-media/index.ts")
 const imageTools = read("supabase/functions/voss-agent/image-tools.ts")
 const roadmap = read("docs/AI_GM_ROADMAP.md")
+const locationMediaV2 = read(
+  "supabase/migrations/20260925175926_ai_gm_location_media_character_chat_and_explicit_request_v2.sql",
+)
+const gameChatRuntime = read(
+  "supabase/functions/voss-agent/game-chat-runtime.ts",
+)
 
 test("Stage 9 queues NPC art from canonical NPC profile creation", () => {
   assert.match(migration, /queue_ai_gm_npc_media_after_profile_v1/)
@@ -184,4 +190,40 @@ test("Stage 9 is certified READY and closes only its media debt", () => {
   )
   assert.match(roadmap, /\| 9 \| READY \|/)
   assert.match(roadmap, /READY stages: 1–(?:9|10|11|12)/)
+})
+
+test("Location media v2 publishes into the player's character room and dedupes by event", () => {
+  assert.match(locationMediaV2, /r\.room_type='character'/)
+  assert.match(locationMediaV2, /r\.character_id=p_source_character_id/)
+  assert.match(locationMediaV2, /publication_key/)
+  assert.match(
+    locationMediaV2,
+    /primary key\(asset_id,room_id,publication_key\)/,
+  )
+})
+
+test("Location entry reuses old art or queues a max 150k environment render", () => {
+  assert.match(locationMediaV2, /location_entry/)
+  assert.match(locationMediaV2, /publish_existing_ai_gm_target_media_v2/)
+  assert.match(locationMediaV2, /'generation_tier'.*'max'/s)
+  assert.match(locationMediaV2, /'target_token_budget'.*150000/s)
+  assert.match(locationMediaV2, /v_purpose:='master_art'/)
+})
+
+test("Explicit environment requests bridge game chat into location media", () => {
+  assert.match(gameChatRuntime, /isExplicitEnvironmentMediaRequest/)
+  assert.match(gameChatRuntime, /requestEnvironmentMediaForTurn/)
+  assert.match(gameChatRuntime, /request_ai_gm_location_media_v2/)
+  assert.match(gameChatRuntime, /explicit_environment_request:/)
+  assert.match(locationMediaV2, /explicit_environment_request/)
+})
+
+test("AI-GM location generation bypasses the old forced-low lifecycle", () => {
+  assert.match(imageTools, /autoLifecycleLocationMax/)
+  assert.match(imageTools, /generation_tier/)
+  assert.match(imageTools, /ai_gm_location_max_150k/)
+  assert.match(
+    imageTools,
+    /autoLifecycleLocationMax[\s\S]*quality: "high"/,
+  )
 })
