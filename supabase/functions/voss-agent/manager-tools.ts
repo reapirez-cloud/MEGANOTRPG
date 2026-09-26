@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "npm:@supabase/supabase-js@2.112.3"
 import type { VossAuthority } from "./authority.ts"
-import { canContainLocation, cascadeChildLimit } from "./location-hierarchy.ts"
+import { canContainLocation, cascadeChildLimit, requiredLocationRoles } from "./location-hierarchy.ts"
 
 type JsonRecord = Record<string, unknown>
 
@@ -816,7 +816,7 @@ export const VOSS_MANAGER_TOOLS = [
     function: {
       name: "materialize_location_cascade",
       description:
-        "AI-world internal composite mutation. Create or reuse one canonical location, materialize exactly its immediate structural child layer, validate archetype coverage, connect transitions, and optionally move the source PC there. Never nest children inside children in one call.",
+        "AI-world internal composite mutation. Create or reuse one canonical location, connect transitions, and optionally move the source PC. Unseen interiors may use children=[]: required roles remain pending in coverage_manifest, without invented rooms. Never nest children inside children.",
       parameters: {
         type: "object",
         additionalProperties: false,
@@ -866,7 +866,7 @@ export const VOSS_MANAGER_TOOLS = [
             type: "object",
             additionalProperties: true,
             description:
-              "Coverage notes for this immediate layer. Use omitted_roles={role: reason} only when a normally expected structural role genuinely does not exist in this specific location.",
+              "Expected roles: tavern public_hall/service/storage; inn also guest_area; city residential/commerce/governance/security/transit/services. Unobserved roles are returned as pending_roles automatically. Use omitted_roles={role: reason} only for a function canonically known not to exist, never for an unseen interior.",
           },
           children: {
             type: "array",
@@ -2433,6 +2433,14 @@ export async function prepareLocationCascadeInput(
     "children",
   ]) {
     if (Object.prototype.hasOwnProperty.call(args, key)) input[key] = args[key]
+  }
+
+  const requiredRoles = requiredLocationRoles(String(input.archetype || ""))
+  if (requiredRoles.length) {
+    input.coverage_manifest = {
+      ...record(input.coverage_manifest),
+      expected_roles: [...requiredRoles],
+    }
   }
 
   // A route is a transition, not a hierarchy edge. If the materializer has

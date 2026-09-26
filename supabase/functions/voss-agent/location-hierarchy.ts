@@ -9,6 +9,25 @@ const SCALE_RANK: Record<string, number> = {
   detail: 7,
 }
 
+/** Expected functions are metadata, never permission to invent unseen rooms. */
+const REQUIRED_LOCATION_ROLES: Record<string, readonly string[]> = {
+  city: ["residential", "commerce", "governance", "security", "transit", "services"],
+  town: ["residential", "commerce", "governance", "security", "transit"],
+  village: ["residential", "livelihood", "community", "transit"],
+  port: ["docks", "storage", "commerce", "security", "transit"],
+  tavern: ["public_hall", "service", "storage"],
+  inn: ["public_hall", "service", "storage", "guest_area"],
+  temple: ["worship", "service"],
+  castle: ["defense", "command_or_residential", "service"],
+  dungeon: ["entry", "major_branch"],
+  cave: ["entry", "major_branch"],
+  forest: ["entry_or_edge", "interior", "route"],
+}
+
+export function requiredLocationRoles(archetype: string): readonly string[] {
+  return REQUIRED_LOCATION_ROLES[archetype] ?? []
+}
+
 /** A route between peers must not turn the departure place into a parent. */
 export function canContainLocation(parentScale: string, targetScale: string) {
   const parent = SCALE_RANK[parentScale] ?? SCALE_RANK.site

@@ -1759,8 +1759,9 @@ Contracts:
   house or NPC; roads use at most one encountered branch or segment;
 - districts, taverns, forests and dungeons gain only a few immediately useful
   anchors; detailed streets/rooms/branches remain lazy;
-- server-side archetype coverage requires core functions or a written omission
-  reason instead of trusting the model to declare an incomplete city complete;
+- server-side archetype coverage records unobserved core functions as
+  `pending_roles` with `coverage_complete=false`; a written omission reason is
+  reserved for functions known not to exist;
 - materialize_location_cascade is one service-only transactional tool for
   create/reuse + direct children + transitions + optional PC movement;
 - post-turn location commits can therefore create a newly narrated destination,
@@ -1770,6 +1771,8 @@ Contracts:
   one-level cascade materialization before the next normal GM continuation;
 - direct children are bounded to the smallest useful topology, not automatic
   filler; grandchildren remain lazy until physically entered/needed.
+- a tavern seen from outside is a valid location with `children=[]`; its hall,
+  service and storage roles remain pending until established in play.
 
 Deferred to Stage 27:
 
