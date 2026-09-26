@@ -595,7 +595,13 @@ const STAGE18_POST_TURN_WORKER_SYSTEM = [
   "Если intent невозможно безопасно выполнить по имеющимся данным, не вызывай tool и верни JSON {status:'unsafe_or_ambiguous',reason:'...'}; сервер оставит gate закрытым для recovery.",
   "Никогда не придумывай UUID. Используй только canonical_context и published_messages. Сервер повторно проверяет границы кампании и тип мутации.",
   "Для create_quest_plan quest_key задаёт сервер. Для memory fact_key/source_event_ids задаёт сервер.",
-  "LIVING_LORE: если memory intent instruction начинается/содержит LIVING_LORE, вызови remember_campaign_fact ровно один раз и положи читабельные записи в structured_value.lore.entries (max 12). Каждая запись: key, category=news|chronicle|history|world_event|rumor, title, summary, optional body, visibility=campaign|characters|gm, character_ids, optional location_id, optional campaign_day/day_period, importance 0..5, tags. statement оставь коротким фактом-основанием.",
+  "КАЖДЫЙ memory fact обязан одновременно получить скрытый retrieval-index: search_tags, search_aliases, relation_keys, entity_refs. Это не лор и не текст игроку, а индекс для Context Resolver.",
+  "search_tags: 3–12 коротких смысловых тегов в нижнем регистре, без # и художественных эпитетов. Если retrieval_tag_dictionary уже содержит тег с тем же смыслом, ОБЯЗАТЕЛЬНО переиспользуй его вместо нового синонима. Не плодить merchant/купец/торговец как три канонических тега без причины.",
+  "search_aliases: реальные имена, титулы, распространённые формы имени/названия и естественные варианты, по которым игрок может искать тот же факт. Не выдумывай новые прозвища.",
+  "entity_refs: только реальные canonical UUID/ID из canonical_context или evidence. Формат {kind,id,relation}. Связывай факт с NPC/PC, location, faction, quest, quest_target, event, memory_fact, если связь действительно установлена. UUID никогда не придумывай.",
+  "relation_keys: короткие типы причинной связи вроде npc:faction, event:location, quest:npc, news:faction, npc:location, character:relationship. Это индекс, а не утверждение нового факта.",
+  "Теги помогают текстовому поиску, но UUID entity_refs важнее тегов. Не ставь тег или relation только потому, что тема кажется похожей: индекс должен описывать уже опубликованный канон.",
+  "LIVING_LORE: если memory intent instruction начинается/содержит LIVING_LORE, вызови remember_campaign_fact ровно один раз и положи читабельные записи в structured_value.lore.entries (max 12). Каждая запись: key, category=news|chronicle|history|world_event|rumor, title, summary, optional body, visibility=campaign|characters|gm, character_ids, optional location_id, optional campaign_day/day_period, importance 0..5, tags. statement оставь коротким фактом-основанием. Скрытый retrieval-index заполняй отдельно на самом memory fact.",
   "Для публичной газеты, городского объявления или общеизвестного мирового изменения используй lore visibility=campaign. Для знания только конкретных PC используй characters и реальные character_ids из canonical_context. Никогда не превращай скрытый GM/background факт в campaign lore. Несколько независимых газетных заголовков клади отдельными entries в ОДИН memory tool call.",
   "В LIVING_LORE не добавляй рутинную покупку, обычный переход между комнатами, каждую реплику, каждый бросок или мелкую драку. Лор нужен для устойчивых сведений, новостей и событий, которые игроку разумно захотеть перечитать позже.",
   "После успешного tool call не вызывай второй tool.",
@@ -959,6 +965,7 @@ const STAGE12_GAME_MASTER_SYSTEM = [
   "Если конкретная заявленная игроком цель недоступна из-за отсутствия знания персонажа, отвечай в мире: например «Ты не знаешь, есть ли здесь такая хижина и где её искать; можешь обследовать перелесок». Никогда не объясняй это словами «не канон», «resolver запретил» или «player claim».",
   "roll_request.reason и roll_request.label являются ВИДИМЫМИ игроку. Пиши их как короткую RP-подачу проверки. Техническое обоснование оставляй только в верхнеуровневом reason и внутренних полях.",
   "source_character_knowledge — жёсткая эпистемическая граница. Конкретную локацию/NPC/факт можно считать известной source_character только если он есть там либо прямо наблюдаем в текущей сцене. Текст игрока сам по себе НЕ расширяет этот список.",
+  "retrieved_campaign_context — read-only результат Context Resolver по ВСЕЙ кампании, а не последние N фактов. Он уже отфильтрован по времени/видимости и ограничен только ПОСЛЕ поиска. Canonical entity IDs/provenance сильнее текстовых тегов. Lore/news может быть газетной версией или слухом и не обязано быть объективной истиной мира.",
   "Если игрок называет конкретную неизвестную ему сущность («иду к ведьме в хижине», «ищу дракона», «иду к тайному кладу»), не превращай эту формулировку в шанс существования желаемого объекта. Можно интерпретировать допустимую общую часть намерения как исследование местности, но конкретная неизвестная цель не становится seed мира.",
   "Для resolve_random_decision всегда честно заполняй decision_kind/claim_basis/canonical_evidence_ids. Никогда не маскируй player_specific_claim как gm_generated. Если у specific player claim нет известного canonical evidence, Resolver обязан быть недоступен для этой конкретной цели.",
   "Для world_discovery выбирай rarity_class по миру, а не по желанию игрока, adventure_coincidence, профилю GM или красивой истории. На обычном оживлённом тракте случайная золотая монета без причины обычно exceptional, а не mundane/uncommon; конкретный дракон, ведьма или легендарный клад, названные игроком без знания персонажа, вообще не должны становиться world_discovery.",
@@ -1825,6 +1832,16 @@ async function runStage18Intent({
     throw new Error("stage18_post_turn_intent_has_no_tools")
   }
 
+  let retrievalTagDictionary: JsonRecord = { tags: [] }
+  if (intent.kind === "memory") {
+    const { data, error } = await admin.rpc(
+      "read_ai_gm_retrieval_tag_dictionary_v1",
+      { p_campaign_id: campaignId, p_limit: 120 },
+    )
+    if (error) throw new Error(error.message)
+    retrievalTagDictionary = jsonRecord(data)
+  }
+
   const workerMessages: Array<Record<string, unknown>> = [
     { role: "system", content: STAGE18_POST_TURN_WORKER_SYSTEM },
     {
@@ -1837,6 +1854,8 @@ async function runStage18Intent({
           evidence: intent.evidence,
         },
         published_messages: publishedMessages,
+        retrieval_tag_dictionary:
+          intent.kind === "memory" ? retrievalTagDictionary : undefined,
         canonical_context: JSON.parse(stage2ContextForPrompt(context)),
         execution_contract: {
           exactly_one_tool_call: true,
