@@ -123,7 +123,10 @@ export function normalizeChatEvent(
     message.event_kind === "action" &&
     payloadString(message.event_payload, "kind", "actionType", "action_type") ===
       "player_roll_request"
-  const aiGmAuthored = aiGmOutput || aiGmRollRequest
+  const aiGmMedia =
+    payloadString(message.event_payload, "systemEvent", "system_event") ===
+      "ai_gm_media"
+  const aiGmAuthored = aiGmOutput || aiGmRollRequest || aiGmMedia
 
   if (message.event_kind === "roll") {
     type = "roll"
