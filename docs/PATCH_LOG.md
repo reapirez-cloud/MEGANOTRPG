@@ -2,12 +2,40 @@
 
 This file is the canonical release journal for work accumulated on `dev` before promotion to `main`.
 
-## Patch — 2026-09-22-R
+## Patch — 2026-09-26-S
 
 **Status:** OPEN
 **Branch:** `dev`
+**Base main:** `0aef165165e6de49773990cb363f1f33f3b75768`
+**Started:** 2026-09-26
+
+### Runtime and architecture changes
+
+- AI GM transient provider errors (429/5xx, timeout and malformed gateway response) now use the same bounded durable continuation rule as Freddy. Junior workers try a different configured model for these temporary failures; bad arguments and permission errors still fail directly.
+- Freddy claims a queued continuation once, checks every durable checkpoint result, and persists each tool outcome before another tool may run. A failed self-dispatch leaves the checkpoint queued for a throttled UI wake instead of falsely marking the turn failed. The chat resumes a stranded queued turn on a later poll.
+- The GM post-turn retry control now reports a failed wake instead of silently swallowing the failure after resetting the commit.
+
+### Tests / verification
+
+- Added focused recovery classification checks for temporary gateway failures versus permanent command/authorization failures. Build and lint pass; the focused Freddy/recovery tests pass.
+
+### Known incomplete work
+
+- The earlier failed post-turn commit still needs an authorized retry in the live campaign; this dev-only patch does not rewrite existing published narrative or invoke a live model turn.
+- A full provider-driven gameplay turn has not yet been exercised on this exact patch.
+
+---
+
+## Released patches
+
+## Patch — 2026-09-22-R
+
+**Status:** RELEASED
+**Branch:** `dev` → `main`
 **Base main:** `8b3b8156d6b496fbb3b3208abe6c0f44254e6741`
 **Started:** 2026-09-22
+**Released:** 2026-09-26
+**Release identity:** `main / 0aef165165e6de49773990cb363f1f33f3b75768`
 
 ### Player-facing changes
 

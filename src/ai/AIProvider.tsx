@@ -493,6 +493,7 @@ export function AIProvider({ children }: { children: ReactNode }) {
   const [viewLayers, setViewLayers] = useState<Record<string, StoredViewLayer>>({})
   const [route, setRoute] = useState(window.location.hash || "#/home")
   const threadMutationRef = useRef(false)
+  const freddyWakeRef = useRef<Map<string, number>>(new Map())
 
   const viewContext = useMemo(
     () => composeViewContext(viewLayers, route),
@@ -761,7 +762,34 @@ export function AIProvider({ children }: { children: ReactNode }) {
         const assistantArrived = await loadConversationTailFor(activeThreadId)
         if (assistantArrived) {
           await loadJobsFor(campaignId, userId, activeThreadId)
+          return
         }
+        if (!canManage && !isSystemAdmin) return
+        const { data: queuedTurn, error: queuedError } = await supabase
+          .from("agent_jobs")
+          .select("id,updated_at")
+          .eq("campaign_id", campaignId)
+          .eq("requested_by", userId)
+          .eq("thread_id", activeThreadId)
+          .eq("job_type", "conversation_turn")
+          .eq("status", "queued")
+          .order("updated_at", { ascending: false })
+          .limit(1)
+          .maybeSingle()
+        if (queuedError || !queuedTurn) return
+        const now = Date.now()
+        if (now - Date.parse(queuedTurn.updated_at) < 10_000 ||
+            now - (freddyWakeRef.current.get(queuedTurn.id) || 0) < 30_000) return
+        freddyWakeRef.current.set(queuedTurn.id, now)
+        await supabase.functions.invoke("voss-agent", {
+          body: {
+            campaignId,
+            agentKey: "voss",
+            action: "continue_freddy_turn",
+            jobId: queuedTurn.id,
+            deliveryMode: "async-v1",
+          },
+        })
       } catch {
         // A later poll or the next app open reconstructs the same server state.
       }
@@ -775,6 +803,8 @@ export function AIProvider({ children }: { children: ReactNode }) {
   }, [
     activeThreadId,
     campaignId,
+    canManage,
+    isSystemAdmin,
     loadConversationTailFor,
     loadJobsFor,
     pendingReply,

@@ -70,6 +70,7 @@ import {
   ProviderGatewayError,
   requestChatCompletion,
 } from "./provider-gateway.ts"
+import { isTransientProviderFailure } from "./provider-recovery.ts"
 import { VOSS_CONVERSATION_VOICE } from "./voss-voice.ts"
 import { FREDDY_CONVERSATION_VOICE } from "./freddy-voice.ts"
 import { VOSS_INVENTORY_AUTHORING_RULES } from "./inventory-authoring.ts"
@@ -700,7 +701,8 @@ Deno.serve(async (req: Request) => {
       typeof turnJob.thread_id === "string" ? turnJob.thread_id : ""
     viewContext = cleanContext(continuationJobInput.view_context)
 
-    await admin
+    // A second wake must not run the same durable chunk in parallel.
+    const { data: claimedTurn, error: claimError } = await admin
       .from("agent_jobs")
       .update({
         status: "running",
@@ -711,6 +713,13 @@ Deno.serve(async (req: Request) => {
         updated_at: new Date().toISOString(),
       })
       .eq("id", continuationJobId)
+      .eq("status", "queued")
+      .select("id")
+      .maybeSingle()
+    if (claimError) return reply({ error: claimError.message }, 500)
+    if (!claimedTurn) {
+      return reply({ accepted: true, continuing: true, jobId: continuationJobId }, 202)
+    }
   }
 
   const mechanicsAuthoringRequested = isMechanicsAuthoringRequest(message)
@@ -1566,7 +1575,7 @@ Deno.serve(async (req: Request) => {
   ) => {
     if (!activeTurnJobId) return
     turnLedger = compactToolLedger(turnLedger)
-    await admin
+    const { data: checkpoint, error: checkpointError } = await admin
       .from("agent_jobs")
       .update({
         status,
@@ -1586,6 +1595,11 @@ Deno.serve(async (req: Request) => {
         updated_at: new Date().toISOString(),
       })
       .eq("id", activeTurnJobId)
+      .eq("status", "running")
+      .select("id")
+      .maybeSingle()
+    if (checkpointError) throw new Error("freddy_turn_checkpoint_failed: " + checkpointError.message)
+    if (!checkpoint) throw new Error("freddy_turn_checkpoint_lost")
   }
 
   const dispatchFreddyContinuation = async (
@@ -1622,30 +1636,19 @@ Deno.serve(async (req: Request) => {
           }),
         },
       )
-    } catch (error) {
-      await persistTurnProgress("failed", {
-        continuation_reason: reason,
-        continuation_error:
-          error instanceof Error ? error.message : String(error),
-      })
-      return reply({
-        error: "freddy_turn_continuation_failed",
-        detail: error instanceof Error ? error.message : String(error),
-      }, 502)
+    } catch {
+      // The queued checkpoint is durable. A later authorized wake can resume it.
+      return reply({ accepted: true, continuing: true, wakeRequired: true,
+        continuationError: "freddy_turn_continuation_failed",
+        jobId: activeTurnJobId }, 202)
     }
 
     if (!continuationResponse.ok) {
       const detail = (await continuationResponse.text()).slice(0, 1200)
-      await persistTurnProgress("failed", {
-        continuation_reason: reason,
-        continuation_status: continuationResponse.status,
-        continuation_error: detail,
-      })
-      return reply({
-        error: "freddy_turn_continuation_failed",
-        providerStatus: continuationResponse.status,
-        detail,
-      }, 502)
+      return reply({ accepted: true, continuing: true, wakeRequired: true,
+        continuationError: "freddy_turn_continuation_failed",
+        continuationStatus: continuationResponse.status,
+        detail, jobId: activeTurnJobId }, 202)
     }
 
     return reply({
@@ -1718,13 +1721,7 @@ Deno.serve(async (req: Request) => {
       const durableProviderFailure =
         isFreddyTurn &&
         Boolean(activeTurnJobId) &&
-        error instanceof ProviderGatewayError &&
-        (
-          error.code === "ai_provider_timeout" ||
-          error.code === "ai_provider_invalid_response" ||
-          [429, 500, 502, 503, 520, 521, 522, 523, 524]
-            .includes(error.providerStatus || 0)
-        )
+        isTransientProviderFailure(error)
 
       if (
         durableProviderFailure &&
@@ -1970,6 +1967,9 @@ Deno.serve(async (req: Request) => {
         arguments: args,
         result: toolContent(result, 8000),
       })
+      // Checkpoint before another tool can mutate canon. An uncertain write
+      // must not be followed by more writes if the checkpoint failed.
+      if (activeTurnJobId) await persistTurnProgress("running")
 
       if (capabilityTool) {
         // Capability requests are authorization plumbing, not domain mutations.

@@ -287,20 +287,27 @@ export default function AiGmTurnStatus({ roomId }: { roomId: string }) {
     }
 
     setRecovering(true)
+    setControlError("")
     try {
       const retry = await supabase.rpc("retry_ai_gm_post_turn_commit_v3", {
         p_commit_id: status.commit_id,
       })
       if (retry.error) throw retry.error
 
-      await supabase.functions.invoke("voss-agent", {
+      const resumed = await supabase.functions.invoke("voss-agent", {
         body: {
           campaignId: status.campaign_id,
           action: "game_chat_post_turn_resume",
           commitId: status.commit_id,
         },
       })
+      if (resumed.error || resumed.data?.error) {
+        throw new Error(resumed.data?.error || resumed.error?.message || "Не удалось запустить повтор.")
+      }
       wakeAttemptRef.current = ""
+      await refresh()
+    } catch (error) {
+      setControlError(error instanceof Error ? error.message : "Не удалось повторить.")
       await refresh()
     } finally {
       setRecovering(false)

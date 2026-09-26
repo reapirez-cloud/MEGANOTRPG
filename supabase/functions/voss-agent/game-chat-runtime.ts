@@ -37,6 +37,7 @@ import {
   RESOLVE_RANDOM_DECISION_TOOL,
 } from "./random-decision.ts"
 import { normalizeInventoryToolArgs } from "./inventory-tool-args.ts"
+import { isTransientProviderFailure } from "./provider-recovery.ts"
 
 type JsonRecord = Record<string, unknown>
 
@@ -1215,17 +1216,6 @@ function providerText(payload: any) {
 
 type JuniorReasoningEffort = "low" | "high"
 
-function isJuniorProviderTimeout(error: unknown) {
-  return (
-    error instanceof ProviderGatewayError &&
-    (
-      error.code === "ai_provider_timeout" ||
-      error.providerStatus === 504 ||
-      error.providerStatus === 524
-    )
-  )
-}
-
 async function requestJuniorCompletionWithFallback({
   admin,
   model,
@@ -1257,7 +1247,7 @@ async function requestJuniorCompletionWithFallback({
       providerFallback: false,
     }
   } catch (error) {
-    if (!isJuniorProviderTimeout(error) || !allowProviderFallback) throw error
+    if (!isTransientProviderFailure(error) || !allowProviderFallback) throw error
 
     const fallbackRoute = await resolveCampaignJuniorFallbackModel(admin, {
       excludeModelKey: model.model_key,
@@ -3447,14 +3437,7 @@ async function failJob(
 }
 
 function isDurableProviderContinuationError(error: unknown) {
-  return (
-    error instanceof ProviderGatewayError &&
-    (
-      error.code === "ai_provider_timeout" ||
-      error.providerStatus === 504 ||
-      error.providerStatus === 524
-    )
-  )
+  return isTransientProviderFailure(error)
 }
 
 async function requeueTimedOutGameTurn(
