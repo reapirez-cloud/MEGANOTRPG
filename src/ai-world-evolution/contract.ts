@@ -10,7 +10,7 @@
  *   docs/AI_WORLD_EVOLUTION_MASTER_ROADMAP.md
  */
 
-export const AI_WORLD_EVOLUTION_CONTRACT_VERSION = 1 as const
+export const AI_WORLD_EVOLUTION_CONTRACT_VERSION = 2 as const
 
 export type AiWorldEvolutionStageStatus =
   | "planned"
@@ -35,6 +35,51 @@ export type AiWorldEvolutionStage = {
   /** Tests/checks required before status can become certified. */
   certification: readonly string[]
 }
+
+export type AiWorldEvolutionOpenQuestionStatus =
+  | "under_question"
+  | "accepted"
+  | "rejected"
+
+export type AiWorldEvolutionOpenQuestion = {
+  key: string
+  title: string
+  status: AiWorldEvolutionOpenQuestionStatus
+  hypothesis: string
+  constraints: readonly string[]
+  decisionCriteria: readonly string[]
+}
+
+/**
+ * Architecture ideas explicitly kept outside the numbered implementation stages.
+ * Future agents must NOT implement an under_question item merely because it is
+ * documented here. It becomes executable work only after an explicit decision
+ * changes its status/design.
+ */
+export const AI_WORLD_EVOLUTION_OPEN_QUESTIONS = [
+  {
+    key: "pre-gm-junior-context-gatherer",
+    title: "Cheap pre-GM junior context gatherer",
+    status: "under_question",
+    hypothesis:
+      "After the player submits a turn, a cheap fast junior model may perform a broad read-only retrieval pass over campaign knowledge before the primary GM starts. Even a roughly 100k-200k-token retrieval pass may be acceptable if it reliably returns a much smaller evidence pack and reduces expensive primary-GM context.",
+    constraints: [
+      "Read-only: no canon, memory, lore, NPC, quest, inventory or world-state mutation",
+      "No dice, World Resolver decisions or mechanical adjudication",
+      "Selected evidence must preserve canonical IDs and provenance",
+      "Visibility and split-party temporal boundaries remain mandatory",
+      "Failure or timeout cannot partially advance or corrupt the turn",
+      "Only a bounded evidence/context pack reaches the primary GM",
+      "This is not a numbered stage and must not be implemented while status is under_question",
+    ],
+    decisionCriteria: [
+      "Benchmark end-to-end latency before making it mandatory",
+      "Compare recall and false-association rate against deterministic server-side Context Resolver retrieval",
+      "Measure total token/cost impact, not only junior-model price",
+      "Decide whether server retrieval should narrow candidates before any broad model pass",
+    ],
+  },
+] as const satisfies readonly AiWorldEvolutionOpenQuestion[]
 
 export const AI_WORLD_EVOLUTION_STAGES = [
   {
