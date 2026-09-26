@@ -66,7 +66,15 @@ function splitReferenceText(value: string): string[] { return value.split(/[\n;,
 function addTextGrants(contributions: CharacterContribution[], target: "language" | "proficiency" | "sense", text: string, source: CharacterSource): void { splitReferenceText(text).forEach((label, index) => contributions.push({ id: `${source.id}:${target}:${index}`, kind: "grant", operation: "GRANT", target, key: label, ...(target === "proficiency" ? { payload: { rank: 1 } } : {}), source })) }
 function skillRanks(value: CharacterSheet["skill_proficiencies"]): Partial<Record<SkillKey, ProficiencyRank>> { return Object.fromEntries(Object.entries(value || {}).map(([key, rank]) => [key, Math.max(0, Math.min(2, Number(rank))) as ProficiencyRank])) as Partial<Record<SkillKey, ProficiencyRank>> }
 function savingThrowRanks(value: string[]): Partial<Record<AbilityKey, ProficiencyRank>> { const result: Partial<Record<AbilityKey, ProficiencyRank>> = {}; for (const raw of value || []) { const ability = ABILITY_ALIASES[normalize(raw)]; if (ability) result[ability] = 1 } return result }
-function legacySpellKey(spell: CharacterSpell): string { const clean = spell.name.trim().toLocaleLowerCase("ru-RU").replace(/[^a-zа-яё0-9]+/giu, "-").replace(/^-|-$/g, ""); return clean ? `spell:${clean}` : `spell:${spell.id}` }
+function legacySpellKey(spell: CharacterSpell): string {
+  // Display names are not identities: localized catalogs can legitimately map
+  // different spells to the same label (for example Hex and Eyebite are both
+  // «Сглаз» in the Russian catalog). Prefer the canonical catalog identity and
+  // fall back to the durable character_spell row id for pre-catalog fixtures.
+  const catalogId = spell.catalog_spell_id?.trim().toLocaleLowerCase("en-US")
+  if (catalogId) return `spell:catalog-${catalogId}`
+  return `spell:legacy-${spell.id.trim().toLocaleLowerCase("en-US")}`
+}
 function configuredSlotLevels(sheet: CharacterSheet, spells: CharacterSpell[]): number[] { const levels = new Set<number>(); for (let level = 1; level <= 9; level += 1) if (Number(sheet.spell_slots?.[String(level)]?.max || 0) > 0) levels.add(level); for (const spell of spells) if (spell.spell_level > 0 && spell.cast_mode !== "cantrip") levels.add(spell.spell_level); return [...levels].sort((a, b) => a - b) }
 function slotResourceKey(level: number): string { return `spell_slot_${level}` }
 function slotOptions(spellLevel: number, slotLevels: number[]): SpellResourceOption[] { return slotLevels.filter((level) => level >= spellLevel).map((level) => ({ key: `slot-${level}`, castLevel: level, costs: [{ key: slotResourceKey(level), amount: 1 }] })) }
