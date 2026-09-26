@@ -49,6 +49,7 @@ const WORKER_SYSTEM = [
   "Для update_world_npc меняй только поля, прямо подтверждённые окном: location_id, relationship или profile. Не переписывай имя, bio, stats, avatar.",
   "Факты memory_facts тоже должны иметь evidence_message_ids и не должны превращать неподтверждённое заявление PC в факт.",
   "Каждый memory_fact обязан иметь скрытый retrieval-index: search_tags, search_aliases, relation_keys, entity_refs. Теги короткие, нормализованные, без # и без художественных синонимов. UUID в entity_refs бери только из current_state/campaign_events, никогда не придумывай.",
+  "Если во входе есть retrieval_tag_dictionary, переиспользуй существующий тег при том же смысле. Не создавай новый синоним только ради другой формулировки.",
   "search_tags описывают смысл факта; search_aliases — реальные имена/титулы/варианты названия; relation_keys — причинные связи вида npc:faction, event:location, quest:npc; entity_refs — {kind,id,relation}. Структурные ID важнее тегов.",
   "Summary может описывать попытки игроков, но чётко отличай намерение от подтверждённого результата.",
   "Верни только JSON без markdown: {summary_title:string, summary:string, memory_facts:[{fact_key,subject_type,subject_id,predicate,statement,confidence,evidence_message_ids:string[],search_tags:string[],search_aliases:string[],relation_keys:string[],entity_refs:[{kind,id,relation}]}], owner_actions:[{tool,args,evidence_message_ids:string[],confidence:number,reason:string}]}",
@@ -820,6 +821,14 @@ async function processMaintenanceJob(
 ) {
   const snapshot = await loadMaintenanceSnapshot(admin, campaignId, job)
   const model = await fixedWorkerModel(admin, campaignId)
+  const tagDictionaryResult = await admin.rpc(
+    "read_ai_gm_retrieval_tag_dictionary_v1",
+    { p_campaign_id: campaignId, p_limit: 120 },
+  )
+  if (tagDictionaryResult.error) {
+    throw new Error(tagDictionaryResult.error.message)
+  }
+  const retrievalTagDictionary = record(tagDictionaryResult.data)
 
   const payload = await requestChatCompletion({
     model,
@@ -829,6 +838,9 @@ async function processMaintenanceJob(
         role: "user",
         content:
           "Сверь окно и верни только JSON по контракту.\n" +
+          "retrieval_tag_dictionary=" +
+          JSON.stringify(retrievalTagDictionary) +
+          "\n" +
           promptSnapshot(snapshot),
       },
     ],
