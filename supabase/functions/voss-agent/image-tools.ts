@@ -1248,30 +1248,21 @@ export async function processAgentImageJob({
     String(job.campaign_id || ""),
   )
   const autoLifecycle = input.surface === "ai_gm_media_stage9_v1"
-  const autoLifecycleTarget = record(input.target)
-  const autoLifecycleLocationMax =
-    autoLifecycle &&
-    stringValue(autoLifecycleTarget.type, 40) === "location" &&
-    stringValue(input.generation_tier, 40) === "max"
   const prompt = applyImagePolicyPrompt(rawPrompt, aiWorldPolicy)
 
-  // Automatic NPC portraits stay economical. Location/environment art is a
-  // deliberate exception: entering a new place or explicitly asking to see the
-  // surroundings uses the provider's maximum supported render quality.
-  const profile = autoLifecycleLocationMax
-    ? { ...baseProfile, quality: "high" as const }
-    : autoLifecycle
-      ? { ...baseProfile, quality: "low" as const }
-      : aiWorldPolicy
-        ? { ...baseProfile, quality: aiWorldPolicy.quality }
-        : baseProfile
-  const qualitySource = autoLifecycleLocationMax
-    ? "ai_gm_location_max_150k"
-    : autoLifecycle
-      ? "ai_gm_stage9_forced_low"
-      : aiWorldPolicy
-        ? "ai_world_slot_policy"
-        : "base_profile"
+  // AI-GM lifecycle art is deliberately cheap while the world pipeline is
+  // under active testing. Clamp every Stage 9 render to low regardless of
+  // target type, slot policy, or legacy generation_tier values.
+  const profile = autoLifecycle
+    ? { ...baseProfile, quality: "low" as const }
+    : aiWorldPolicy
+      ? { ...baseProfile, quality: aiWorldPolicy.quality }
+      : baseProfile
+  const qualitySource = autoLifecycle
+    ? "ai_gm_stage9_forced_low_50k"
+    : aiWorldPolicy
+      ? "ai_world_slot_policy"
+      : "base_profile"
   const requested = intBetween(job.requested_outputs, 1, 2, 1)
   const outputs: StoredOutput[] = []
   const providerUsages: unknown[] = []
@@ -1457,9 +1448,11 @@ export async function processAgentImageJob({
           quality_source: qualitySource,
           generation_tier: stringValue(input.generation_tier, 40) || null,
           target_token_budget:
-            Number.isFinite(Number(input.target_token_budget))
-              ? Number(input.target_token_budget)
-              : null,
+            autoLifecycle
+              ? 50000
+              : Number.isFinite(Number(input.target_token_budget))
+                ? Number(input.target_token_budget)
+                : null,
           provider_usage: providerUsages,
           review,
           attachment,
