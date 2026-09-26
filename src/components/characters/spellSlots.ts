@@ -73,6 +73,6 @@ export function spellCastingResources(
   return [...byStateKey.values()].sort(
     (left, right) =>
       left.level - right.level ||
-      left.resource.label.localeCompare(right.resource.label, "ru"),
+      left.resource.stateKey.localeCompare(right.resource.stateKey),
   )
 }
