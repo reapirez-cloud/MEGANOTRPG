@@ -2,20 +2,28 @@
 
 This file is the canonical release journal for work accumulated on `dev` before promotion to `main`.
 
-## Active patch — 2026-09-26-W
+## Released patches
 
-**Status:** OPEN
-**Branch:** `dev`
+## Patch — 2026-09-26-W
+
+**Status:** RELEASED
+**Branch:** `dev` → `main`
 **Base main:** `7db504b0277544414eb17511fd16cabfff75aaf5`
 **Started:** 2026-09-26
+**Released:** 2026-09-26
+**Promotion source:** `dev / 9a5181773b69e40aaf267ab31e2578c75b971ebd`
 
 ### Changes
 
-No changes yet.
+- Replaced the existing Grok registry row in place from `grok-4.6` / “Grok 4.6” to `grok-4.7` / “Grok 4.7”, preserving the same model UUID so the experimental AI campaign keeps its selected GM model without a settings reset.
+- Grok 4.7 keeps a 500,000-token context window with tools, JSON, streaming and vision enabled; the provider gateway defaults Grok 4.7 to ordinary `high` reasoning.
+- Kept the existing OpenAI-compatible CheapVibeCode chat integration: the configured base URL is expected to end at `/v1`, while MEGANOT appends `/chat/completions`; the provider endpoint layout supplied by the owner matches that contract.
+- Applied Supabase migration `replace_grok46_with_grok47_v1` and verified the live GM setting still points to the same model UUID now registered as `grok-4.7`.
+- Deployed `voss-agent` version 145 with Grok 4.7 high-reasoning routing.
+- Added focused regression coverage for the Grok 4.7 registry, 500k/vision capabilities, in-place replacement, and high reasoning default.
 
 ---
 
-## Released patches
 
 ## Patch — 2026-09-26-V
 
