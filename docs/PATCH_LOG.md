@@ -1,24 +1,40 @@
-Warning: truncated output (original token count: 41211)
-Total output lines: 1276
-
 # MEGANOTRPG patch log
 
 This file is the canonical release journal for work accumulated on `dev` before promotion to `main`.
 
+## Released patches
+
 ## Patch — 2026-09-26-U
 
-**Status:** OPEN
-**Branch:** `dev`
+**Status:** RELEASED
+**Branch:** `dev` → `main`
 **Base main:** `daf7ccb50254a7594cfd33d76bd707fd9209c206`
 **Started:** 2026-09-26
+**Released:** 2026-09-26
+**Promotion source:** `dev / e2c5d9ac2057711d035e82cd3c6d2fd349a2ceae`
 
-### Changes
+### Player-facing changes
 
-No changes yet.
+- Исправлен post-turn сбой младшего ИИ при входе в новые таверны/постоялые дворы: смысловые роли вроде `common_room`, `tap` и `lodging` теперь канонизируются в обязательные `public_hall`, `service/storage` и `guest_area`, поэтому валидная локация больше не откатывается из-за различий в названиях ролей.
+- Исчерпавший попытки младший больше не оставляет чат навечно в состоянии «Младший шуршит…»: просроченный `3/3` post-turn commit становится явным `failed` с реальной причиной и доступным recovery.
+- Арт первого посещения снова может стартовать после успешной материализации/перемещения в локацию; media pipeline не вызывается преждевременно на откатившейся локации.
+
+### Runtime / database changes
+
+- Добавлена серверная нормализация structural-role aliases перед Stage 26 coverage validation с сохранением исходных полезных тегов и лимита ролей.
+- Stage 18 теперь сохраняет последнюю ошибку deterministic Executor между попытками и передаёт её младшей модели как `previous_attempt_error`, требуя исправить отклонённый payload вместо слепого повтора.
+- Добавлен recovery просроченных исчерпавших lease/attempts post-turn задач с переносом последней executor-ошибки в intent/commit и снятием вечной блокировки комнаты.
+- Миграция `ai_gm_cascade_retry_recovery_v1` применена в рабочем Supabase; `voss-agent` обновлён до версии 142.
+
+### Tests / verification
+
+- Фокусные тесты нового Stage 18/26 recovery проходят; `npm run build` и lint проходят в CI.
+- Выполнен транзакционный live-probe с тем же набором ролей, на котором падали «Три Бочки»: `inn` материализуется, coverage содержит все четыре обязательные роли `public_hall/service/storage/guest_area`; транзакция теста откатана.
+- Ранее зависший live commit корректно переведён из `running 3/3` в `failed` с сохранённой причиной `cascade_required_role_missing:public_hall`.
+- Общий CI репозитория остаётся красным из-за 12 существующих несвязанных legacy-тестов (AgentShell/resolver/roadmap и др.); новые фокусные тесты этого патча проходят.
 
 ---
 
-## Released patches
 
 ## Patch — 2026-09-26-T
 
