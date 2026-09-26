@@ -810,6 +810,31 @@ export async function buildGameChatContextV2({
   if (retrievalResult.error) throw new Error(retrievalResult.error.message)
   const retrieval = record(retrievalResult.data)
 
+  const retrievalEntityRefs = [
+    ...rows(retrieval.memory_facts).flatMap((item) => rows(item.entity_refs)),
+    ...rows(retrieval.lore_entries).flatMap((item) => rows(item.entity_refs)),
+  ]
+  const retrievalCharacterIds = unique(
+    retrievalEntityRefs
+      .filter((ref) => ["character","pc","npc"].includes(String(ref.kind || "")))
+      .map((ref) => nullableString(ref.id)),
+  ).slice(0, 12)
+  const retrievalLocationIds = unique(
+    retrievalEntityRefs
+      .filter((ref) => String(ref.kind || "") === "location")
+      .map((ref) => nullableString(ref.id)),
+  ).slice(0, 12)
+  const retrievalFactionIds = unique(
+    retrievalEntityRefs
+      .filter((ref) => String(ref.kind || "") === "faction")
+      .map((ref) => nullableString(ref.id)),
+  ).slice(0, 12)
+  const retrievalQuestIds = unique(
+    retrievalEntityRefs
+      .filter((ref) => String(ref.kind || "") === "quest")
+      .map((ref) => nullableString(ref.id)),
+  ).slice(0, 12)
+
   const discoveredLocationRows = rows(locationDiscoveriesResult.data)
   const discoveredNpcRows = rows(npcDiscoveriesResult.data)
   const discoveredLocationIds = unique(
@@ -822,7 +847,8 @@ export async function buildGameChatContextV2({
   const locationIds = unique(
     worldStates.map((item) => nullableString(item.location_id))
       .concat(sourceLocationId ? [sourceLocationId] : [])
-      .concat(discoveredLocationIds),
+      .concat(discoveredLocationIds)
+      .concat(retrievalLocationIds),
   )
   const locationsResult = locationIds.length
     ? await admin
@@ -1399,7 +1425,8 @@ export async function buildGameChatContextV2({
     factionMemberships.map((item) => nullableString(item.faction_id))
       .concat(
         factionReputations.map((item) => nullableString(item.faction_id)),
-      ),
+      )
+      .concat(retrievalFactionIds),
   )
 
   let factionById = new Map<string, JsonRecord>()
@@ -1414,6 +1441,71 @@ export async function buildGameChatContextV2({
     factionById = new Map(
       rows(factionsResult.data).map((item) => [String(item.id), item]),
     )
+  }
+
+  const [retrievedNpcProfilesResult, retrievedQuestsResult] = await Promise.all([
+    retrievalCharacterIds.length
+      ? admin
+          .from("npc_profiles")
+          .select("character_id,role,species,occupation,faction,demeanor,motivation,public_notes,gm_notes,tags")
+          .eq("campaign_id", campaignId)
+          .in("character_id", retrievalCharacterIds)
+          .limit(12)
+      : Promise.resolve({ data: [], error: null }),
+    retrievalQuestIds.length
+      ? admin
+          .from("quests")
+          .select("id,quest_key,title,status,player_brief,updated_at")
+          .eq("campaign_id", campaignId)
+          .in("id", retrievalQuestIds)
+          .limit(12)
+      : Promise.resolve({ data: [], error: null }),
+  ])
+
+  if (retrievedNpcProfilesResult.error || retrievedQuestsResult.error) {
+    throw new Error(
+      (retrievedNpcProfilesResult.error || retrievedQuestsResult.error)!.message,
+    )
+  }
+
+  retrieval.linked_entities = {
+    characters: characters
+      .filter((item) => retrievalCharacterIds.includes(String(item.id)))
+      .map((item) => {
+        const world = worldByCharacter.get(String(item.id)) || {}
+        return {
+          id: item.id,
+          name: item.name,
+          character_type: item.character_type,
+          life_state: item.life_state,
+          location_id: world.location_id || null,
+          campaign_day: world.campaign_day ?? null,
+        }
+      })
+      .slice(0, 12),
+    npc_profiles: rows(retrievedNpcProfilesResult.data).slice(0, 12),
+    locations: retrievalLocationIds
+      .map((id) => locationById.get(id))
+      .filter((item): item is JsonRecord => Boolean(item))
+      .map((item) => ({
+        id: item.id,
+        name: item.name,
+        summary: boundedText(item.summary, 700),
+        parent_location_id: item.parent_location_id,
+        lifecycle_state: item.lifecycle_state,
+      }))
+      .slice(0, 12),
+    factions: retrievalFactionIds
+      .map((id) => factionById.get(id))
+      .filter((item): item is JsonRecord => Boolean(item))
+      .map((item) => ({
+        id: item.id,
+        name: item.name,
+        summary: boundedText(item.summary, 700),
+        tags: Array.isArray(item.tags) ? item.tags.slice(0, 16) : [],
+      }))
+      .slice(0, 12),
+    quests: rows(retrievedQuestsResult.data).slice(0, 12),
   }
 
   const rawFacts = rows(retrieval.memory_facts).slice(0, MAX_MEMORY_FACTS)
@@ -1693,6 +1785,13 @@ function compactMemory(memory: Stage2GameChatContext["memory"]) {
       day_period: fact.day_period,
       game_age_days: fact.game_age_days,
       source_location_id: fact.source_location_id,
+      visibility: fact.visibility,
+      source_event_ids: strings(fact.source_event_ids).slice(0, 12),
+      search_tags: strings(fact.search_tags).slice(0, 12),
+      search_aliases: strings(fact.search_aliases).slice(0, 12),
+      relation_keys: strings(fact.relation_keys).slice(0, 12),
+      entity_refs: rows(fact.entity_refs).slice(0, 16),
+      resolver_score: fact.resolver_score,
     })).slice(0, Math.min(MAX_MEMORY_FACTS, 20)),
     summaries: memory.summaries.map((summary) => ({
       id: summary.id,
@@ -1964,6 +2063,7 @@ export function stage2ContextForPrompt(context: Stage2GameChatContext) {
       anchors: record(context.retrieval.anchors),
       campaign_events: rows(context.retrieval.campaign_events).slice(0, 8),
       lore_entries: rows(context.retrieval.lore_entries).slice(0, 8),
+      linked_entities: record(context.retrieval.linked_entities),
       contract: record(context.retrieval.contract),
       rule:
         "This is query-specific read-only evidence selected across the entire campaign before output limiting. Treat canonical IDs/provenance as stronger than lexical tags. Lore can be an in-world report or rumor and is not automatically objective truth.",
