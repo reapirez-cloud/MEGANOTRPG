@@ -14,6 +14,14 @@ const historyMigration = readFileSync(
   "supabase/migrations/20260926054552_context_resolver_recent_chat_location_history_v3.sql",
   "utf8",
 )
+const permissionMigration = readFileSync(
+  "supabase/migrations/20260926055522_context_resolver_service_role_permission_v4.sql",
+  "utf8",
+)
+const morphologyMigration = readFileSync(
+  "supabase/migrations/20260926055527_context_resolver_russian_morphology_v4.sql",
+  "utf8",
+)
 const context = readFileSync(
   "supabase/functions/voss-agent/game-chat-context.ts",
   "utf8",
@@ -71,4 +79,18 @@ test("Recent room chat survives location changes while retaining per-message sna
     historyMigration,
     /e\.location_id=p_source_location_id/,
   )
+})
+
+
+test("Context Resolver RPC is callable by the service role and supports Russian morphology", () => {
+  assert.match(permissionMigration, /grant usage on schema private to service_role/i)
+  assert.match(
+    permissionMigration,
+    /grant execute on function private\.build_context_websearch_query_v1\(text\) to service_role/i,
+  )
+  assert.match(morphologyMigration, /context_search_vector_v2/)
+  assert.match(morphologyMigration, /pg_catalog\.russian/)
+  assert.match(morphologyMigration, /build_context_websearch_query_v2/)
+  assert.match(morphologyMigration, /resolver_version',3/)
+  assert.match(morphologyMigration, /morphology','russian\+simple'/)
 })
