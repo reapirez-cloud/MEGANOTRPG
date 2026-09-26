@@ -10,7 +10,7 @@
  *   docs/AI_WORLD_EVOLUTION_MASTER_ROADMAP.md
  */
 
-export const AI_WORLD_EVOLUTION_CONTRACT_VERSION = 2 as const
+export const AI_WORLD_EVOLUTION_CONTRACT_VERSION = 3 as const
 
 export type AiWorldEvolutionStageStatus =
   | "planned"
@@ -35,6 +35,45 @@ export type AiWorldEvolutionStage = {
   /** Tests/checks required before status can become certified. */
   certification: readonly string[]
 }
+
+export const AI_WORLD_CONTEXT_RETRIEVAL_CONTRACT = {
+  version: 1,
+  status: "implemented",
+  searchScope: "entire_campaign_before_output_limit",
+  preLimitRecentMemory: false,
+  outputLimitsOnlyAfterRanking: true,
+  relevanceSignals: [
+    "canonical_entity_refs",
+    "source_event_provenance",
+    "normalized_search_tags",
+    "search_aliases",
+    "relation_keys",
+    "russian_and_simple_full_text",
+    "current_scene_relevance",
+  ],
+  graphExpansion: {
+    maxHops: 1,
+    bounded: true,
+    linkedKinds: [
+      "npc",
+      "location",
+      "faction",
+      "quest",
+      "quest_target",
+      "relationship",
+      "evidence_event",
+    ],
+  },
+  invariants: [
+    "World Resolver randomness remains a separate subsystem",
+    "Tags and aliases aid retrieval but never establish canon",
+    "Canonical IDs and provenance outrank lexical similarity",
+    "Visibility is filtered before prompt delivery",
+    "Future game-day evidence cannot leak into earlier scenes",
+    "Recent room chat remains bounded to 50 but is not reset by location changes",
+    "Junior indexers reuse canonical tags and never invent entity UUIDs",
+  ],
+} as const
 
 export type AiWorldEvolutionOpenQuestionStatus =
   | "under_question"
