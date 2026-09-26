@@ -132,3 +132,26 @@ test("explicit integration snapshot feeds CE without registry ordering and uses 
   })
   assert.equal(suppressed.contract.capabilities.features.some((entry) => entry.key === "f1"), false)
 })
+
+
+test("legacy adapter ignores malformed persisted feature mechanics instead of bricking CE", () => {
+  const malformed = feature({
+    id: "bad-feature",
+    name: "Malformed metadata",
+    mechanics: [{ kind: "feat", slug: "actor" }] as unknown as CharacterFeature["mechanics"],
+  })
+
+  const view = resolveLegacyCharacterEngineView({
+    character: { id: "c1", name: "Kevin", level: 14 },
+    sheet: sheet({ spellcasting_enabled: false, spell_slots: {} }),
+    spells: [],
+    features: [malformed],
+    inventoryContributions: [],
+    resourceStates: {},
+    templateBundles: [],
+    suppressedSourceIds: new Set<string>(),
+  })
+
+  assert.equal(view.contract.name, "Kevin")
+  assert.equal(view.contract.capabilities.features.some((entry) => entry.key === "bad-feature"), true)
+})
