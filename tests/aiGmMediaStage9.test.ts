@@ -17,6 +17,9 @@ const roadmap = read("docs/AI_GM_ROADMAP.md")
 const locationMediaV2 = read(
   "supabase/migrations/20260925175926_ai_gm_location_media_character_chat_and_explicit_request_v2.sql",
 )
+const lowArtOverride = read(
+  "supabase/migrations/20260926124807_ai_gm_low_art_grok46_high_v1.sql",
+)
 const gameChatRuntime = read(
   "supabase/functions/voss-agent/game-chat-runtime.ts",
 )
@@ -202,12 +205,13 @@ test("Location media v2 publishes into the player's character room and dedupes b
   )
 })
 
-test("Location entry reuses old art or queues a max 150k environment render", () => {
+test("Location entry reuses old art while the test-art override forces low 50k generation", () => {
   assert.match(locationMediaV2, /location_entry/)
   assert.match(locationMediaV2, /publish_existing_ai_gm_target_media_v2/)
-  assert.match(locationMediaV2, /'generation_tier'.*'max'/s)
-  assert.match(locationMediaV2, /'target_token_budget'.*150000/s)
   assert.match(locationMediaV2, /v_purpose:='master_art'/)
+  assert.match(lowArtOverride, /force_ai_gm_media_low_budget_v1/)
+  assert.match(lowArtOverride, /'\{generation_tier\}'[\s\S]*'low'/)
+  assert.match(lowArtOverride, /'\{target_token_budget\}'[\s\S]*50000/)
 })
 
 test("Explicit environment requests bridge game chat into location media", () => {
@@ -218,12 +222,10 @@ test("Explicit environment requests bridge game chat into location media", () =>
   assert.match(locationMediaV2, /explicit_environment_request/)
 })
 
-test("AI-GM location generation bypasses the old forced-low lifecycle", () => {
-  assert.match(imageTools, /autoLifecycleLocationMax/)
-  assert.match(imageTools, /generation_tier/)
-  assert.match(imageTools, /ai_gm_location_max_150k/)
-  assert.match(
-    imageTools,
-    /autoLifecycleLocationMax[\s\S]*quality: "high"/,
-  )
+test("AI-GM lifecycle generation cannot promote location art above low while testing", () => {
+  assert.match(imageTools, /autoLifecycle = input\.surface === "ai_gm_media_stage9_v1"/)
+  assert.match(imageTools, /ai_gm_stage9_forced_low_50k/)
+  assert.match(imageTools, /autoLifecycle[\s\S]*quality: "low" as const/)
+  assert.match(imageTools, /autoLifecycle[\s\S]*\? 50000/)
+  assert.doesNotMatch(imageTools, /ai_gm_location_max_150k/)
 })
