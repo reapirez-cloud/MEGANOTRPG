@@ -148,17 +148,24 @@ begin
       for update;
 
       if v_latest_job.id is null
-         or v_latest_job.status not in ('failed','cancelled')
+         or (
+           v_latest.state<>'rolled_back'
+           and v_latest_job.status not in ('failed','cancelled')
+         )
       then
         raise exception 'ai_gm_active_revision_not_found';
       end if;
 
-      if exists(
-        select 1
-        from public.ai_gm_post_turn_commits c
-        where c.parent_job_id=v_latest_job.id
-          and c.state in ('queued','running','completed')
-      ) then
+      -- A manually rolled-back revision has already passed the reversible
+      -- effect and later-message guards. Its historical job may stay completed.
+      if v_latest.state<>'rolled_back'
+         and exists(
+           select 1
+           from public.ai_gm_post_turn_commits c
+           where c.parent_job_id=v_latest_job.id
+             and c.state in ('queued','running','completed')
+         )
+      then
         raise exception 'ai_gm_regenerate_has_committed_post_turn_world_changes';
       end if;
     else
