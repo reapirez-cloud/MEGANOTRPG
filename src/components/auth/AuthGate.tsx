@@ -16,6 +16,7 @@ type Phase =
   | "world-select"
   | "ai-unlock"
   | "ai-slots"
+  | "ai-slot-unlock"
   | "ai-character"
   | "ready"
   | "telegram-required"
@@ -152,6 +153,7 @@ export default function AuthGate({ children }: { children: ReactNode }) {
   const [aiSlotsLoading, setAiSlotsLoading] = useState(false)
   const [aiSlotSaving, setAiSlotSaving] = useState<string | null>(null)
   const [selectedAiSlot, setSelectedAiSlot] = useState<AiWorldSlot | null>(null)
+  const [aiSlotPassword, setAiSlotPassword] = useState("")
   const [aiCharacterClasses, setAiCharacterClasses] = useState<AiWorldClassOption[]>([])
   const [aiCharacterName, setAiCharacterName] = useState("")
   const [aiCharacterClassId, setAiCharacterClassId] = useState("")
@@ -605,8 +607,16 @@ export default function AuthGate({ children }: { children: ReactNode }) {
     return updated
   }
 
-  async function openAiSlot(slot: AiWorldSlot) {
+  async function openAiSlot(slot: AiWorldSlot, accessCode?: string) {
     if (aiSlotSaving || !user) return
+
+    if (slot.slot_index === 1 && accessCode === undefined) {
+      setSelectedAiSlot(slot)
+      setAiSlotPassword("")
+      setError("")
+      setPhase("ai-slot-unlock")
+      return
+    }
 
     const updated = await persistAiSlotName(slot)
     if (!updated) return
@@ -614,12 +624,20 @@ export default function AuthGate({ children }: { children: ReactNode }) {
     setError("")
 
     const { data, error: openError } = await supabase.rpc(
-      "open_ai_world_slot_v2",
-      { p_slot_id: updated.id },
+      "open_ai_world_slot_v3",
+      {
+        p_slot_id: updated.id,
+        p_access_code: accessCode ?? null,
+      },
     )
 
     if (openError) {
-      setError(openError.message)
+      const message = openError.message || ""
+      setError(
+        /ai_world_slot_access_code_(?:invalid|required)/i.test(message)
+          ? "Неверный пароль первой комнаты."
+          : message,
+      )
       return
     }
 
@@ -946,6 +964,71 @@ export default function AuthGate({ children }: { children: ReactNode }) {
             }}
           >
             Назад
+          </button>
+        </form>
+      </div>
+    )
+  }
+
+  if (phase === "ai-slot-unlock" && selectedAiSlot) {
+    const slotTitle =
+      selectedAiSlot.name.trim() || `Слот ${selectedAiSlot.slot_index}`
+
+    return (
+      <div className="auth-screen">
+        <form
+          className="auth-card"
+          onSubmit={(event) => {
+            event.preventDefault()
+            if (!aiSlotPassword.trim()) {
+              setError("Введи пароль первой комнаты.")
+              return
+            }
+            void openAiSlot(selectedAiSlot, aiSlotPassword.trim())
+          }}
+        >
+          <div className="auth-eyebrow">ИИ МИР · КОМНАТА 01</div>
+          <h1 className="auth-title">{slotTitle}</h1>
+          <p className="auth-muted">
+            Первая комната закрыта отдельным паролем. Остальные комнаты ИИ
+            доступны без этого дополнительного замка.
+          </p>
+
+          <label className="auth-label" htmlFor="ai-slot-password">
+            Пароль комнаты
+          </label>
+          <input
+            id="ai-slot-password"
+            type="password"
+            inputMode="numeric"
+            className="auth-input"
+            value={aiSlotPassword}
+            onChange={(event) => setAiSlotPassword(event.target.value)}
+            autoFocus
+            autoComplete="off"
+          />
+
+          {error && <div className="auth-error">{error}</div>}
+
+          <button
+            type="submit"
+            className="auth-primary"
+            disabled={aiSlotSaving === selectedAiSlot.id || aiSlotPassword.trim().length === 0}
+          >
+            {aiSlotSaving === selectedAiSlot.id ? "Открываем…" : "Открыть комнату"}
+          </button>
+
+          <button
+            type="button"
+            className="auth-secondary"
+            onClick={() => {
+              setAiSlotPassword("")
+              setSelectedAiSlot(null)
+              setError("")
+              setPhase("ai-slots")
+            }}
+          >
+            Назад к комнатам
           </button>
         </form>
       </div>
