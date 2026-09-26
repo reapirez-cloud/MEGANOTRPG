@@ -13,7 +13,7 @@ import {
   buildChatActionModel,
   type ChatActionSourceGroup,
 } from "../../components/chat/chatActionModel.ts"
-import { spellSlotResources } from "../../components/characters/spellSlots.ts"
+import { spellCastingResources } from "../../components/characters/spellSlots.ts"
 import type { ChatActionLauncherMode } from "./chatRoomContracts"
 import "./chat-action-panel.css"
 
@@ -443,8 +443,8 @@ function SpellSlotFlow({
   emptyTitle: string
 }) {
   const slots = useMemo(
-    () => spellSlotResources(contract.resources),
-    [contract.resources],
+    () => spellCastingResources(contract.resources, spells),
+    [contract.resources, spells],
   )
   const cantrips = useMemo(
     () =>
@@ -529,7 +529,7 @@ function SpellSlotFlow({
               >
                 <b>{level}</b>
                 <span>
-                  <strong>Ячейка {level} уровня</strong>
+                  <strong>{/^spell_slot_\\d+$/.test(resource.stateKey) ? `Ячейка ${level} уровня` : resource.label}</strong>
                   <i className="u1-chat-slot__orbs" aria-hidden="true">
                     {Array.from({ length: maximum }, (_, index) => (
                       <i
@@ -562,7 +562,11 @@ function SpellSlotFlow({
         <span>
           {channel === "cantrips"
             ? "Без ячейки"
-            : `Ячейка ${selectedSlot?.level || "—"} уровня`}
+            : selectedSlot
+              ? (/^spell_slot_\\d+$/.test(selectedSlot.resource.stateKey)
+                  ? `Ячейка ${selectedSlot.level} уровня`
+                  : selectedSlot.resource.label)
+              : "Ресурс магии"}
         </span>
         <strong>Шаг 2 · {casts.length} доступно</strong>
         {selectedSlot ? (
