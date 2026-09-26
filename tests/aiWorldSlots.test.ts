@@ -16,13 +16,13 @@ const dynamicMediaPromptMigration = fs.readFileSync(
   "utf8",
 )
 
-test("world selector exposes Muntar and a password-gated experimental AI branch", () => {
+test("world selector opens the experimental AI slot list without a global password", () => {
   assert.match(gate, /phase === "world-select"/)
   assert.match(gate, />Мунтар</)
   assert.match(gate, />ИИ мир</)
-  assert.match(gate, /phase === "ai-unlock"/)
-  assert.match(gate, /type="password"/)
-  assert.match(gate, /AI_WORLD_PASSWORD = \[1, 4, 8, 8\]\.join\(""/)
+  assert.match(gate, /onClick=\{\(\) => void loadAiSlots\(\)\}/)
+  assert.doesNotMatch(gate, /AI_WORLD_PASSWORD/)
+  assert.doesNotMatch(gate, /phase === "ai-unlock"/)
 })
 
 test("AI world owns exactly five persistent nameable slots per authenticated owner", () => {
@@ -42,7 +42,7 @@ test("AI world owns exactly five persistent nameable slots per authenticated own
 
 test("AI world room one has a second server-enforced access code while rooms two through five remain direct", () => {
   assert.match(gate, /phase === "ai-slot-unlock"/)
-  assert.match(gate, /slot\.slot_index === 1/)
+  assert.match(gate, /slot\.id === PROTECTED_AI_WORLD_SLOT_ID/)
   assert.match(gate, /open_ai_world_slot_v3/)
   assert.match(gate, /p_access_code/)
   assert.match(slotLockMigration, /ai_world_slot_access_code_required/)
