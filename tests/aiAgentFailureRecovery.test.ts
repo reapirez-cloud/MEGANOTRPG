@@ -1,5 +1,6 @@
 import assert from "node:assert/strict"
 import test from "node:test"
+import { readFileSync } from "node:fs"
 import { normalizeInventoryToolArgs } from "../supabase/functions/voss-agent/inventory-tool-args.ts"
 import { parseProviderCompletion } from "../supabase/functions/voss-agent/provider-response.ts"
 
@@ -41,4 +42,21 @@ test("gateway refuses a truncated stream instead of executing a partial tool cal
   assert.throws(() => parseProviderCompletion('data: {"choices":[{"delta":{"content":"partial"}}]}'),
     /provider_stream_incomplete/)
   assert.equal((parseProviderCompletion('{"choices":[{"message":{"content":"ok"}}]}').choices as unknown[]).length, 1)
+})
+
+test("GM context reads complete inventory and exposes real bag and hand capacity", () => {
+  const context = readFileSync("supabase/functions/voss-agent/game-chat-context.ts", "utf8")
+  assert.match(context, /inventoryItemsResult,\s*inventoryChargesResult,\s*inventoryRoomResult/)
+  assert.match(context, /inventoryItems: rows\(inventoryItemsResult\.data\)/)
+  assert.match(context, /source_inventory_room: context\.inventoryRoom/)
+  assert.match(context, /source_inventory_room: payload\.source_inventory_room/)
+})
+
+test("full inventory is a resolved atomic refusal, not a failed GM synchronization", () => {
+  const migration = readFileSync("supabase/migrations/20260926093000_inventory_capacity_outcome_v1.sql", "utf8")
+  assert.match(migration, /begin\s+v_result := public\.ai_gm_commit_inventory_delta_v1\(/)
+  assert.match(migration, /exception when sqlstate '22023' then\s+if sqlerrm not like 'inventory_no_free_slot:%' then raise; end if;/)
+  assert.match(migration, /'accepted',false,'outcome','no_space'/)
+  assert.match(migration, /'canonical_state_changed',false,'resolved_item_ids','\[\]'::jsonb/)
+  assert.match(migration, /set state='completed',lease_token=null,lease_expires_at=null,[\s\S]*tool_result=v_result/)
 })

@@ -30,6 +30,7 @@ export type Stage2GameChatContext = {
   sheets: JsonRecord[]
   resourceStates: JsonRecord[]
   inventoryItems: JsonRecord[]
+  inventoryRoom: JsonRecord
   inventoryChargeItems: JsonRecord[]
   npcProfiles: JsonRecord[]
   npcIdentities: JsonRecord[]
@@ -1209,8 +1210,9 @@ export async function buildGameChatContextV2({
   const [
     sheetsResult,
     resourceStatesResult,
-    inventoryChargesResult,
     inventoryItemsResult,
+    inventoryChargesResult,
+    inventoryRoomResult,
     npcProfilesResult,
     npcIdentitiesResult,
     npcRuntimeResult,
@@ -1250,6 +1252,10 @@ export async function buildGameChatContextV2({
           .eq("usage_mode", "charges")
           .limit(120)
       : Promise.resolve({ data: [], error: null }),
+    admin.rpc("ai_gm_inventory_room_v1", {
+      p_campaign_id: campaignId,
+      p_character_id: sourceCharacterId,
+    }),
     presentNpcIds.length
       ? admin
           .from("npc_profiles")
@@ -1344,6 +1350,7 @@ export async function buildGameChatContextV2({
     resourceStatesResult.error ||
     inventoryChargesResult.error ||
     inventoryItemsResult.error ||
+    inventoryRoomResult.error ||
     npcProfilesResult.error ||
     npcIdentitiesResult.error ||
     npcRuntimeResult.error ||
@@ -1738,6 +1745,7 @@ export async function buildGameChatContextV2({
     sheets: rows(sheetsResult.data),
     resourceStates: rows(resourceStatesResult.data),
     inventoryItems: rows(inventoryItemsResult.data),
+    inventoryRoom: record(inventoryRoomResult.data),
     inventoryChargeItems: rows(inventoryChargesResult.data),
     npcProfiles: rows(npcProfilesResult.data),
     npcIdentities: rows(npcIdentitiesResult.data),
@@ -2053,6 +2061,7 @@ export function stage2ContextForPrompt(context: Stage2GameChatContext) {
         version: item.version,
         item_state: item.item_state,
       })).slice(0, 160),
+    source_inventory_room: context.inventoryRoom,
     charged_inventory_items_for_present_characters:
       context.inventoryChargeItems.map((item) => ({
         id: item.id,
@@ -2234,6 +2243,7 @@ export function stage2ContextForPrompt(context: Stage2GameChatContext) {
       Array.isArray(payload.canonical_inventory_for_present_characters)
         ? payload.canonical_inventory_for_present_characters.slice(0, 64)
         : [],
+    source_inventory_room: payload.source_inventory_room,
     present_npc_profiles: payload.present_npc_profiles,
     present_npc_identity_fingerprints: payload.present_npc_identity_fingerprints,
     canonical_npc_runtime: payload.canonical_npc_runtime,

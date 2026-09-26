@@ -13,6 +13,7 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 - Removed the infinite “При себе” destination from the active inventory. The main list now shows two hand positions and external carry; old unplaced rows are clearly separated so players can rehouse them without losing items. Equipping gear with missing metadata offers a deliberate slot choice.
 - A grant requires a free bag cell or hand; a full inventory rejects the grant atomically. Known dagger and clothing definitions provide their equipment slots. Coins of one denomination grow in one slot and have nonzero per-coin mass.
+- The AI GM now sees the full canonical inventory and authoritative bag/hand occupancy. A full inventory resolves as an ordinary «no room, item not taken» outcome; linked changes roll back and the next turn can see the refusal without treating it as a crashed synchronization.
 - Rebuilt the active character inventory in graphite: five numbered quick-access slots, compact equipment (including both rings and amulet), one-row bag selection, search and category filters, and a readable item list without Tetris cells.
 - Item tap opens full art and description in a Snake detail window; long press/right click or the item action button opens Snake commands for inspect, use, equip, move, quick-slot assignment and real-destination unequip. A quick-slot tap directly uses a usable item.
 
@@ -43,6 +44,7 @@ This file is the canonical release journal for work accumulated on `dev` before 
 ### Runtime and architecture changes
 
 - The inventory worker tool now names capacity and equipment requirements; a deterministic no-space failure ends the intent rather than asking the model to repeat an impossible command. GM-issued items use the same placement path as AI-issued items.
+- Fixed swapped inventory and charged-item reads in the AI GM context. Added a service-only capacity projection and an atomic Executor no-space receipt so the background commit completes without retrying a full bag.
 - Junior post-turn inventory planning now normalizes JSON-stringified batch deltas, rejects malformed arguments before Executor enqueue, and gives the model one bounded correction attempt. The same invalid command no longer burns all Executor retries.
 - Freddy keeps a failed tool call inside its durable turn ledger as an explicit uncertain-result error that directs a canonical read before a write retry; one tool exception no longer aborts the entire turn.
 - The provider adapter requests non-streaming completions and can reconstruct a completed SSE response from an OpenAI-compatible gateway. Freddy continues its durable turn after transient 429/5xx or invalid provider responses, without a second upstream request inside the same Edge execution.
