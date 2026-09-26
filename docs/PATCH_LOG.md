@@ -5,6 +5,19 @@ Total output lines: 1276
 
 This file is the canonical release journal for work accumulated on `dev` before promotion to `main`.
 
+## Patch — 2026-09-26-U
+
+**Status:** OPEN
+**Branch:** `dev`
+**Base main:** `daf7ccb50254a7594cfd33d76bd707fd9209c206`
+**Started:** 2026-09-26
+
+### Changes
+
+No changes yet.
+
+---
+
 ## Released patches
 
 ## Patch — 2026-09-26-T
@@ -14,7 +27,7 @@ This file is the canonical release journal for work accumulated on `dev` before 
 **Base main:** `c517a18443e7231dce2710f9b3186ad17a72c976`
 **Started:** 2026-09-26
 **Released:** 2026-09-26
-**Release identity:** `main` fast-forward to this release commit
+**Release identity:** `main / daf7ccb50254a7594cfd33d76bd707fd9209c206`
 
 ### Player-facing changes
 
