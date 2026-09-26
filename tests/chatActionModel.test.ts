@@ -169,7 +169,7 @@ test("subclass spell access stays in the Class chat bucket and spends ordinary c
   assert.ok(domain)
   assert.ok(spell)
   assert.equal(model.uniqueGroups.some((group) => group.spells.some((entry) => entry.key === "spell:aid")), false)
-  assert.equal(model.spells.some((entry) => entry.key === "spell:aid"), false)
+  assert.equal(model.spells.some((entry) => entry.key === "spell:aid"), true)
   assert.equal(spell?.accesses[0]?.sources[0]?.source.sourceType, "subclass_template")
   assert.equal(spell?.accesses[0]?.methods[0]?.kind, "class_spell")
   assert.equal(option?.costs[0]?.stateKey, "spell_slot_2")
@@ -214,8 +214,13 @@ test("one spell can route to Attacks, Magic and Class through independent rules"
   assert.ok(classFireball)
   assert.ok(classAid)
   assert.equal(model.spells.some((spell) => spell.key === "spell:aid"), false)
-  assert.equal(magicFireball?.accesses.length, 1)
-  assert.equal(magicFireball?.accesses[0]?.sources[0]?.source.sourceType, "legacy_spell")
+  assert.equal(magicFireball?.accesses.length, 2)
+  assert.deepEqual(
+    new Set(magicFireball?.accesses.flatMap((access) =>
+      access.sources.map((source) => source.source.sourceType),
+    )),
+    new Set(["legacy_spell", "subclass_template"]),
+  )
   assert.equal(classFireball?.accesses.length, 1)
   assert.equal(classFireball?.accesses[0]?.sources[0]?.source.sourceType, "subclass_template")
 })
