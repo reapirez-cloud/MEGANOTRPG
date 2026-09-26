@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "npm:@supabase/supabase-js@2.112.3"
 import type { VossAuthority } from "./authority.ts"
-import { canContainLocation } from "./location-hierarchy.ts"
+import { canContainLocation, cascadeChildLimit } from "./location-hierarchy.ts"
 
 type JsonRecord = Record<string, unknown>
 
@@ -870,9 +870,9 @@ export const VOSS_MANAGER_TOOLS = [
           },
           children: {
             type: "array",
-            maxItems: 24,
+            maxItems: 4,
             description:
-              "Immediate children only. Never include grandchildren. A city gets districts, not houses; a district gets major clusters/sites, not every room; a tavern/inn gets its main functional rooms.",
+              "Compact immediate anchors only, 0-4 depending on archetype. Road: 0-1 observed branch/segment. City: 2-4 multifunctional districts. No speculative streets, houses, rooms or grandchildren.",
             items: {
               type: "object",
               additionalProperties: false,
@@ -2401,12 +2401,16 @@ async function setLocationSecretState(
   return { secret: data, canonical_state_changed: true }
 }
 
-async function materializeLocationCascade(
-  context: VossManagerToolContext,
+export async function prepareLocationCascadeInput(
+  admin: SupabaseClient,
+  campaignId: string,
   args: JsonRecord,
 ) {
-  if (!context.internalService) {
-    return { error: "location_cascade_internal_service_only" }
+  if (
+    Array.isArray(args.children) &&
+    args.children.length > cascadeChildLimit(String(args.archetype || "site"))
+  ) {
+    return { error: "cascade_children_exceed_compact_limit" }
   }
 
   const input: JsonRecord = {}
@@ -2441,10 +2445,10 @@ async function materializeLocationCascade(
       const visited = new Set<string>()
       while (cursor && !visited.has(cursor)) {
         visited.add(cursor)
-        const { data: ancestor, error } = await context.admin
+        const { data: ancestor, error } = await admin
           .from("locations")
           .select("id,parent_location_id,scale")
-          .eq("campaign_id", context.campaignId)
+          .eq("campaign_id", campaignId)
           .eq("id", cursor)
           .eq("lifecycle_state", "active")
           .maybeSingle()
@@ -2457,12 +2461,27 @@ async function materializeLocationCascade(
     }
   }
 
+  return { input }
+}
+
+async function materializeLocationCascade(
+  context: VossManagerToolContext,
+  args: JsonRecord,
+) {
+  if (!context.internalService) {
+    return { error: "location_cascade_internal_service_only" }
+  }
+  const prepared = await prepareLocationCascadeInput(
+    context.admin, context.campaignId, args,
+  )
+  if (prepared.error || !prepared.input) return { error: prepared.error }
+
   const { data, error } = await context.admin.rpc(
     "ai_gm_materialize_location_cascade_v1",
     {
       p_campaign_id: context.campaignId,
       p_actor_user_id: context.userId,
-      p_input: input,
+      p_input: prepared.input,
     },
   )
 

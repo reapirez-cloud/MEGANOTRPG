@@ -1753,12 +1753,12 @@ Contracts:
 
 - every location carries archetype, scale, structure roles/state and a coverage
   manifest;
-- an entered/current location is expanded exactly one structural level down;
-- city/settlement expansion creates districts or major functional zones, never
-  every house or NPC;
-- district expansion creates major clusters/streets/sites, not room trees;
-- tavern/inn/building expansion creates its immediate functional rooms/zones;
-- forests, caves and dungeons expand into major immediate zones/branches;
+- an entered/current location may gain at most one structural level, with
+  `children=[]` valid when no distinct internal place is needed yet;
+- cities use up to four multifunctional districts or major zones, never every
+  house or NPC; roads use at most one encountered branch or segment;
+- districts, taverns, forests and dungeons gain only a few immediately useful
+  anchors; detailed streets/rooms/branches remain lazy;
 - server-side archetype coverage requires core functions or a written omission
   reason instead of trusting the model to declare an incomplete city complete;
 - materialize_location_cascade is one service-only transactional tool for
@@ -1768,8 +1768,8 @@ Contracts:
   call;
 - current source locations left as legacy stubs are automatically scheduled for
   one-level cascade materialization before the next normal GM continuation;
-- direct structural children are mandatory topology, not speculative
-  world-bloat; grandchildren remain lazy until physically entered/needed.
+- direct children are bounded to the smallest useful topology, not automatic
+  filler; grandchildren remain lazy until physically entered/needed.
 
 Deferred to Stage 27:
 

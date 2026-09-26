@@ -33,8 +33,10 @@ test("Stage 26 exposes one composite cascade tool to both materializers", () => 
 
 test("Stage 26 forbids recursive grandchildren in one cascade", () => {
   assert.match(migration, /cascade_nested_children_forbidden/)
-  assert.match(runtime, /Never include grandchildren|непосредственных детей/)
-  assert.match(runtime, /город → все основные районы/)
+  assert.match(runtime, /Никогда не строй grandchildren/)
+  assert.match(runtime, /город → 2–4 опорных района/)
+  assert.match(runtime, /children=\[\]/)
+  assert.match(runtime, /prepareLocationCascadeInput\(admin, campaignId, toolArgs\)/)
 })
 
 test("Stage 26 validates functional coverage instead of trusting prose", () => {

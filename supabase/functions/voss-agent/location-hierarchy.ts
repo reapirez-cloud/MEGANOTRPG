@@ -16,3 +16,11 @@ export function canContainLocation(parentScale: string, targetScale: string) {
   if (target === undefined) return true // The cascade RPC validates the scale.
   return parent < target || (parent === target && target > SCALE_RANK.district)
 }
+
+/** New topology is bounded to the few named places needed to orient play. */
+export function cascadeChildLimit(archetype: string) {
+  if (archetype === "road") return 1
+  if (["city", "town", "region", "world", "port"].includes(archetype)) return 4
+  if (["forest", "wilderness", "village"].includes(archetype)) return 2
+  return 3
+}

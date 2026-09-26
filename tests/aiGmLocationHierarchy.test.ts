@@ -1,7 +1,7 @@
 import assert from "node:assert/strict"
 import test from "node:test"
 
-import { canContainLocation } from "../supabase/functions/voss-agent/location-hierarchy.ts"
+import { canContainLocation, cascadeChildLimit } from "../supabase/functions/voss-agent/location-hierarchy.ts"
 
 test("a road cannot contain the city reached from it", () => {
   assert.equal(canContainLocation("site", "settlement"), false)
@@ -18,4 +18,10 @@ test("an entered small site can still be a genuine child of another site", () =>
   assert.equal(canContainLocation("site", "site"), true)
   assert.equal(canContainLocation("building", "room"), true)
   assert.equal(canContainLocation("room", "building"), false)
+})
+
+test("roads cannot grow a chain of speculative children and cities stay compact", () => {
+  assert.equal(cascadeChildLimit("road"), 1)
+  assert.equal(cascadeChildLimit("city"), 4)
+  assert.equal(cascadeChildLimit("tavern"), 3)
 })
