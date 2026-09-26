@@ -197,6 +197,7 @@ Animation is presentation. The canonical relationship remains Cheburashka state.
 The implemented carried-inventory runtime follows these invariants:
 
 - Cheburashka stores canonical placement as root, grid, hand or external carry; a temporary `legacy` holder state exists only for the still-running pre-spatial production client.
+- New character grants must resolve to a real bag cell or one of two hands in the same transaction. `root` is a visible relocation queue for historical rows, never a new unlimited carry destination. If no cell exists, the grant and its linked batch fail together with a terminal capacity reason.
 - Grid placement is committed only through the versioned Cheburashka spatial move RPC and is checked under a character-level transaction lock.
 - Exact authored shape-mask cells determine collision. A rectangular CSS box is never the collision model.
 - The rendered cell size is fixed by UI presentation. Current UI 1.0 uses a 46px cell and a viewport of roughly six visible columns; logical container width/height only changes the scrollable plane.
@@ -245,7 +246,7 @@ Semantic role and packing are separate axes. In particular:
 |---|---|---|---|---|
 | Малое лечебное зелье | consumable | instance | compact 1×1 | no stack |
 | Свиток | consumable/reference | instance | compact 1×1 | no stack |
-| Монеты одного номинала | currency | bulk stack | 1×1 | bounded stack; container may provide larger capacity |
+| Монеты одного номинала | currency | bulk stack | 1×1 | one growing stack per denomination; every coin retains its unit weight |
 | Стрелы | ammo | bulk stack | 1×1 | ordinary bundle ~20; quiver may carry 50 |
 | Болты / пули | ammo | bulk stack | 1×1 | bounded type-specific stack |
 | Обычная трава / листья / семена | ingredient | bulk stack | 1×1 | stack only while individual pieces are interchangeable |

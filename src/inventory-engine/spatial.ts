@@ -53,8 +53,11 @@ const legacyContainerProfile: InventoryPhysicalProfile = {
 }
 
 export function inventoryPhysicalProfile(item: InventoryItem): InventoryPhysicalProfile {
-  return readInventoryProfile(item.inventory_profile)
+  const profile = readInventoryProfile(item.inventory_profile)
     || (item.category === "container" ? legacyContainerProfile : legacyItemProfile)
+  return item.category === "currency" && profile.packing_mode === "bulk_stack"
+    ? { ...profile, stack_max: 2147483647 }
+    : profile
 }
 
 export function inventoryPlacementKind(item: InventoryItem) {

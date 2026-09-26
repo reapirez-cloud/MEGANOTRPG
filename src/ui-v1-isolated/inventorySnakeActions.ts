@@ -5,8 +5,9 @@ import type { InventoryItem } from "../types/characterSheet"
 type Result = { ok: boolean; error?: string }
 type Operations = {
   move: (item: InventoryItem, holder: string | null) => Promise<Result>
+  placeHand: (item: InventoryItem, index: 0 | 1) => Promise<Result>
   quick: (item: InventoryItem, slot: number | null) => Promise<Result>
-  equip: (item: InventoryItem) => Promise<Result>
+  equip: (item: InventoryItem, slot?: InventoryItem["equipment_slot"]) => Promise<Result>
   use: (item: InventoryItem, amount?: number) => Promise<Result>
 }
 
@@ -15,7 +16,8 @@ export function inventoryItemDetail(item: InventoryItem): SnakeSurfaceRequest {
   const details = [
     item.description.trim() || "Описание предмета не добавлено.",
     `Количество: ${item.quantity} · Вес: ${weight}`,
-    item.equipped ? "Экипировано" : "При себе",
+    item.equipped ? "Экипировано" : item.placement_kind === "hand" ? "В руке" :
+      item.holder_item_id ? "В сумке" : "Требует размещения",
     item.usage_mode === "charges" ? `Заряды: ${item.charges_current ?? 0}/${item.charges_max ?? 0}` : "",
   ].filter(Boolean).join("\n\n")
   return { kind: "detail", eyebrow: "ИНВЕНТАРЬ · ПРЕДМЕТ", title: item.name,
@@ -41,7 +43,19 @@ export function inventoryItemActions(
     actions.push({ id: "use", label: "Использовать", execute: () => result(() => operations.use(item, 1), "Предмет использован.") })
   }
   if (!item.equipped && item.category === "equipment" && item.equipment_slot) {
-    actions.push({ id: "equip", label: "Надеть", execute: () => result(() => operations.equip(item), "Предмет экипирован.") })
+    actions.push({ id: "equip", label: "Экипировать", execute: () => result(() => operations.equip(item), "Предмет экипирован.") })
+  } else if (!item.equipped && item.category === "equipment") {
+    const choices = [
+      ["main_hand", "Оружие"], ["off_hand", "Вторая рука"], ["head", "Голова"],
+      ["chest", "Тело"], ["hands", "Кисти"], ["feet", "Ступни"],
+      ["neck", "Шея"], ["shoulders", "Плечи"], ["back", "Спина"],
+      ["waist", "Пояс"], ["legs", "Ноги"], ["other", "Прочее"],
+    ] as const
+    actions.push({ id: "equip", label: "Экипировать в слот", kind: "branch",
+      children: choices.map(([slot, label]): SnakeAction => ({
+        id: `equip-${slot}`, label,
+        execute: () => result(() => operations.equip(item, slot), "Предмет экипирован."),
+      })) })
   }
   actions.push({ id: "quick", label: "Быстрый доступ", kind: "branch", children: [
     ...[1, 2, 3, 4, 5].map((slot): SnakeAction => ({
@@ -52,18 +66,29 @@ export function inventoryItemActions(
       execute: () => result(() => operations.quick(item, null), "Быстрый доступ очищен.") } satisfies SnakeAction] : []),
   ] })
   const targets = inventorySimpleContainerTargets(items, item).filter((target) => !target.full)
+  const hands = ([0, 1] as const).filter((index) =>
+    !items.some((entry) => entry.id !== item.id && !entry.equipped &&
+      entry.placement_kind === "hand" && entry.placement_index === index))
   if (!item.equipped) {
     actions.push({ id: "move", label: "Переместить", kind: "branch", children: [
-      { id: "carry", label: "При себе", execute: () => result(() => operations.move(item, null), "Предмет переложен.") },
+      ...hands.map((index): SnakeAction => ({
+        id: `hand-${index}`, label: `Рука ${index + 1}`,
+        execute: () => result(() => operations.placeHand(item, index), "Предмет взят в руку."),
+      })),
       ...targets.filter((target) => target.container.id !== item.holder_item_id).map((target): SnakeAction => ({
         id: `bag-${target.container.id}`, label: target.container.name,
         execute: () => result(() => operations.move(item, target.container.id), "Предмет переложен."),
       })),
     ] })
-  } else if (targets.length) {
-    actions.push({ id: "unequip", label: "Снять в сумку", kind: "branch", children:
-      targets.map((target): SnakeAction => ({ id: `unequip-${target.container.id}`, label: target.container.name,
-        execute: () => result(() => operations.move(item, target.container.id), "Предмет снят в сумку.") })) })
+  } else if (targets.length || hands.length) {
+    actions.push({ id: "unequip", label: "Снять", kind: "branch", children: [
+      ...hands.map((index): SnakeAction => ({
+        id: `unequip-hand-${index}`, label: `Рука ${index + 1}`,
+        execute: () => result(() => operations.placeHand(item, index), "Предмет снят в руку."),
+      })),
+      ...targets.map((target): SnakeAction => ({ id: `unequip-${target.container.id}`, label: target.container.name,
+        execute: () => result(() => operations.move(item, target.container.id), "Предмет снят в сумку.") })),
+    ] })
   }
   return actions
 }

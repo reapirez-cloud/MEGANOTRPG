@@ -1,4 +1,5 @@
 import type { InventoryItem } from "../types/characterSheet"
+import type { InventoryPlacementTarget } from "../inventory-engine"
 import { CHARACTER_INVENTORY_INTERFACE_CONTRACT } from "./characterSheetUiContract"
 import InventorySimpleView from "./InventorySimpleView"
 
@@ -12,6 +13,7 @@ export default function CharacterInventoryInterface({
   canControl,
   focusedItemId,
   onMoveItem,
+  onPlaceItem,
   onQuickAccessItem,
   onSwapItems,
   onEquipItem,
@@ -28,9 +30,10 @@ export default function CharacterInventoryInterface({
     item: InventoryItem,
     holderItemId: string | null,
   ) => Promise<Result>
+  onPlaceItem: (item: InventoryItem, placement: InventoryPlacementTarget) => Promise<Result>
   onQuickAccessItem: (item: InventoryItem, slot: number | null) => Promise<Result>
   onSwapItems: (first: InventoryItem, second: InventoryItem) => Promise<Result>
-  onEquipItem: (item: InventoryItem) => Promise<Result>
+  onEquipItem: (item: InventoryItem, slot?: InventoryItem["equipment_slot"]) => Promise<Result>
   onUseItem: (item: InventoryItem, amount?: number) => Promise<Result>
   onBack: () => void
 }) {
@@ -64,6 +67,7 @@ export default function CharacterInventoryInterface({
           canControl={canControl}
           focusedItemId={focusedItemId}
           onMove={onMoveItem}
+          onPlaceHand={(item, index) => onPlaceItem(item, { kind: "hand", index })}
           onQuickAccess={onQuickAccessItem}
           onSwap={onSwapItems}
           onEquip={onEquipItem}

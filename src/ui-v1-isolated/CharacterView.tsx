@@ -957,9 +957,10 @@ export default function CharacterView({
         canControl={control.canControlCharacter}
         focusedItemId={focusedItemId}
         onMoveItem={control.moveItemSimple}
+        onPlaceItem={control.moveItem}
         onQuickAccessItem={control.setQuickAccessSimple}
         onSwapItems={control.swapItemsSimple}
-        onEquipItem={(item) => control.setEquipped(item, true)}
+        onEquipItem={(item, slot) => control.setEquipped(item, true, slot)}
         onUseItem={control.useItem}
         onBack={handleBack}
       />

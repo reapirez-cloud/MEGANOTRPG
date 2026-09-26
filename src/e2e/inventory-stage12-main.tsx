@@ -18,6 +18,12 @@ function SimpleHarness() {
   const [items, setItems] = useState(initialItems.map((entry) => ({ ...entry })))
   return <main style={{ width: "min(100%, 420px)", minHeight: "100vh", margin: "auto", padding: 12, background: "#121517" }}>
     <InventorySimpleView items={items} canControl
+      onPlaceHand={async (entry, index) => {
+        setItems((current) => current.map((candidate) => candidate.id === entry.id
+          ? { ...candidate, equipped: false, holder_item_id: null, placement_kind: "hand", placement_index: index }
+          : candidate))
+        return { ok: true }
+      }}
       onQuickAccess={async (entry, slot) => {
         setItems((current) => current.map((candidate) => ({
           ...candidate,

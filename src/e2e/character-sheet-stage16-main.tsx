@@ -190,6 +190,7 @@ function Stage16Harness() {
         canControl
         focusedItemId={focusedItemId}
         onMoveItem={async () => ({ ok: true })}
+        onPlaceItem={async () => ({ ok: true })}
         onQuickAccessItem={async () => ({ ok: true })}
         onSwapItems={async () => ({ ok: true })}
         onEquipItem={async () => ({ ok: true })}

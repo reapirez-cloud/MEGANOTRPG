@@ -11,6 +11,8 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Player-facing changes
 
+- Removed the infinite “При себе” destination from the active inventory. The main list now shows two hand positions and external carry; old unplaced rows are clearly separated so players can rehouse them without losing items. Equipping gear with missing metadata offers a deliberate slot choice.
+- A grant requires a free bag cell or hand; a full inventory rejects the grant atomically. Known dagger and clothing definitions provide their equipment slots. Coins of one denomination grow in one slot and have nonzero per-coin mass.
 - Rebuilt the active character inventory in graphite: five numbered quick-access slots, compact equipment (including both rings and amulet), one-row bag selection, search and category filters, and a readable item list without Tetris cells.
 - Item tap opens full art and description in a Snake detail window; long press/right click or the item action button opens Snake commands for inspect, use, equip, move, quick-slot assignment and real-destination unequip. A quick-slot tap directly uses a usable item.
 
@@ -22,6 +24,7 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Database / migration changes
 
+- Added physical auto-placement for new character items, a capacity error for full bags/hands, root rejection for simple and spatial moves, backfill of known equipment slots and coin weights, and terminal classification for capacity failures. Identical, unreferenced legacy root coin stacks are consolidated with a private old-ID audit/alias; linked or stateful stacks remain untouched. Other old root items remain available for relocation.
 - Migrated the single quick-access marker to five unique, version-checked, character-authorized slot references on existing Cheburashka items; owner changes clear them and older callers route through slot 1.
 
 - Added AI World Evolution Stage 8 transactional scene-actor promotion. `ai_scene_actors` now stores an idempotent promoted-character mapping/provenance, while `promote_ai_scene_actor_to_npc_v1` creates exactly one canonical NPC and preserves actor HP, resources, conditions/effects, location/game time and discovery state.
@@ -39,6 +42,7 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Runtime and architecture changes
 
+- The inventory worker tool now names capacity and equipment requirements; a deterministic no-space failure ends the intent rather than asking the model to repeat an impossible command. GM-issued items use the same placement path as AI-issued items.
 - Junior post-turn inventory planning now normalizes JSON-stringified batch deltas, rejects malformed arguments before Executor enqueue, and gives the model one bounded correction attempt. The same invalid command no longer burns all Executor retries.
 - Freddy keeps a failed tool call inside its durable turn ledger as an explicit uncertain-result error that directs a canonical read before a write retry; one tool exception no longer aborts the entire turn.
 - The provider adapter requests non-streaming completions and can reconstruct a completed SSE response from an OpenAI-compatible gateway. Freddy continues its durable turn after transient 429/5xx or invalid provider responses, without a second upstream request inside the same Edge execution.
@@ -63,6 +67,7 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Tests / verification
 
+- Production build, lint and nine focused inventory/agent regressions passed locally. The new SQL migration is prepared but has not been applied to the live database.
 - Added targeted regression cases for stringified/invalid inventory batches and complete/truncated SSE tool calls; checked the voss-agent bundle, the focused agent suite, lint and production build.
 
 - Built UI 1.0 and checked compact inventory/Snake action regressions; live Supabase migration and quick-slot index were applied, with authenticated-only RPC execution verified.

@@ -387,7 +387,7 @@ export function useUiV1CharacterControl(
     "Не удалось восстановить персонажа.",
   ), [characterId, context, gm])
 
-  const setEquipped = useCallback(async (item: InventoryItem, equipped: boolean): Promise<Result> => {
+  const setEquipped = useCallback(async (item: InventoryItem, equipped: boolean, slotOverride?: InventoryItem["equipment_slot"]): Promise<Result> => {
     if (!canControlCharacter) return { ok: false, error: "Недостаточно прав." }
     if (!equipped) {
       return { ok: false, error: "Для снятия выбери реальное место: руку, сумку или внешнюю ячейку." }
@@ -399,7 +399,7 @@ export function useUiV1CharacterControl(
           characterId,
           item.id,
           equipped,
-          item.equipment_slot,
+          slotOverride || item.equipment_slot,
           item.version,
         )
       } else {
@@ -409,7 +409,7 @@ export function useUiV1CharacterControl(
           characterId,
           itemId: item.id,
           equipped,
-          equipmentSlot: item.equipment_slot,
+          equipmentSlot: slotOverride || item.equipment_slot,
           expectedVersion: item.version,
         })
       }

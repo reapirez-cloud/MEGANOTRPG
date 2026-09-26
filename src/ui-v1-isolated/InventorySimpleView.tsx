@@ -9,9 +9,10 @@ type Result = { ok: boolean; error?: string }
 type Props = {
   items: InventoryItem[]; canControl: boolean; focusedItemId?: string | null
   onMove: (item: InventoryItem, holder: string | null) => Promise<Result>
+  onPlaceHand: (item: InventoryItem, index: 0 | 1) => Promise<Result>
   onQuickAccess: (item: InventoryItem, slot: number | null) => Promise<Result>
   onSwap: (first: InventoryItem, second: InventoryItem) => Promise<Result>
-  onEquip: (item: InventoryItem) => Promise<Result>
+  onEquip: (item: InventoryItem, slot?: InventoryItem["equipment_slot"]) => Promise<Result>
   onUse: (item: InventoryItem, amount?: number) => Promise<Result>
 }
 function semanticRole(item: InventoryItem) {
@@ -178,7 +179,7 @@ function itemFilter(item: InventoryItem, filter: typeof FILTERS[number]) {
   return !["equipment", "consumable", "material"].includes(item.category)
 }
 
-export default function InventorySimpleView({ items, canControl, focusedItemId, onMove, onQuickAccess, onSwap, onEquip, onUse }: Props) {
+export default function InventorySimpleView({ items, canControl, focusedItemId, onMove, onPlaceHand, onQuickAccess, onSwap, onEquip, onUse }: Props) {
   const snake = useSnake()
   const [activeBagId, setActiveBagId] = useState<string | null>(null)
   const [query, setQuery] = useState("")
@@ -198,11 +199,13 @@ export default function InventorySimpleView({ items, canControl, focusedItemId, 
     (i === 0 ? items.find((item) => item.item_state?.quick_access === true) : undefined))
   const equipment = new Map(items.filter((item) => item.equipped && item.equipment_slot).map((item) => [item.equipment_slot, item]))
   const currentBag = bags.find((bag) => bag.id === activeBagId) || null
+  const unplaced = items.filter((item) => !item.equipped && !item.holder_item_id &&
+    item.placement_kind !== "hand" && item.placement_kind !== "external" && item.category !== "container")
   const visibleItems = (currentBag ? inventorySimpleChildren(items, currentBag.id) :
-    items.filter((item) => !item.equipped && item.category !== "container" && !item.holder_item_id))
+    items.filter((item) => !item.equipped && (item.placement_kind === "hand" || item.placement_kind === "external")))
     .filter((item) => itemFilter(item, filter) && item.name.toLocaleLowerCase("ru").includes(query.toLocaleLowerCase("ru")))
   const totalWeight = items.reduce((total, item) => total + (item.weight == null ? 0 : Number(item.weight) * item.quantity), 0)
-  const operations = { move: onMove, quick: onQuickAccess, equip: onEquip, use: onUse }
+  const operations = { move: onMove, placeHand: onPlaceHand, quick: onQuickAccess, equip: onEquip, use: onUse }
   function actions(item: InventoryItem) {
     return inventoryItemActions(item, items, canControl, operations, setActiveBagId)
   }
@@ -236,13 +239,17 @@ export default function InventorySimpleView({ items, canControl, focusedItemId, 
     }
     const equipmentTarget = element.closest<HTMLElement>("[data-equip-slot]")
     if (equipmentTarget) {
-      if (!item.equipped && item.category === "equipment" && item.equipment_slot === equipmentTarget.dataset.equipSlot &&
-        !equipment.has(item.equipment_slot)) void commit(() => onEquip(item))
+      const slot = equipmentTarget.dataset.equipSlot as InventoryItem["equipment_slot"]
+      if (!item.equipped && item.category === "equipment" &&
+        (!item.equipment_slot || item.equipment_slot === slot) && slot &&
+        !equipment.has(slot)) void commit(() => onEquip(item, slot))
       else setDragId(null)
       return
     }
     const bagTarget = element.closest<HTMLElement>("[data-bag-target]")
-    if (bagTarget) { void commit(() => onMove(item, bagTarget.dataset.bagTarget || null)); return }
+    if (bagTarget?.dataset.bagTarget) { void commit(() => onMove(item, bagTarget.dataset.bagTarget!)); return }
+    const handTarget = element.closest<HTMLElement>("[data-hand-target]")
+    if (handTarget) { void commit(() => onPlaceHand(item, Number(handTarget.dataset.handTarget) as 0 | 1)); return }
     const other = element.closest<HTMLElement>("[data-item-id]")
     if (other?.dataset.itemId && other.dataset.itemId !== id) {
       const target = items.find((entry) => entry.id === other.dataset.itemId)
@@ -303,7 +310,7 @@ export default function InventorySimpleView({ items, canControl, focusedItemId, 
     </SnakeTrigger>
   }
   return <div className="u1-inventory" data-simple-inventory="v3" data-dragging={Boolean(dragId) || undefined}>
-    <div className="u1-inventory__heading"><h1>Инвентарь</h1><div><span>{totalWeight.toLocaleString("ru-RU", { maximumFractionDigits: 1 })} кг при себе</span><i /></div></div>
+    <div className="u1-inventory__heading"><h1>Инвентарь</h1><div><span>Общий вес: {totalWeight.toLocaleString("ru-RU", { maximumFractionDigits: 1 })} кг</span><i /></div></div>
     <section className="u1-inventory__quick" aria-label="Быстрый доступ">
       {quick.map((item, index) => <div key={index} className="u1-inventory__quick-cell" data-quick-slot={index + 1}
         onDragOver={dragOver} onDrop={nativeDrop}>
@@ -334,9 +341,15 @@ export default function InventorySimpleView({ items, canControl, focusedItemId, 
         })}
       </div>
     </section>
+    <div className="u1-inventory__bags" aria-label="Руки">
+      {([0, 1] as const).map((index) => <div key={index} data-hand-target={index}
+        onDragOver={dragOver} onDrop={nativeDrop}>
+        Рука {index + 1}: {items.find((item) => !item.equipped && item.placement_kind === "hand" && item.placement_index === index)?.name || "свободна"}
+      </div>)}
+    </div>
     <div className="u1-inventory__bags" aria-label="Сумки">
       <button type="button" className={!currentBag ? "is-active" : ""} data-bag-target=""
-        onDragOver={dragOver} onDrop={nativeDrop} onClick={() => setActiveBagId(null)}>При себе</button>
+        onClick={() => setActiveBagId(null)}>Руки</button>
       {bags.map((bag) => <SnakeTrigger key={bag.id} entity={{ type: "inventory-item", id: bag.id }} actions={actions(bag)}>
         <button type="button" className={currentBag?.id === bag.id ? "is-active" : ""}
           data-bag-target={bag.id} onDragOver={dragOver} onDrop={nativeDrop} onClick={() => setActiveBagId(bag.id)}>
@@ -348,9 +361,14 @@ export default function InventorySimpleView({ items, canControl, focusedItemId, 
     <div className="u1-inventory__filters">{FILTERS.map((entry) => <button type="button" key={entry}
       className={entry === filter ? "is-active" : ""} onClick={() => setFilter(entry)}>{entry}</button>)}</div>
     <section className="u1-inventory__list" aria-label="Предметы">
-      <div className="u1-inventory__list-heading"><strong>{currentBag?.name || "При себе"}</strong><span>{visibleItems.length} предметов</span></div>
+      <div className="u1-inventory__list-heading"><strong>{currentBag?.name || "Руки и крепления"}</strong><span>{visibleItems.length} предметов</span></div>
       {visibleItems.length ? visibleItems.map(itemRow) : <p className="u1-inventory__empty">Здесь нет предметов</p>}
     </section>
+    {unplaced.length > 0 && <section className="u1-inventory__list" aria-label="Неразмещённые предметы">
+      <div className="u1-inventory__list-heading"><strong>Неразмещённые старые предметы</strong><span>{unplaced.length}</span></div>
+      <p className="u1-inventory__empty">Переложите в сумку или возьмите в свободную руку.</p>
+      {unplaced.filter((item) => itemFilter(item, filter) && item.name.toLocaleLowerCase("ru").includes(query.toLocaleLowerCase("ru"))).map(itemRow)}
+    </section>}
     {error && <div role="alert" className="u1-inventory__error">{error}</div>}
   </div>
 }
