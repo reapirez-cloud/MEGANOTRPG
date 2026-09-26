@@ -10,7 +10,7 @@ import type {
   ResolvedSpellResourceOption,
   SkillKey,
 } from "../../character-engine/index.ts"
-import { spellSlotResources } from "../characters/spellSlots.ts"
+import { spellCastingResources } from "../characters/spellSlots.ts"
 import { buildChatActionModel, type ChatActionSourceGroup } from "./chatActionModel.ts"
 import "./ChatActionSheet.css"
 
@@ -182,7 +182,7 @@ function SpellSlotFlow({ spells, contract, channel, setChannel, busy, onCast, em
   onCast: (selection: SpellCastSelection) => void
   emptyTitle: string
 }) {
-  const slots = useMemo(() => spellSlotResources(contract.resources), [contract.resources])
+  const slots = useMemo(() => spellCastingResources(contract.resources, spells), [contract.resources])
   const cantrips = useMemo(() => spells.map(cantripCast).filter((item): item is SpellCastSelection => item !== null), [spells])
   const selectedSlot = channel && channel !== "cantrips" ? slots.find(({ resource }) => resource.stateKey === channel) || null : null
   const casts = useMemo(() => {
@@ -202,12 +202,16 @@ function SpellSlotFlow({ spells, contract, channel, setChannel, busy, onCast, em
         const maximum = Math.max(0, Math.round(resource.max.value))
         const current = Math.max(0, Math.min(maximum, Math.round(resource.current)))
         const depleted = current <= 0
-        return <button className={`action-spell-slot ${depleted ? "is-depleted" : ""}`} type="button" key={resource.stateKey} disabled={busy || depleted} onClick={() => setChannel(resource.stateKey)}><span className="action-spell-slot__level">{level}</span><span className="action-spell-slot__copy"><strong>Ячейка {level} уровня</strong><span className="action-spell-slot__orbs" aria-hidden="true">{Array.from({ length: maximum }, (_, index) => <i className={index < current ? "is-lit" : ""} key={index} />)}</span><small>{depleted ? "Ячейки закончились" : `${current} из ${maximum} доступно`}</small></span><b>{current}/{maximum}</b></button>
+        return <button className={`action-spell-slot ${depleted ? "is-depleted" : ""}`} type="button" key={resource.stateKey} disabled={busy || depleted} onClick={() => setChannel(resource.stateKey)}><span className="action-spell-slot__level">{level}</span><span className="action-spell-slot__copy"><strong>{/^spell_slot_\\d+$/.test(resource.stateKey) ? `Ячейка ${level} уровня` : resource.label}</strong><span className="action-spell-slot__orbs" aria-hidden="true">{Array.from({ length: maximum }, (_, index) => <i className={index < current ? "is-lit" : ""} key={index} />)}</span><small>{depleted ? "Ячейки закончились" : `${current} из ${maximum} доступно`}</small></span><b>{current}/{maximum}</b></button>
       })}
     </div>
   </div>
   return <div className="action-spell-results">
-    <div className="action-spell-results__head"><button type="button" onClick={() => setChannel(null)}>‹ Ячейки</button><div><small>{channel === "cantrips" ? "Без ячейки" : `Ячейка ${selectedSlot?.level || "—"} уровня`}</small><strong>Шаг 2 · {casts.length} доступно</strong>{selectedSlot && <span>{Math.round(selectedSlot.resource.current)}/{Math.round(selectedSlot.resource.max.value)} ячеек осталось</span>}</div></div>
+    <div className="action-spell-results__head"><button type="button" onClick={() => setChannel(null)}>‹ Ячейки</button><div><small>{channel === "cantrips" ? "Без ячейки" : selectedSlot
+              ? (/^spell_slot_\\d+$/.test(selectedSlot.resource.stateKey)
+                  ? `Ячейка ${selectedSlot.level} уровня`
+                  : selectedSlot.resource.label)
+              : "Ресурс магии"}</small><strong>Шаг 2 · {casts.length} доступно</strong>{selectedSlot && <span>{Math.round(selectedSlot.resource.current)}/{Math.round(selectedSlot.resource.max.value)} ячеек осталось</span>}</div></div>
     {casts.length ? <div className="action-v2-list action-v2-list--cards">{casts.map((selection) => <button disabled={busy} type="button" key={`${selection.spell.key}:${selection.accessKey}:${selection.methodKey}:${selection.optionKey || "free"}`} onClick={() => onCast(selection)}><i>✧</i><span><strong>{selection.spell.identity.name}</strong><small>{spellSummary(selection.spell)}</small></span><em>›</em></button>)}</div> : <div className="action-v2-empty action-v2-empty--compact"><span>✧</span><strong>Этой ячейкой нечего применить</strong><p>Вернись и выбери другой уровень.</p></div>}
   </div>
 }
