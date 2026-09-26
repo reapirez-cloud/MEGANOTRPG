@@ -3,6 +3,7 @@ import type {
   CharacterEngineInput,
   ResourceState,
   ResolvedCharacterContract,
+  ResolvedSpell,
 } from "../character-engine/index.ts"
 import type { Character } from "../context/CharacterContext.tsx"
 import type { InventoryLoadProjection, InventoryMechanicalProjection } from "../inventory-engine/index.ts"
@@ -128,36 +129,89 @@ function catalogSlugFromResolvedKey(key: string): string | null {
   return slug && /^[a-z0-9-]+$/i.test(slug) ? slug : null
 }
 
+function canonicalCatalogSpellKey(
+  key: string,
+  catalogById: ReadonlyMap<string, SpellCatalogRoutingRow>,
+): string {
+  const prefix = "spell:catalog-"
+  if (!key.startsWith(prefix)) return key
+  const row = catalogById.get(key.slice(prefix.length))
+  return row?.slug ? `spell:${row.slug}` : key
+}
+
+function mergeCatalogSpellIdentities(
+  spells: ResolvedSpell[],
+  catalogById: ReadonlyMap<string, SpellCatalogRoutingRow>,
+): ResolvedSpell[] {
+  const merged = new Map<
+    string,
+    { spell: ResolvedSpell; hasCanonicalKey: boolean }
+  >()
+
+  for (const spell of spells) {
+    const key = canonicalCatalogSpellKey(spell.key, catalogById)
+    const hasCanonicalKey = key === spell.key
+    const normalized: ResolvedSpell = key === spell.key
+      ? spell
+      : { ...spell, key }
+
+    const current = merged.get(key)
+    if (!current) {
+      merged.set(key, { spell: normalized, hasCanonicalKey })
+      continue
+    }
+
+    const accessKeys = new Set(current.spell.accesses.map((access) => access.key))
+    const accesses = [
+      ...current.spell.accesses,
+      ...normalized.accesses.filter((access) => !accessKeys.has(access.key)),
+    ]
+    const preferIncomingIdentity = hasCanonicalKey && !current.hasCanonicalKey
+
+    merged.set(key, {
+      spell: {
+        ...current.spell,
+        key,
+        identity: preferIncomingIdentity
+          ? normalized.identity
+          : current.spell.identity,
+        accesses,
+        available: accesses.some((access) => access.available),
+      },
+      hasCanonicalKey: current.hasCanonicalKey || hasCanonicalKey,
+    })
+  }
+
+  return [...merged.values()]
+    .map((entry) => entry.spell)
+    .sort((left, right) =>
+      left.identity.level - right.identity.level ||
+      left.identity.name.localeCompare(right.identity.name, "ru"),
+    )
+}
+
 function withCatalogDamageRouting(
   contract: ResolvedCharacterContract,
-  characterSpells: CharacterSpellCatalogLink[],
   catalogRows: SpellCatalogRoutingRow[],
 ): ResolvedCharacterContract {
   const catalogById = new Map(catalogRows.map((row) => [row.id, row]))
   const catalogBySlug = new Map(catalogRows.map((row) => [row.slug, row]))
-  const damageSpellKeys = new Set<string>()
-
-  for (const characterSpell of characterSpells) {
-    if (!characterSpell.catalog_spell_id || !catalogDealsDamage(catalogById.get(characterSpell.catalog_spell_id))) continue
-    const accessKey = `legacy-${characterSpell.id}`
-    const resolved = contract.spells.find((spell) => spell.accesses.some((access) => access.key === accessKey))
-    if (resolved) damageSpellKeys.add(resolved.key)
-  }
-
-  for (const spell of contract.spells) {
-    const slug = catalogSlugFromResolvedKey(spell.key)
-    if (slug && catalogDealsDamage(catalogBySlug.get(slug))) damageSpellKeys.add(spell.key)
-  }
+  const spells = mergeCatalogSpellIdentities(contract.spells, catalogById)
 
   return {
     ...contract,
-    spells: contract.spells.map((spell) => ({
-      ...spell,
-      identity: {
-        ...spell.identity,
-        dealsDamage: damageSpellKeys.has(spell.key),
-      } as typeof spell.identity & RoutedSpellIdentity,
-    })),
+    spells: spells.map((spell) => {
+      const slug = catalogSlugFromResolvedKey(spell.key)
+      return {
+        ...spell,
+        identity: {
+          ...spell.identity,
+          dealsDamage: Boolean(
+            slug && catalogDealsDamage(catalogBySlug.get(slug)),
+          ),
+        } as typeof spell.identity & RoutedSpellIdentity,
+      }
+    }),
   }
 }
 
@@ -299,7 +353,7 @@ export class CharacterRuntimeResolver {
       }
     }
 
-    const routedContract = withCatalogDamageRouting(resolvedView.contract, core.spells, catalog.rows)
+    const routedContract = withCatalogDamageRouting(resolvedView.contract, catalog.rows)
 
     return {
       characterId: input.character.id,
