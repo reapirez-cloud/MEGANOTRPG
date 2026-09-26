@@ -73,6 +73,6 @@ test("mobile composer follows Telegram and virtual-keyboard visible geometry", a
   assert.match(viewport, /Math\.min\([\s\S]*telegramBottom[\s\S]*keyboardTop/)
   assert.match(
     css,
-    /\[data-keyboard-open\] \{[\s\S]*var\(--u1-chat-viewport-height[\s\S]*var\(--u1-content-safe-top/,
+    /\.u1-room-shell\[data-chat-room-final-stage="6"\] \{[\s\S]*var\(--u1-chat-viewport-height[\s\S]*var\(--u1-content-safe-top/,
   )
 })

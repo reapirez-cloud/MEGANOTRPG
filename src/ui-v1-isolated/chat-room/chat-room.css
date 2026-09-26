@@ -5624,10 +5624,13 @@
    stable layout viewport so the keyboard cannot cover the composer row. */
 .u1-room-shell[data-chat-room-final-stage="6"] .u1-chat-composer {
   padding-bottom:
-    calc(12px + var(--u1-safe-bottom, env(safe-area-inset-bottom, 0px)));
+    calc(16px + var(--u1-safe-bottom, env(safe-area-inset-bottom, 0px)));
 }
 
-.u1-room-shell[data-chat-room-final-stage="6"][data-keyboard-open] {
+.u1-room-shell[data-chat-room-final-stage="6"] {
+  /* The stage already starts below Telegram's top inset. The viewport bottom
+     is measured from the window origin, so subtract that inset even when
+     Android resizes every viewport metric and keyboard detection is false. */
   height:
     calc(
       var(--u1-chat-viewport-height, 100dvh) -

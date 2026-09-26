@@ -112,7 +112,7 @@ test("stage 8 keeps the composer above Android and Telegram keyboards", async ()
   )
   assert.match(
     css,
-    /\.u1-chat-composer \{[\s\S]*calc\(12px \+ var\(--u1-safe-bottom/,
+    /\.u1-chat-composer \{[\s\S]*calc\(16px \+ var\(--u1-safe-bottom/,
   )
 })
 
