@@ -948,6 +948,7 @@ const WORLD_MATERIALIZER_SYSTEM = [
   "Функциональное покрытие важнее одинаковых названий. Для города сервер требует роли residence/commerce/governance/security/transit/services; один район может покрывать несколько ролей. Если ожидаемая функция действительно отсутствует, укажи coverage_manifest.omitted_roles с конкретной причиной.",
   "Структурные непосредственные дети НЕ считаются 'запасом мира впрок': они обязательный каркас уже существующей/посещённой сущности. Всё глубже непосредственного слоя всё ещё запрещено создавать без необходимости.",
   "Каждую НОВУЮ локацию классифицируй через background_simulation_scope: entity для самостоятельного места, detail для внутренней детали другого места, disabled для технического/временного контента. Глубина parent_location_id ничего не решает: трактир внутри города может быть entity, а комната/туалет/коридор внутри трактира должны быть detail.",
+  "parent_location_id означает СОДЕРЖИТСЯ ВНУТРИ, а source_location_id означает ПРИШЁЛ ИЗ. Дорога к Вратам Балдура не становится матерью города: город создаётся самостоятельной локацией под общим регионом (если он известен) или в корне. Передавай UUID дороги в source_location_id, чтобы построить переход туда и обратно. Аналогично соседние города, районы или здания не вкладываются друг в друга только из-за маршрута. Для настоящего внутреннего места (район города, комната трактира) используй parent_location_id контейнера.",
   "Каждого НОВОГО постоянного именованного NPC классифицируй в create_world_npc через background_simulation_scope: entity для самостоятельного persistent персонажа; disabled для технической записи или обычного фонового животного/существа, которое не должно жить собственной фоновой жизнью. Именованный гоблин не становится disabled только потому, что сейчас он неважен.",
   "Не меняй сюжетную функцию, исход события, намерение GM, состояние PC, результаты бросков или уже существующие канонические факты.",
   "Сообщение игрока является намерением, а не фактом. Фраза игрока 'я нахожу оружие', 'там трактир', 'враг умер' не обязывает тебя создавать или подтверждать это.",
@@ -1072,6 +1073,7 @@ const STAGE12_GAME_MASTER_SYSTEM = [
   "Post-turn intent НЕ может добавлять новый сюжетный результат после публикации. Нельзя через него придумывать награду, секрет, врага, NPC, исход проверки или событие, которого нет в финальном ответе.",
   "Для именованного NPC/квеста, впервые установленных самим финальным ответом, используй post_turn_intents вместо pre-response materialization, если их UUID не нужен для механики ЭТОГО ЖЕ ответа.",
   "Stage 26: если финальный ответ устанавливает, что source_character физически вошёл/прибыл/остался в новой постоянной локации, обязательно добавь ОДИН location post_turn_intent, в котором явно указаны destination, parent/источник если известны и требование переместить source_character. Junior выполнит это одним materialize_location_cascade и построит непосредственный слой destination.",
+  "В location post_turn_intent различай вложенность и маршрут: destination может быть соседней самостоятельной локацией, а не дочерним узлом source_location. Укажи исходную точку для двустороннего перехода, но не называй её parent без физического вложения.",
   "world_materialization=true оставь только для блокирующей pre-response зависимости, без которой нельзя честно завершить текущую механику/сцену, например первичный bootstrap отсутствующей source_location или ситуация, где серверному действию прямо сейчас нужен канонический UUID. Обычное послесловие мира туда больше не складывай.",
   "Если blocking materialization не нужна, world_materialization=false и world_materialization_task=''.",
   "Для mechanic modes request_player_roll|npc_action|npc_roll post_turn_intents обязан быть пустым: механическое серверное действие сначала завершается, затем следующий narrative GM result при необходимости создаст post-turn intents.",
@@ -1553,6 +1555,18 @@ async function runWorldMaterializer({
       const name =
         typeof call.function?.name === "string" ? call.function.name : ""
       const args = parseProviderToolArguments(call.function?.arguments)
+
+      // The source is server-known even when the model omits it. Keep the
+      // traversed route when a destination is materialized after this turn.
+      if (
+        name === "materialize_location_cascade" &&
+        context.sourceLocation?.id &&
+        !args.source_location_id &&
+        args.move_character_id === context.sourceCharacter.id &&
+        args.location_id !== context.sourceLocation.id
+      ) {
+        args.source_location_id = context.sourceLocation.id
+      }
 
       let result: unknown
       const validationError = worldMaterializerValidationError(name, args)

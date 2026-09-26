@@ -1,24 +1,5 @@
 import type { ChatRoomShellModel } from "./chatRoomContracts"
-import { chatRoomDayPeriodLabel } from "./chatRoomContracts"
 import { pushAppHash } from "../navigationGestures"
-
-function ClockIcon() {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <circle cx="12" cy="12" r="8.25" />
-      <path d="M12 7.5v5l3 1.8" />
-    </svg>
-  )
-}
-
-function LocationIcon() {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <path d="M12 21s6-5.3 6-11a6 6 0 1 0-12 0c0 5.7 6 11 6 11Z" />
-      <circle cx="12" cy="10" r="2" />
-    </svg>
-  )
-}
 
 function CharacterFallback({ name }: { name: string }) {
   return (
@@ -64,30 +45,16 @@ function HpBlock({
 }
 
 function SceneContext({ model }: { model: ChatRoomShellModel }) {
-  const dayPeriod = chatRoomDayPeriodLabel(model.context.dayPeriod)
   const location = model.context.locationName || "Не определена"
 
   return (
-    <div className="u1-room-context" aria-label="Контекст сцены">
-      <div className="u1-room-context__item" data-context="time">
-        <span className="u1-room-context__icon">
-          <ClockIcon />
-        </span>
-        <span className="u1-room-context__copy">
-          <span>Время суток</span>
-          <strong>{dayPeriod}</strong>
-        </span>
+    <div className="u1-room-context u1-room-location-preview" aria-label={`Локация: ${location}`}>
+      <div className="u1-room-location-preview__art">
+        {model.context.locationImageUrl && (
+          <img src={model.context.locationImageUrl} alt="" decoding="async" draggable={false} />
+        )}
       </div>
-
-      <div className="u1-room-context__item" data-context="location">
-        <span className="u1-room-context__icon">
-          <LocationIcon />
-        </span>
-        <span className="u1-room-context__copy">
-          <span>Локация</span>
-          <strong title={location}>{location}</strong>
-        </span>
-      </div>
+      <strong className="u1-room-location-preview__name" title={location}>{location}</strong>
     </div>
   )
 }

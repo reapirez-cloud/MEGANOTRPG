@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "npm:@supabase/supabase-js@2.112.3"
 import type { VossAuthority } from "./authority.ts"
+import { canContainLocation } from "./location-hierarchy.ts"
 
 type JsonRecord = Record<string, unknown>
 
@@ -2428,6 +2429,32 @@ async function materializeLocationCascade(
     "children",
   ]) {
     if (Object.prototype.hasOwnProperty.call(args, key)) input[key] = args[key]
+  }
+
+  // A route is a transition, not a hierarchy edge. If the materializer has
+  // mistaken the departure point for the parent of an equal/larger place,
+  // attach the destination to the nearest containing ancestor instead.
+  const proposedParentId = uuid(input.parent_location_id)
+  if (proposedParentId && !input.location_id) {
+    if (typeof input.scale === "string") {
+      let cursor: string | null = proposedParentId
+      const visited = new Set<string>()
+      while (cursor && !visited.has(cursor)) {
+        visited.add(cursor)
+        const { data: ancestor, error } = await context.admin
+          .from("locations")
+          .select("id,parent_location_id,scale")
+          .eq("campaign_id", context.campaignId)
+          .eq("id", cursor)
+          .eq("lifecycle_state", "active")
+          .maybeSingle()
+        if (error) return { error: error.message }
+        if (!ancestor) return { error: "cascade_parent_location_unavailable" }
+        if (canContainLocation(ancestor.scale, input.scale)) break
+        cursor = ancestor.parent_location_id
+      }
+      input.parent_location_id = cursor
+    }
   }
 
   const { data, error } = await context.admin.rpc(

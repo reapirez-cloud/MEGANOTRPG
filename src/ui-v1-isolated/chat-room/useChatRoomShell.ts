@@ -427,17 +427,37 @@ export function useChatRoomShell(roomId: string) {
         }
 
     let locationName = room.context_location_name || null
-    const characterLocationId = presentation.world?.location_id || null
+    let locationImageUrl: string | null = null
+    const locationId =
+      presentation.world?.location_id ||
+      room.context_location_id ||
+      room.location_id ||
+      null
 
-    if (characterLocationId) {
-      const locationResult = await supabase
+    if (locationId) {
+      const [locationResult, mediaResult] = await Promise.all([
+        supabase
         .from("locations")
-        .select("name")
+        .select("name,image_url")
         .eq("campaign_id", viewerContext.campaign_id)
-        .eq("id", characterLocationId)
-        .maybeSingle()
+        .eq("id", locationId)
+        .maybeSingle(),
+        aiGameMasterEnabled
+          ? supabase.rpc("list_ai_gm_location_media_states_v1", {
+              p_campaign_id: viewerContext.campaign_id,
+            })
+          : Promise.resolve(null),
+      ])
 
       locationName = locationResult.data?.name || locationName
+      const media = ((mediaResult?.data || []) as Array<{
+        location_id: string
+        media_path: string | null
+      }>).find((row) => row.location_id === locationId)
+      const imagePath = media?.media_path || locationResult.data?.image_url
+      locationImageUrl = imagePath
+        ? await resolveCampaignMediaUrl(imagePath)
+        : null
     }
 
     setModel({
@@ -476,6 +496,7 @@ export function useChatRoomShell(roomId: string) {
             room.day_period,
         ),
         locationName,
+        locationImageUrl,
       },
       quickActions: {
         hasCharacter: Boolean(presentation.character),
@@ -499,6 +520,16 @@ export function useChatRoomShell(roomId: string) {
       window.removeEventListener(CHAT_SPEAKER_CHANGED_EVENT, handleSpeakerChanged)
     }
   }, [load, roomId])
+
+  // Location movement and image generation complete after the visible GM
+  // message. Keep the preview in sync while the player stays in this room.
+  useEffect(() => {
+    if (!model?.viewer.aiGameMasterEnabled) return
+    const interval = window.setInterval(() => {
+      if (document.visibilityState === "visible") void load(true)
+    }, 20_000)
+    return () => window.clearInterval(interval)
+  }, [load, model?.viewer.aiGameMasterEnabled])
 
   return {
     model,

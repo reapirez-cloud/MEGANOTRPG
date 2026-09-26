@@ -35,6 +35,7 @@ export type ChatRoomHeaderContext = {
   campaignDay: number | null
   dayPeriod: ChatRoomDayPeriod | null
   locationName: string | null
+  locationImageUrl: string | null
 }
 
 export type ChatRoomQuickActions = {
