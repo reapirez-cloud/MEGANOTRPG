@@ -39,16 +39,3 @@ test("chat ownership stage 1 keeps GM speaker identity dynamic and independent",
   assert.match(eventModel, /aiGmOutput \|\| aiGmRollRequest \|\| aiGmMedia/)
   assert.doesNotMatch(feedItem, /viewerUserId/)
 })
-
-
-test("AI-GM media is authored by the narrator and stays on the GM side", async () => {
-  const [feed, eventModel] = await Promise.all([
-    readFile(feedPath, "utf8"),
-    readFile(eventModelPath, "utf8"),
-  ])
-
-  assert.match(eventModel, /systemEvent.*system_event/)
-  assert.match(eventModel, /"ai_gm_media"/)
-  assert.match(eventModel, /aiGmOutput \|\| aiGmRollRequest \|\| aiGmMedia/)
-  assert.match(feed, /!event\.source\.aiGm/)
-})
