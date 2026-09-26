@@ -48,8 +48,10 @@ const WORKER_SYSTEM = [
   "Для подтверждённых вещей NPC используй set_npc_text_inventory: character_id, inventory_text и optional inventory_data array. Это лёгкий канонический список, он НЕ создаёт physical item instances. Не материализуй отдельные предметы, пока вещь не нужна механически или не передаётся игроку.",
   "Для update_world_npc меняй только поля, прямо подтверждённые окном: location_id, relationship или profile. Не переписывай имя, bio, stats, avatar.",
   "Факты memory_facts тоже должны иметь evidence_message_ids и не должны превращать неподтверждённое заявление PC в факт.",
+  "Каждый memory_fact обязан иметь скрытый retrieval-index: search_tags, search_aliases, relation_keys, entity_refs. Теги короткие, нормализованные, без # и без художественных синонимов. UUID в entity_refs бери только из current_state/campaign_events, никогда не придумывай.",
+  "search_tags описывают смысл факта; search_aliases — реальные имена/титулы/варианты названия; relation_keys — причинные связи вида npc:faction, event:location, quest:npc; entity_refs — {kind,id,relation}. Структурные ID важнее тегов.",
   "Summary может описывать попытки игроков, но чётко отличай намерение от подтверждённого результата.",
-  "Верни только JSON без markdown: {summary_title:string, summary:string, memory_facts:[{fact_key,subject_type,subject_id,predicate,statement,confidence,evidence_message_ids:string[]}], owner_actions:[{tool,args,evidence_message_ids:string[],confidence:number,reason:string}]}",
+  "Верни только JSON без markdown: {summary_title:string, summary:string, memory_facts:[{fact_key,subject_type,subject_id,predicate,statement,confidence,evidence_message_ids:string[],search_tags:string[],search_aliases:string[],relation_keys:string[],entity_refs:[{kind,id,relation}]}], owner_actions:[{tool,args,evidence_message_ids:string[],confidence:number,reason:string}]}",
 ].join("\n")
 
 function record(value: unknown): JsonRecord {
@@ -76,6 +78,28 @@ function ids(value: unknown, max = 60) {
       .map((item) => String(item).trim())
       .filter(Boolean),
   )].slice(0, max)
+}
+
+function retrievalEntityRefs(value: unknown) {
+  const allowed = new Set([
+    "character","pc","npc","location","faction","quest",
+    "quest_target","memory_fact","event","other",
+  ])
+  const output: JsonRecord[] = []
+  const seen = new Set<string>()
+
+  for (const raw of records(value).slice(0, 48)) {
+    const kind = text(raw.kind, 32).toLowerCase()
+    const id = text(raw.id, 180)
+    const relation = text(raw.relation, 96).toLowerCase() || "related"
+    if (!allowed.has(kind) || !id) continue
+    const key = kind + ":" + id + ":" + relation
+    if (seen.has(key)) continue
+    seen.add(key)
+    output.push({ kind, id, relation })
+    if (output.length >= 32) break
+  }
+  return output
 }
 
 function confidence(value: unknown) {
@@ -687,13 +711,43 @@ async function saveMaintenanceMemory(
     const statement = text(fact.statement, 6000)
     if (!statement) return []
 
+    const subjectType = text(fact.subject_type, 80).toLowerCase() || null
+    const subjectId = text(fact.subject_id, 180) || null
+    const entityRefs = retrievalEntityRefs(fact.entity_refs)
+
+    for (const eventId of eventIds) {
+      const duplicate = entityRefs.some((ref) =>
+        String(ref.kind) === "event" &&
+        String(ref.id) === eventId &&
+        String(ref.relation) === "evidence"
+      )
+      if (!duplicate) entityRefs.push({ kind: "event", id: eventId, relation: "evidence" })
+    }
+
+    if (
+      subjectType &&
+      subjectId &&
+      ["character","pc","npc","location","faction","quest","quest_target","memory_fact","event"].includes(subjectType)
+    ) {
+      const duplicate = entityRefs.some((ref) =>
+        String(ref.kind) === subjectType &&
+        String(ref.id) === subjectId &&
+        String(ref.relation) === "subject"
+      )
+      if (!duplicate) entityRefs.push({ kind: subjectType, id: subjectId, relation: "subject" })
+    }
+
     return [{
       campaign_id: campaignId,
       fact_key: text(fact.fact_key, 180) || null,
-      subject_type: text(fact.subject_type, 80) || null,
-      subject_id: text(fact.subject_id, 180) || null,
+      subject_type: subjectType,
+      subject_id: subjectId,
       predicate: text(fact.predicate, 120) || null,
       statement,
+      search_tags: ids(fact.search_tags, 24),
+      search_aliases: ids(fact.search_aliases, 24),
+      relation_keys: ids(fact.relation_keys, 32),
+      entity_refs: entityRefs.slice(0, 32),
       structured_value: {
         maintenance_room_id: snapshot.roomId,
         range_start_message_id: snapshot.rangeStart,
