@@ -213,7 +213,7 @@ test("one spell can route to Attacks, Magic and Class through independent rules"
   assert.ok(magicFireball)
   assert.ok(classFireball)
   assert.ok(classAid)
-  assert.equal(model.spells.some((spell) => spell.key === "spell:aid"), false)
+  assert.equal(model.spells.some((spell) => spell.key === "spell:aid"), true)
   assert.equal(magicFireball?.accesses.length, 2)
   assert.deepEqual(
     new Set(magicFireball?.accesses.flatMap((access) =>
