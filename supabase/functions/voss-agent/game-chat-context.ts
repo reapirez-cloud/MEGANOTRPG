@@ -834,6 +834,11 @@ export async function buildGameChatContextV2({
       .filter((ref) => String(ref.kind || "") === "quest")
       .map((ref) => nullableString(ref.id)),
   ).slice(0, 12)
+  const retrievalQuestTargetIds = unique(
+    retrievalEntityRefs
+      .filter((ref) => String(ref.kind || "") === "quest_target")
+      .map((ref) => nullableString(ref.id)),
+  ).slice(0, 12)
 
   const discoveredLocationRows = rows(locationDiscoveriesResult.data)
   const discoveredNpcRows = rows(npcDiscoveriesResult.data)
@@ -1443,7 +1448,24 @@ export async function buildGameChatContextV2({
     )
   }
 
-  const [retrievedNpcProfilesResult, retrievedQuestsResult] = await Promise.all([
+  const linkedRelationshipIds = unique(
+    [sourceCharacterId].concat(retrievalCharacterIds),
+  )
+  const questTargetFilter = [
+    retrievalQuestIds.length
+      ? "quest_id.in.(" + retrievalQuestIds.join(",") + ")"
+      : "",
+    retrievalQuestTargetIds.length
+      ? "id.in.(" + retrievalQuestTargetIds.join(",") + ")"
+      : "",
+  ].filter(Boolean).join(",")
+
+  const [
+    retrievedNpcProfilesResult,
+    retrievedQuestsResult,
+    retrievedQuestTargetsResult,
+    retrievedRelationshipsResult,
+  ] = await Promise.all([
     retrievalCharacterIds.length
       ? admin
           .from("npc_profiles")
@@ -1460,13 +1482,37 @@ export async function buildGameChatContextV2({
           .in("id", retrievalQuestIds)
           .limit(12)
       : Promise.resolve({ data: [], error: null }),
+    questTargetFilter
+      ? admin
+          .from("quest_targets")
+          .select("id,quest_id,stage_id,target_key,target_kind,placeholder_label,binding_state,location_id,npc_character_id,item_definition_id")
+          .or(questTargetFilter)
+          .limit(24)
+      : Promise.resolve({ data: [], error: null }),
+    retrievalCharacterIds.length
+      ? admin
+          .from("character_relationships")
+          .select("id,subject_character_id,target_character_id,relationship_kind,public_label,attitude_score,player_note,gm_note,state,updated_at")
+          .eq("campaign_id", campaignId)
+          .eq("state", "active")
+          .or(
+            "subject_character_id.in.(" +
+              linkedRelationshipIds.join(",") +
+              "),target_character_id.in.(" +
+              linkedRelationshipIds.join(",") +
+              ")",
+          )
+          .order("updated_at", { ascending: false })
+          .limit(24)
+      : Promise.resolve({ data: [], error: null }),
   ])
 
-  if (retrievedNpcProfilesResult.error || retrievedQuestsResult.error) {
-    throw new Error(
-      (retrievedNpcProfilesResult.error || retrievedQuestsResult.error)!.message,
-    )
-  }
+  const retrievalLinkError =
+    retrievedNpcProfilesResult.error ||
+    retrievedQuestsResult.error ||
+    retrievedQuestTargetsResult.error ||
+    retrievedRelationshipsResult.error
+  if (retrievalLinkError) throw new Error(retrievalLinkError.message)
 
   retrieval.linked_entities = {
     characters: characters
@@ -1506,6 +1552,13 @@ export async function buildGameChatContextV2({
       }))
       .slice(0, 12),
     quests: rows(retrievedQuestsResult.data).slice(0, 12),
+    quest_targets: rows(retrievedQuestTargetsResult.data).slice(0, 24),
+    relationships: rows(retrievedRelationshipsResult.data)
+      .filter((item) =>
+        retrievalCharacterIds.includes(String(item.subject_character_id)) ||
+        retrievalCharacterIds.includes(String(item.target_character_id))
+      )
+      .slice(0, 24),
   }
 
   const rawFacts = rows(retrieval.memory_facts).slice(0, MAX_MEMORY_FACTS)
@@ -1520,7 +1573,7 @@ export async function buildGameChatContextV2({
   if (memoryEventIds.length) {
     const memoryEventsResult = await admin
       .from("campaign_events")
-      .select("id,location_id,visibility,visible_character_ids,payload,occurred_at")
+      .select("id,event_type,source_kind,source_id,room_id,location_id,actor_character_id,participant_character_ids,summary,importance,confidence,visibility,visible_character_ids,payload,occurred_at")
       .eq("campaign_id", campaignId)
       .in("id", memoryEventIds)
 
@@ -1529,6 +1582,23 @@ export async function buildGameChatContextV2({
       rows(memoryEventsResult.data).map((item) => [String(item.id), item]),
     )
   }
+
+  retrieval.evidence_events = [...memoryEventById.values()]
+    .map((event) => ({
+      id: event.id,
+      event_type: event.event_type,
+      source_kind: event.source_kind,
+      source_id: event.source_id,
+      room_id: event.room_id,
+      location_id: event.location_id,
+      actor_character_id: event.actor_character_id,
+      participant_character_ids: event.participant_character_ids,
+      summary: boundedText(event.summary, 1200),
+      importance: event.importance,
+      confidence: event.confidence,
+      occurred_at: event.occurred_at,
+    }))
+    .slice(0, 16)
 
   function sourceEvents(ids: string[]) {
     return ids
@@ -2062,6 +2132,7 @@ export function stage2ContextForPrompt(context: Stage2GameChatContext) {
       resolver_version: context.retrieval.resolver_version || 2,
       anchors: record(context.retrieval.anchors),
       campaign_events: rows(context.retrieval.campaign_events).slice(0, 8),
+      evidence_events: rows(context.retrieval.evidence_events).slice(0, 16),
       lore_entries: rows(context.retrieval.lore_entries).slice(0, 8),
       linked_entities: record(context.retrieval.linked_entities),
       contract: record(context.retrieval.contract),
