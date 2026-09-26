@@ -180,6 +180,47 @@ A player on day 3 cannot see state from day 5.
 
 Irreversible future events must not leak backward through canonical base rows.
 
+# Open design questions
+
+## Pre-GM junior context gatherer
+
+**Status: ПОД ВОПРОСОМ — DO NOT IMPLEMENT AS A REQUIRED STAGE YET**
+
+Candidate flow:
+
+```text
+player submits turn
+  ↓
+cheap/fast junior retrieval worker
+  ↓
+read-only search across campaign knowledge
+  ↓
+bounded evidence/context pack
+  ↓
+PRIMARY AI GM starts reasoning
+```
+
+Hypothesis:
+
+- after the player's final input, run a cheap junior model before the primary GM;
+- let that worker gather potentially broad context from the campaign because its token cost is much lower than feeding the same material to the expensive primary GM;
+- a 100k–200k-token retrieval pass may be economically acceptable if it materially improves recall and causal context;
+- the worker would return a compact evidence pack, not its whole input, to the primary GM.
+
+If this option is ever adopted, the junior pre-GM worker must be **read-only**:
+
+- it cannot mutate canon, memory, lore, NPCs, quests, inventory or world state;
+- it cannot roll dice or make World Resolver decisions;
+- it cannot decide what is true merely because text looks plausible;
+- every selected fact/entity must retain canonical IDs/provenance;
+- visibility and split-party temporal boundaries still apply;
+- failure/timeout must not corrupt or partially advance the turn;
+- its output to the primary GM must remain bounded.
+
+This is deliberately **not** an implementation requirement yet. Before adoption, benchmark it against the deterministic Context Resolver approach for latency, recall quality, false associations and total token/cost impact. Do not turn this note into a new numbered stage unless the design is explicitly accepted later.
+
+---
+
 # Master roadmap
 
 ## Stage 1 — World Resolver foundation
