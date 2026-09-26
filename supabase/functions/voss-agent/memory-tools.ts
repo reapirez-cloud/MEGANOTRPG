@@ -557,6 +557,32 @@ async function rememberCampaignFact(
     const factId = crypto.randomUUID()
     const fallbackConfidence = sourceEventIds.length ? 0.8 : 1
     const factKey = text(args.fact_key, 180) || null
+    const subjectType = text(args.subject_type, 80).toLowerCase() || null
+    const subjectId = text(args.subject_id, 180) || null
+    const predicate = text(args.predicate, 120) || null
+    const entityRefs = retrievalEntityRefs(args.entity_refs)
+
+    for (const eventId of sourceEventIds) {
+      const key = "event:" + eventId + ":evidence"
+      if (!entityRefs.some((ref) =>
+        String(ref.kind) + ":" + String(ref.id) + ":" + String(ref.relation) === key
+      )) {
+        entityRefs.push({ kind: "event", id: eventId, relation: "evidence" })
+      }
+    }
+
+    if (
+      subjectType &&
+      subjectId &&
+      ["character","pc","npc","location","faction","quest","quest_target","memory_fact","event"].includes(subjectType)
+    ) {
+      const key = subjectType + ":" + subjectId + ":subject"
+      if (!entityRefs.some((ref) =>
+        String(ref.kind) + ":" + String(ref.id) + ":" + String(ref.relation) === key
+      )) {
+        entityRefs.push({ kind: subjectType, id: subjectId, relation: "subject" })
+      }
+    }
 
     const { error: insertError } = await context.admin
       .from("campaign_memory_facts")
@@ -564,9 +590,9 @@ async function rememberCampaignFact(
         id: factId,
         campaign_id: context.campaignId,
         fact_key: factKey,
-        subject_type: text(args.subject_type, 80) || null,
-        subject_id: text(args.subject_id, 180) || null,
-        predicate: text(args.predicate, 120) || null,
+        subject_type: subjectType,
+        subject_id: subjectId,
+        predicate,
         statement,
         structured_value: object(args.structured_value),
         status: "active",
@@ -579,7 +605,7 @@ async function rememberCampaignFact(
         search_tags: uniqueStrings(args.search_tags, 24),
         search_aliases: uniqueStrings(args.search_aliases, 24),
         relation_keys: uniqueStrings(args.relation_keys, 32),
-        entity_refs: retrievalEntityRefs(args.entity_refs),
+        entity_refs: entityRefs.slice(0, 32),
         provenance: {
           kind: sourceEventIds.length ? "event_synthesis" : "gm_assertion",
           agent: "voss",
