@@ -11,7 +11,12 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Changes
 
-No changes yet.
+- Grok 4.6 is locked to the existing `grok-4.6` model id/profile with a 500k context window, vision/tools/JSON enabled, and ordinary `high` reasoning instead of the previous `medium` default.
+- Automatic AI-GM Stage 9 art is temporarily hard-clamped to low quality with a 50k target budget. The database rewrites new lifecycle jobs before execution and the image worker independently refuses the old location `max / 150k` promotion path.
+- Existing queued Stage 9 image jobs are normalized to `low / 50000` during the migration.
+- AI-GM media messages tagged `systemEvent=ai_gm_media` are now classified as GM-authored narration, so narrator art renders on the left/GM side even when the underlying publication row uses the manager account.
+- Applied Supabase migration `ai_gm_low_art_grok46_high_v1`; deployed `voss-agent` v143 and `ai-gm-media` v9.
+- Updated Stage 9/location-media/model-selector/chat ownership regression tests for the new cost and speaker-side contracts.
 
 ---
 
