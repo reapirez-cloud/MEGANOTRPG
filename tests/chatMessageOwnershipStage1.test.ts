@@ -35,5 +35,7 @@ test("chat ownership stage 1 keeps GM speaker identity dynamic and independent",
   assert.match(eventModel, /characterId: message\.character_id/)
   assert.match(eventModel, /avatarUrl: message\.author_avatar_url/)
   assert.match(eventModel, /message\.author_name\.trim\(\)/)
+  assert.match(eventModel, /"ai_gm_media"/)
+  assert.match(eventModel, /aiGmOutput \|\| aiGmRollRequest \|\| aiGmMedia/)
   assert.doesNotMatch(feedItem, /viewerUserId/)
 })
