@@ -529,7 +529,7 @@ function SpellSlotFlow({
               >
                 <b>{level}</b>
                 <span>
-                  <strong>{/^spell_slot_\\d+$/.test(resource.stateKey) ? `Ячейка ${level} уровня` : resource.label}</strong>
+                  <strong>Ячейка {level} уровня</strong>
                   <i className="u1-chat-slot__orbs" aria-hidden="true">
                     {Array.from({ length: maximum }, (_, index) => (
                       <i
@@ -562,11 +562,7 @@ function SpellSlotFlow({
         <span>
           {channel === "cantrips"
             ? "Без ячейки"
-            : selectedSlot
-              ? (/^spell_slot_\\d+$/.test(selectedSlot.resource.stateKey)
-                  ? `Ячейка ${selectedSlot.level} уровня`
-                  : selectedSlot.resource.label)
-              : "Ресурс магии"}
+            : `Ячейка ${selectedSlot?.level || "—"} уровня`}
         </span>
         <strong>Шаг 2 · {casts.length} доступно</strong>
         {selectedSlot ? (
