@@ -130,6 +130,49 @@ export const VOSS_MEMORY_WRITE_TOOLS = [
             maxItems: 24,
             items: { type: "string" },
           },
+          search_tags: {
+            type: "array",
+            maxItems: 24,
+            items: { type: "string" },
+            description:
+              "Hidden normalized semantic retrieval tags. Reuse existing canonical tags when the meaning is the same. No # prefix, no decorative prose.",
+          },
+          search_aliases: {
+            type: "array",
+            maxItems: 24,
+            items: { type: "string" },
+            description:
+              "Hidden names/aliases/spelling variants that a player may naturally use to refer to the same fact or entity.",
+          },
+          relation_keys: {
+            type: "array",
+            maxItems: 32,
+            items: { type: "string" },
+            description:
+              "Hidden short relation labels such as npc:faction, event:location, quest:npc, news:faction. These help retrieval and are not player-facing.",
+          },
+          entity_refs: {
+            type: "array",
+            maxItems: 32,
+            items: {
+              type: "object",
+              additionalProperties: false,
+              properties: {
+                kind: {
+                  type: "string",
+                  enum: [
+                    "character","pc","npc","location","faction","quest",
+                    "quest_target","memory_fact","event","other"
+                  ],
+                },
+                id: { type: "string" },
+                relation: { type: "string" },
+              },
+              required: ["kind","id","relation"],
+            },
+            description:
+              "Hidden canonical entity links. Use only real IDs already present in canonical_context or source evidence. Never invent UUIDs.",
+          },
         },
         required: ["statement", "source_event_ids", "visibility"],
       },
@@ -207,6 +250,30 @@ function uniqueStrings(value: unknown, max: number) {
       .map((item) => item.trim())
       .filter(Boolean),
   )].slice(0, max)
+}
+
+function retrievalEntityRefs(value: unknown) {
+  if (!Array.isArray(value)) return [] as JsonObject[]
+  const allowed = new Set([
+    "character","pc","npc","location","faction","quest",
+    "quest_target","memory_fact","event","other",
+  ])
+  const seen = new Set<string>()
+  const output: JsonObject[] = []
+
+  for (const raw of value.slice(0, 48)) {
+    const item = object(raw)
+    const kind = text(item.kind, 32).toLowerCase()
+    const id = text(item.id, 180)
+    const relation = text(item.relation, 96).toLowerCase() || "related"
+    if (!allowed.has(kind) || !id) continue
+    const key = kind + ":" + id + ":" + relation
+    if (seen.has(key)) continue
+    seen.add(key)
+    output.push({ kind, id, relation })
+    if (output.length >= 32) break
+  }
+  return output
 }
 
 function sanitizeJson(value: unknown, depth = 0): unknown {
@@ -509,6 +576,10 @@ async function rememberCampaignFact(
         room_id: roomId,
         visible_user_ids: userIds,
         visible_character_ids: characterIds,
+        search_tags: uniqueStrings(args.search_tags, 24),
+        search_aliases: uniqueStrings(args.search_aliases, 24),
+        relation_keys: uniqueStrings(args.relation_keys, 32),
+        entity_refs: retrievalEntityRefs(args.entity_refs),
         provenance: {
           kind: sourceEventIds.length ? "event_synthesis" : "gm_assertion",
           agent: "voss",
@@ -545,6 +616,7 @@ async function rememberCampaignFact(
       stored: true,
       canonical_state_changed: false,
       source_kind: sourceEventIds.length ? "event_synthesis" : "gm_assertion",
+      retrieval_indexed: true,
     }
   } catch (error) {
     return {
