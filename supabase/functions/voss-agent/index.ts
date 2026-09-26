@@ -1322,9 +1322,11 @@ Deno.serve(async (req: Request) => {
         "[СЛУЖЕБНОЕ ПРОДОЛЖЕНИЕ ДЛИННОЙ ЗАДАЧИ]",
         "Это не новый запрос пользователя. Продолжай исходную задачу до завершения.",
         "Не повторяй уже успешно выполненные мутации. При сомнении перечитай каноническое состояние через read-tools.",
-        ...(continuationJobResult?.continuation_reason === "provider_timeout"
+        ...(["provider_timeout", "provider_unavailable"].includes(
+          String(continuationJobResult?.continuation_reason || ""),
+        )
           ? [
-              "Предыдущий вызов AI-провайдера завершился по таймауту и не дал подтверждённого ответа модели.",
+              "Предыдущий вызов AI-провайдера не дал подтверждённого ответа модели.",
               "Не пытайся восстанавливать скрытые рассуждения из оборванного вызова. Продолжай по канону и durable ledger.",
             ]
           : []),
@@ -1587,7 +1589,7 @@ Deno.serve(async (req: Request) => {
   }
 
   const dispatchFreddyContinuation = async (
-    reason: "chunk_limit" | "provider_timeout",
+    reason: "chunk_limit" | "provider_timeout" | "provider_unavailable",
     extra: JsonRecord = {},
   ) => {
     if (!activeTurnJobId) {
@@ -1697,7 +1699,10 @@ Deno.serve(async (req: Request) => {
               }
             : "auto",
         temperature: 0.55,
-        timeoutMs: isFreddyTurn ? 90_000 : 45_000,
+        timeoutMs: isFreddyTurn
+          ? Math.min(90_000, Math.max(15_000, 120_000 - (Date.now() - chunkStartedAt)))
+          : 45_000,
+        retryCount: isFreddyTurn ? 0 : 1,
         allowOwnerOverride:
           developerMode &&
           isSystemAdmin &&
@@ -1710,31 +1715,35 @@ Deno.serve(async (req: Request) => {
           : error instanceof Error
             ? error.message
             : String(error)
-      const durableProviderTimeout =
+      const durableProviderFailure =
         isFreddyTurn &&
         Boolean(activeTurnJobId) &&
         error instanceof ProviderGatewayError &&
         (
           error.code === "ai_provider_timeout" ||
-          error.providerStatus === 504 ||
-          error.providerStatus === 524
+          error.code === "ai_provider_invalid_response" ||
+          [429, 500, 502, 503, 520, 521, 522, 523, 524]
+            .includes(error.providerStatus || 0)
         )
 
       if (
-        durableProviderTimeout &&
+        durableProviderFailure &&
         providerContinuationCount < FREDDY_MAX_PROVIDER_CONTINUATIONS
       ) {
         providerContinuationCount += 1
-        return await dispatchFreddyContinuation("provider_timeout", {
-          last_provider_timeout: {
-            code: (error as ProviderGatewayError).code,
-            provider_status: (error as ProviderGatewayError).providerStatus,
-            detail: failureDetail.slice(0, 1000),
-            at: new Date().toISOString(),
-            attempt: providerContinuationCount,
-            max_attempts: FREDDY_MAX_PROVIDER_CONTINUATIONS,
+        return await dispatchFreddyContinuation(
+          error.code === "ai_provider_timeout" ? "provider_timeout" : "provider_unavailable",
+          {
+            last_provider_failure: {
+              code: (error as ProviderGatewayError).code,
+              provider_status: (error as ProviderGatewayError).providerStatus,
+              detail: failureDetail.slice(0, 1000),
+              at: new Date().toISOString(),
+              attempt: providerContinuationCount,
+              max_attempts: FREDDY_MAX_PROVIDER_CONTINUATIONS,
+            },
           },
-        })
+        )
       }
 
       if (activeTurnJobId) {
@@ -1781,9 +1790,12 @@ Deno.serve(async (req: Request) => {
           toolsForRound,
           round,
         )
-    const toolCalls = nativeToolCalls.length
+    const toolCalls = (nativeToolCalls.length
       ? nativeToolCalls
-      : recoveredTextCalls.calls
+      : recoveredTextCalls.calls).map((call, index) => ({
+        ...call,
+        id: call.id || "agent-tool-" + round + "-" + index,
+      }))
     const assistantContentForHistory = nativeToolCalls.length
       ? (
           typeof assistantMessage.content === "string"
@@ -1807,7 +1819,7 @@ Deno.serve(async (req: Request) => {
       const call = toolCalls[index]
       const toolName = call.function?.name || ""
       const args = parseToolArguments(call.function?.arguments)
-      const toolCallId = call.id || "read-tool-" + round + "-" + index
+      const toolCallId = call.id
 
       const capabilityTool = isFreddyCapabilityTool(toolName)
       const draftTool = isVossDraftTool(toolName)
@@ -1820,125 +1832,137 @@ Deno.serve(async (req: Request) => {
       const memoryWriteTool = memoryTool && isVossMemoryWriteTool(toolName)
       let result: unknown
 
-      if (capabilityTool) {
-        const decision = requestFreddyCapabilities(
-          authority,
-          args,
-          grantedCapabilities,
-        )
-        for (const capability of decision.granted) {
-          grantedCapabilities.add(capability)
-        }
-        capabilityRequests.push(...decision.requested)
-        result = decision
-      } else if (adminTool) {
-        result = await executeVossAdminTool(
-          {
-            admin,
-            campaignId,
-            userId: user.id,
+      try {
+        if (capabilityTool) {
+          const decision = requestFreddyCapabilities(
             authority,
-          },
-          toolName,
-          args,
-        )
-      } else if (questTool) {
-        result = await executeVossQuestTool(
-          {
-            client: userClient,
-            campaignId,
-            userId: user.id,
-            authority,
-          },
-          toolName,
-          args,
-        )
-      } else if (managerTool) {
-        result = await executeVossManagerTool(
-          {
-            client: userClient,
-            admin,
-            campaignId,
-            userId: user.id,
-            authority,
-          },
-          toolName,
-          args,
-        )
-      } else if (developerTool) {
-        result = await executeVossDeveloperTool(
-          {
-            admin,
-            campaignId,
-            userId: user.id,
-            threadId,
-            isSystemAdmin,
-            devSessionId,
-          },
-          toolName,
-          args,
-        )
-      } else if (imageTool) {
-        result = toolName === "generate_image" && !imageGenerationRequested
-          ? {
-              error: "explicit_image_generation_command_required",
-              message:
-                "Image generation is locked until the current user message contains an explicit draw/generation command.",
-            }
-          : await executeVossImageTool(
+            args,
+            grantedCapabilities,
+          )
+          for (const capability of decision.granted) {
+            grantedCapabilities.add(capability)
+          }
+          capabilityRequests.push(...decision.requested)
+          result = decision
+        } else if (adminTool) {
+          result = await executeVossAdminTool(
             {
-              userClient: authority === "admin" ? admin : userClient,
               admin,
               campaignId,
               userId: user.id,
-              threadId,
-              viewContext,
-              isOwner: authority === "admin",
+              authority,
             },
             toolName,
             args,
           )
-      } else if (draftTool) {
-        result = await executeVossDraftTool(
-          {
-            client: authority === "admin" ? admin : userClient,
-            admin,
-            campaignId,
-            userId: user.id,
-            threadId,
-            canManage,
-          },
-          toolName,
-          args,
-        )
-      } else if (memoryTool) {
-        result = await executeVossMemoryTool(
-          {
-            client: authority === "admin" ? admin : userClient,
-            admin,
-            campaignId,
-            userId: user.id,
-            modelId: resolvedModel.id,
-            canManage,
-          },
-          toolName,
-          args,
-        )
-      } else {
-        result = await executeVossReadTool(
-          {
-            client: userClient,
-            dataClient: authority === "player" ? userClient : admin,
-            admin,
-            campaignId,
-            userId: user.id,
-            role: actorRole,
-            canManage,
-            isOwner: membership?.is_owner === true || authority === "admin",
-          },
-          toolName,
-          args,
-        )
+        } else if (questTool) {
+          result = await executeVossQuestTool(
+            {
+              client: userClient,
+              campaignId,
+              userId: user.id,
+              authority,
+            },
+            toolName,
+            args,
+          )
+        } else if (managerTool) {
+          result = await executeVossManagerTool(
+            {
+              client: userClient,
+              admin,
+              campaignId,
+              userId: user.id,
+              authority,
+            },
+            toolName,
+            args,
+          )
+        } else if (developerTool) {
+          result = await executeVossDeveloperTool(
+            {
+              admin,
+              campaignId,
+              userId: user.id,
+              threadId,
+              isSystemAdmin,
+              devSessionId,
+            },
+            toolName,
+            args,
+          )
+        } else if (imageTool) {
+          result = toolName === "generate_image" && !imageGenerationRequested
+            ? {
+                error: "explicit_image_generation_command_required",
+                message:
+                  "Image generation is locked until the current user message contains an explicit draw/generation command.",
+              }
+            : await executeVossImageTool(
+              {
+                userClient: authority === "admin" ? admin : userClient,
+                admin,
+                campaignId,
+                userId: user.id,
+                threadId,
+                viewContext,
+                isOwner: authority === "admin",
+              },
+              toolName,
+              args,
+            )
+        } else if (draftTool) {
+          result = await executeVossDraftTool(
+            {
+              client: authority === "admin" ? admin : userClient,
+              admin,
+              campaignId,
+              userId: user.id,
+              threadId,
+              canManage,
+            },
+            toolName,
+            args,
+          )
+        } else if (memoryTool) {
+          result = await executeVossMemoryTool(
+            {
+              client: authority === "admin" ? admin : userClient,
+              admin,
+              campaignId,
+              userId: user.id,
+              modelId: resolvedModel.id,
+              canManage,
+            },
+            toolName,
+            args,
+          )
+        } else {
+          result = await executeVossReadTool(
+            {
+              client: userClient,
+              dataClient: authority === "player" ? userClient : admin,
+              admin,
+              campaignId,
+              userId: user.id,
+              role: actorRole,
+              canManage,
+              isOwner: membership?.is_owner === true || authority === "admin",
+            },
+            toolName,
+            args,
+          )
+        }
+      } catch (error) {
+        // A tool failure belongs to this call, not the entire conversation.
+        // A write might have committed before the transport failed: the model
+        // must inspect canonical state before considering another write.
+        result = {
+          error: "tool_execution_failed",
+          detail: error instanceof Error ? error.message.slice(0, 1000) : String(error).slice(0, 1000),
+          applied: "unknown",
+          retry_requires_canonical_read: true,
+        }
       }
 
       turnLedger.push({

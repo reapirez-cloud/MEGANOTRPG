@@ -1,4 +1,5 @@
 import type { RouterModel } from "./model-router.ts"
+import { parseProviderCompletion } from "./provider-response.ts"
 
 type JsonRecord = Record<string, unknown>
 
@@ -220,6 +221,7 @@ export async function requestChatCompletion(input: ChatRequest) {
         body: JSON.stringify({
           model: providerModel,
           messages: input.messages,
+          stream: false,
           ...(!deepSeekCompatibilityMode
             ? { temperature: input.temperature ?? 0.55 }
             : {}),
@@ -302,7 +304,8 @@ export async function requestChatCompletion(input: ChatRequest) {
         response.status === 429 ||
         response.status === 500 ||
         response.status === 502 ||
-        response.status === 503
+        response.status === 503 ||
+        (response.status >= 520 && response.status <= 523)
 
       if (retryable && attempt < retryCount) {
         await new Promise((resolve) => setTimeout(resolve, 350))
@@ -318,7 +321,10 @@ export async function requestChatCompletion(input: ChatRequest) {
     }
 
     try {
-      return await response.json()
+      return parseProviderCompletion(
+        await response.text(),
+        response.headers.get("content-type") || "",
+      )
     } catch (error) {
       throw new ProviderGatewayError("AI provider returned invalid JSON", {
         code: "ai_provider_invalid_response",

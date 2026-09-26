@@ -40,7 +40,7 @@ test("AI GM provider timeouts requeue the same durable turn for a fresh worker",
   const runtime = read("supabase/functions/voss-agent/game-chat-runtime.ts")
   const status = read("src/ui-v1-isolated/chat-room/AiGmTurnStatus.tsx")
 
-  assert.match(runtime, /PRIMARY_GM_PROVIDER_TIMEOUT_MS = 90_000/)
+  assert.match(runtime, /PRIMARY_GM_PROVIDER_TIMEOUT_MS = 95_000/)
   assert.match(runtime, /AI_GM_MAX_PROVIDER_CONTINUATIONS = 2/)
   assert.match(runtime, /requeueTimedOutGameTurn/)
   assert.match(runtime, /continuation_checkpoint/)

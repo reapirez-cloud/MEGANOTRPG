@@ -36,6 +36,7 @@ import {
   executeRandomDecision,
   RESOLVE_RANDOM_DECISION_TOOL,
 } from "./random-decision.ts"
+import { normalizeInventoryToolArgs } from "./inventory-tool-args.ts"
 
 type JsonRecord = Record<string, unknown>
 
@@ -1903,6 +1904,13 @@ async function runStage18Intent({
       content: providerText(payload) || null,
       ...(calls.length ? { tool_calls: calls } : {}),
     })
+    for (let index = 0; index < calls.length; index += 1) {
+      workerMessages.push({
+        role: "tool",
+        tool_call_id: calls[index].id || `post-turn-invalid-${index}`,
+        content: JSON.stringify({ error: "post_turn_tool_contract_invalid", applied: false }),
+      })
+    }
     workerMessages.push({
       role: "user",
       content:
@@ -1938,15 +1946,72 @@ async function runStage18Intent({
     )
   }
 
-  const call = calls[0]
-  const toolName =
+  let call = calls[0]
+  let toolName =
     typeof call.function?.name === "string" ? call.function.name : ""
-  const toolArgs = parseProviderToolArguments(call.function?.arguments)
+  let toolArgs = parseProviderToolArguments(call.function?.arguments)
 
   if (!stage18ToolsForIntent(intent.kind).some(
     (tool) => tool.function.name === toolName
   )) {
     throw new Error("stage18_worker_selected_disallowed_tool")
+  }
+
+  if (toolName === "commit_inventory_delta") {
+    let normalized = normalizeInventoryToolArgs(toolArgs)
+    if (normalized.error) {
+      const correctionMessages = [
+        ...workerMessages,
+        {
+          role: "assistant",
+          content: typeof assistant.content === "string" ? assistant.content : null,
+          tool_calls: [call],
+        },
+        {
+          role: "tool",
+          tool_call_id: call.id || "post-turn-invalid-arguments",
+          content: JSON.stringify({ error: normalized.error, applied: false }),
+        },
+        {
+          role: "user",
+          content:
+            "Исправь только аргументы commit_inventory_delta согласно ошибке инструмента. Для action=batch передай deltas как массив объектов, не строку. Выполни ровно один tool call. Предыдущая команда не применялась.",
+        },
+      ]
+      const correction = await requestJuniorCompletionWithFallback({
+        admin,
+        model: juniorCall.model,
+        reasoningEffort: juniorCall.model.model_key === "mimo-v2.5-pro" ? "low" : "high",
+        request: {
+          messages: correctionMessages,
+          tools: tools as unknown as Array<Record<string, unknown>>,
+          toolChoice: {
+            type: "function",
+            function: { name: "commit_inventory_delta" },
+          },
+          temperature: 0.05,
+          timeoutMs: 45_000,
+          retryCount: 0,
+        },
+      })
+      const correctedCalls = providerMessage(correction.payload).tool_calls
+      if (!Array.isArray(correctedCalls) || correctedCalls.length !== 1) {
+        throw new Error("inventory_batch_correction_requires_one_tool")
+      }
+      call = correctedCalls[0]
+      toolName = typeof call.function?.name === "string" ? call.function.name : ""
+      if (toolName !== "commit_inventory_delta") {
+        throw new Error("inventory_batch_correction_selected_wrong_tool")
+      }
+      toolArgs = parseProviderToolArguments(call.function?.arguments)
+      normalized = normalizeInventoryToolArgs(toolArgs)
+    }
+    if (normalized.error) {
+      // Reject before enqueue: retrying the same malformed Executor job can
+      // never succeed and would consume every intent attempt.
+      throw new Error(normalized.error)
+    }
+    toolArgs = normalized.args
   }
 
   const { data: queuedData, error: queueError } = await admin.rpc(

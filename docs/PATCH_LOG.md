@@ -39,6 +39,10 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Runtime and architecture changes
 
+- Junior post-turn inventory planning now normalizes JSON-stringified batch deltas, rejects malformed arguments before Executor enqueue, and gives the model one bounded correction attempt. The same invalid command no longer burns all Executor retries.
+- Freddy keeps a failed tool call inside its durable turn ledger as an explicit uncertain-result error that directs a canonical read before a write retry; one tool exception no longer aborts the entire turn.
+- The provider adapter requests non-streaming completions and can reconstruct a completed SSE response from an OpenAI-compatible gateway. Freddy continues its durable turn after transient 429/5xx or invalid provider responses, without a second upstream request inside the same Edge execution.
+
 - The primary AI GM now exposes `promote_scene_actor`. It is allowed only for an active scene actor with a real personal name and a non-empty subset of colocated PC discovery recipients; pure direct-PC turns remain blocked by the Stage-7 tool gate.
 - Added stale scene-actor reference resolution: promoted actor refs resolve to their canonical NPC, and legacy `action:N` / `reaction:N` / `special:N` keys are translated to canonical `npc-runtime-*` mechanic ids when a stale actor action is redirected.
 - Promotion adapts the actor's already-compiled Stage-4 mechanics snapshot directly into canonical NPC CE runtime instead of re-running bestiary selection or recompiling against possibly changed catalog data. NPC-runtime auto-dispatch is transaction-locally suppressed only during promotion and the reserved build is completed synchronously.
@@ -58,6 +62,8 @@ This file is the canonical release journal for work accumulated on `dev` before 
 - Mobile simple-inventory drag uses pointer events and hit-testing rather than relying on desktop HTML5 drag behavior.
 
 ### Tests / verification
+
+- Added targeted regression cases for stringified/invalid inventory batches and complete/truncated SSE tool calls; checked the voss-agent bundle, the focused agent suite, lint and production build.
 
 - Built UI 1.0 and checked compact inventory/Snake action regressions; live Supabase migration and quick-slot index were applied, with authenticated-only RPC execution verified.
 
