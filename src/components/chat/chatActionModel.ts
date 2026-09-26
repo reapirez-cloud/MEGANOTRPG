@@ -29,7 +29,6 @@ export type ChatActionModel = {
 }
 
 const CLASS_SOURCE_TYPES = new Set(["class_template", "subclass_template"])
-const SELF_SPELL_SOURCE_TYPES = new Set(["legacy_spell", "character_spell", "learned_spell", "spellbook"])
 const UNIQUE_SOURCE_TYPES = new Set([
   "character_feature",
   "legacy_feature",
@@ -92,12 +91,6 @@ function spellDealsDamage(spell: ResolvedSpell) {
   return Boolean((spell.identity as RoutedSpellIdentity).dealsDamage)
 }
 
-function accessIsSelfSpell(access: ResolvedSpellAccess, includePrivateSources: boolean) {
-  return distinctSources(access.sources, includePrivateSources).some((source) =>
-    SELF_SPELL_SOURCE_TYPES.has(source.sourceType || "") || source.id.startsWith("legacy-spell-source:"),
-  )
-}
-
 function spellWithAccesses(spell: ResolvedSpell, accesses: ResolvedSpellAccess[]): ResolvedSpell {
   return {
     ...spell,
@@ -108,11 +101,6 @@ function spellWithAccesses(spell: ResolvedSpell, accesses: ResolvedSpellAccess[]
 
 function visibleSpell(spell: ResolvedSpell, includePrivateSources: boolean): ResolvedSpell | null {
   const accesses = spell.accesses.filter((access) => visibleRefs(access.sources, includePrivateSources).length > 0)
-  return accesses.length ? spellWithAccesses(spell, accesses) : null
-}
-
-function selfSpell(spell: ResolvedSpell, includePrivateSources: boolean): ResolvedSpell | null {
-  const accesses = spell.accesses.filter((access) => accessIsSelfSpell(access, includePrivateSources))
   return accesses.length ? spellWithAccesses(spell, accesses) : null
 }
 
@@ -238,13 +226,12 @@ export function buildChatActionModel(contract: ResolvedCharacterContract | null,
     const visible = visibleSpell(spell, includePrivateSources)
     if (!visible) continue
     if (spellDealsDamage(visible)) attackSpells.push(visible)
-    const self = selfSpell(visible, includePrivateSources)
-    // Cantrips belong to the Magic route even when their access was granted by
-    // the current class/template rather than a legacy character_spells row.
-    // They do not consume a slot, so hiding them behind the Class route makes
-    // the spell picker look as if it only supports slots.
-    if (visible.identity.level === 0) addOrMergeSpell(spells, visible)
-    else if (self) spells.push(self)
+    // The Magic route is a projection of the resolved CE contract, not of the
+    // persistence table that happened to grant an access. Class, subclass,
+    // race, item and legacy accesses can all be valid ways to cast the same
+    // canonical spell. Keep every visible access and let CE availability plus
+    // resourceOptions decide what can actually be used.
+    addOrMergeSpell(spells, visible)
     addSpellToGroups(classGroups, visible, ["class"], includePrivateSources)
     addSpellToGroups(uniqueGroups, visible, ["unique", "item"], includePrivateSources)
   }
