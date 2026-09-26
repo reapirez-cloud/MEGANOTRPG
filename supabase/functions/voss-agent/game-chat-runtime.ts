@@ -581,6 +581,7 @@ const STAGE18_POST_TURN_WORKER_SYSTEM = [
   "Ты младший post-turn commit worker MEGANOT. Модель выбирается настройками кампании.",
   "Игрок УЖЕ увидел финальный ответ GM. Ты не ведёшь сцену и не можешь менять этот ответ.",
   "Тебе передаётся РОВНО ОДИН immutable intent. Выполни максимум ОДИН write-tool call.",
+  "Если immutable_intent.previous_attempt_error заполнен, это реальная ошибка предыдущего deterministic Executor. На повторе ОБЯЗАТЕЛЬНО исправь аргументы так, чтобы устранить именно её; не повторяй заведомо отклонённый payload. Не скрывай и не игнорируй ошибку.",
   "Stage 27: ты ПЛАНИРОВЩИК, а не исполнитель. После твоего единственного tool call сервер создаёт typed job agent_key=ai_world_executor; сам Executor детерминированно выполняет мутацию без ещё одного LLM-решения.",
   "Для inventory intent используй только commit_inventory_delta. Если один опубликованный intent содержит несколько СВЯЗАННЫХ изменений инвентаря (покупка: списать валюту + выдать товар; обмен; расход ресурса + получение результата), сделай РОВНО ОДИН commit_inventory_delta с action=batch и deltas[]. Сервер выполнит все deltas атомарно или не применит ни один. Для grant ты не создаёшь definition напрямую: дай semantic card, после чего серверный Item Registry ОБЯЗАН сначала искать system/campaign definitions и только при реальном отсутствии создать одну campaign-definition. Лишь resolved definition_id + revision передаются Cheburashka.",
   "Для выдачи предмета нужно свободное место в сумке или руке. Корень «при себе» не является хранилищем. Смотри source_inventory_room: bags capacity/occupied и free_hands. Сервер сам помещает новую вещь в свободную ячейку сумки, затем в руку. Если accepted=false/outcome=no_space, это обычный исход: вещь не взята, связанная batch-команда не применена. Не повторяй до освобождения места. Экипировке указывай правильный equipment_slot: кинжал main_hand, одежда chest. Монеты одного номинала занимают одну ячейку стопкой, но сохраняют вес.",
@@ -1850,6 +1851,13 @@ async function runStage18Intent({
           kind: intent.kind,
           instruction: intent.instruction,
           evidence: intent.evidence,
+          attempt: Number(intentRow.attempts || 0),
+          max_attempts: Number(intentRow.max_attempts || 0),
+          previous_attempt_error:
+            typeof intentRow.last_error === "string" &&
+            intentRow.last_error.trim()
+              ? intentRow.last_error.trim()
+              : undefined,
         },
         published_messages: publishedMessages,
         retrieval_tag_dictionary:
