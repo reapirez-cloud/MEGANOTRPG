@@ -128,7 +128,12 @@ export function contributionForStoredMechanic(mechanic: StoredMechanic, source: 
   return withPriority(withCondition({ id, kind: "grant", operation, target: "spell", key: mechanic.key, variantKey: mechanic.variantKey || `mechanic-${mechanic.id}`, payload: mechanic.payload, source }, mechanic.condition), mechanic.priority)
 }
 
-function mechanicsArray(value: unknown): StoredMechanics { return Array.isArray(value) ? value as StoredMechanics : [] }
+function isStoredMechanic(value: unknown): value is StoredMechanic {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false
+  const type = (value as Record<string, unknown>).type
+  return type === "numeric" || type === "formula" || type === "grant" || type === "resource" || type === "action" || type === "spell"
+}
+function mechanicsArray(value: unknown): StoredMechanics { return Array.isArray(value) ? value.filter(isStoredMechanic) : [] }
 export function storedMechanicContributions(mechanics: StoredMechanics, source: CharacterSource): CharacterContribution[] { return mechanicsArray(mechanics).map((mechanic) => contributionForStoredMechanic(mechanic, source)) }
 
 export function inventoryMechanicContributions(items: InventoryItem[]): CharacterContribution[] {
