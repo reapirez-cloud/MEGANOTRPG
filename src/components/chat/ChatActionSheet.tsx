@@ -182,7 +182,7 @@ function SpellSlotFlow({ spells, contract, channel, setChannel, busy, onCast, em
   onCast: (selection: SpellCastSelection) => void
   emptyTitle: string
 }) {
-  const slots = useMemo(() => spellCastingResources(contract.resources, spells), [contract.resources])
+  const slots = useMemo(() => spellCastingResources(contract.resources, spells), [contract.resources, spells])
   const cantrips = useMemo(() => spells.map(cantripCast).filter((item): item is SpellCastSelection => item !== null), [spells])
   const selectedSlot = channel && channel !== "cantrips" ? slots.find(({ resource }) => resource.stateKey === channel) || null : null
   const casts = useMemo(() => {
