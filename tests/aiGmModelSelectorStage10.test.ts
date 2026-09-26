@@ -16,6 +16,10 @@ const helperMigration = read(
 )
 const router = read("supabase/functions/voss-agent/model-router.ts")
 const gameRuntime = read("supabase/functions/voss-agent/game-chat-runtime.ts")
+const providerGateway = read("supabase/functions/voss-agent/provider-gateway.ts")
+const lowArtOverride = read(
+  "supabase/migrations/20260926124807_ai_gm_low_art_grok46_high_v1.sql",
+)
 const profileMark = read("src/ui-v1-isolated/PlayerProfileMark.tsx")
 const workspaceCss = read("src/ui-v1-isolated/workspace.css")
 const roadmap = read("docs/AI_GM_ROADMAP.md")
@@ -75,6 +79,20 @@ test("Stage 10 game runtime resolves the campaign GM model, not Voss user routin
   assert.doesNotMatch(
     gameRuntime,
     /\.eq\("agent_key", "voss"\)[\s\S]{0,600}game_chat_runtime/,
+  )
+})
+
+test("Grok 4.6 keeps the 500k vision profile and runs at ordinary high reasoning", () => {
+  assert.match(lowArtOverride, /model_key='grok-4\.6'/)
+  assert.match(lowArtOverride, /context_window=500000/)
+  assert.match(lowArtOverride, /supports_vision=true/)
+  assert.match(
+    providerGateway,
+    /model\.model_key === "grok-4\.6"\) return "high"/,
+  )
+  assert.doesNotMatch(
+    providerGateway,
+    /model\.model_key === "grok-4\.6"\) return "medium"/,
   )
 })
 
