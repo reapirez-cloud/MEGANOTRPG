@@ -47,6 +47,7 @@ export type Stage2GameChatContext = {
     facts: JsonRecord[]
     summaries: JsonRecord[]
   }
+  retrieval: JsonRecord
   background: JsonRecord
   temporalSync: JsonRecord
   recentMessages: JsonRecord[]
@@ -637,8 +638,6 @@ export async function buildGameChatContextV2({
     charactersResult,
     worldStatesResult,
     roomMembersResult,
-    memoryFactsResult,
-    memorySummariesResult,
     locationDiscoveriesResult,
     npcDiscoveriesResult,
   ] = await Promise.all([
@@ -662,20 +661,6 @@ export async function buildGameChatContextV2({
       .select("user_id,can_read,can_write")
       .eq("room_id", roomId),
     admin
-      .from("campaign_memory_facts")
-      .select("id,fact_key,subject_type,subject_id,predicate,statement,structured_value,status,confidence,source_event_ids,visibility,room_id,visible_character_ids,provenance,updated_at")
-      .eq("campaign_id", campaignId)
-      .eq("status", "active")
-      .order("updated_at", { ascending: false })
-      .limit(80),
-    admin
-      .from("campaign_memory_summaries")
-      .select("id,title,summary,key_event_ids,visibility,room_id,visible_character_ids,period_start,period_end,status,updated_at")
-      .eq("campaign_id", campaignId)
-      .eq("status", "active")
-      .order("updated_at", { ascending: false })
-      .limit(24),
-    admin
       .from("character_location_discoveries")
       .select("location_id,discovered_at,source")
       .eq("character_id", sourceCharacterId),
@@ -690,8 +675,6 @@ export async function buildGameChatContextV2({
     charactersResult.error ||
     worldStatesResult.error ||
     roomMembersResult.error ||
-    memoryFactsResult.error ||
-    memorySummariesResult.error ||
     locationDiscoveriesResult.error ||
     npcDiscoveriesResult.error
 
@@ -807,6 +790,25 @@ export async function buildGameChatContextV2({
     recentMessageJsonBytes:
       new TextEncoder().encode(JSON.stringify(recentMessages)).length,
   }
+
+  const resolverQuery =
+    nullableString(jobInput.original_message) ||
+    boundedText(recentMessages[recentMessages.length - 1]?.body, 4000)
+
+  const retrievalResult = await admin.rpc("resolve_ai_gm_context_v2", {
+    p_campaign_id: campaignId,
+    p_source_character_id: sourceCharacterId,
+    p_room_id: roomId,
+    p_query: resolverQuery || "",
+    p_current_location_id: sourceLocationId,
+    p_current_day: currentDay,
+    p_fact_limit: MAX_MEMORY_FACTS,
+    p_summary_limit: MAX_MEMORY_SUMMARIES,
+    p_event_limit: 8,
+    p_lore_limit: 8,
+  })
+  if (retrievalResult.error) throw new Error(retrievalResult.error.message)
+  const retrieval = record(retrievalResult.data)
 
   const discoveredLocationRows = rows(locationDiscoveriesResult.data)
   const discoveredNpcRows = rows(npcDiscoveriesResult.data)
@@ -1414,14 +1416,8 @@ export async function buildGameChatContextV2({
     )
   }
 
-  const rawFacts = rows(memoryFactsResult.data)
-    .filter((item) => memoryVisible(item, roomId))
-    .filter((item) => memoryRelevant(item, roomId, relevantIdSet))
-    .slice(0, MAX_MEMORY_FACTS)
-  const rawSummaries = rows(memorySummariesResult.data)
-    .filter((item) => memoryVisible(item, roomId))
-    .filter((item) => item.room_id === roomId || !item.room_id)
-    .slice(0, MAX_MEMORY_SUMMARIES)
+  const rawFacts = rows(retrieval.memory_facts).slice(0, MAX_MEMORY_FACTS)
+  const rawSummaries = rows(retrieval.memory_summaries).slice(0, MAX_MEMORY_SUMMARIES)
 
   const memoryEventIds = unique(
     rawFacts.flatMap((item) => strings(item.source_event_ids))
@@ -1536,7 +1532,7 @@ export async function buildGameChatContextV2({
       ) || null,
     }))
     .slice(0, 80)
-  const knownMemoryFacts = rows(memoryFactsResult.data)
+  const knownMemoryFacts = memoryFacts
     .filter((item) => {
       const visibility = nullableString(item.visibility) || "campaign"
       if (visibility === "gm") return false
@@ -1544,9 +1540,6 @@ export async function buildGameChatContextV2({
       if (visibility === "room") return item.room_id === roomId
       return strings(item.visible_character_ids).includes(sourceCharacterId)
     })
-    .filter((item) =>
-      memorySourceSetVisibleAtGameDay(strings(item.source_event_ids))
-    )
     .map((item) => ({
       id: item.id,
       fact_key: item.fact_key,
@@ -1555,6 +1548,8 @@ export async function buildGameChatContextV2({
       predicate: item.predicate,
       statement: boundedText(item.statement, 700),
       room_id: item.room_id,
+      search_tags: strings(item.search_tags).slice(0, 24),
+      entity_refs: Array.isArray(item.entity_refs) ? item.entity_refs.slice(0, 24) : [],
     }))
     .slice(0, 32)
 
@@ -1604,6 +1599,7 @@ export async function buildGameChatContextV2({
       facts: memoryFacts,
       summaries: memorySummaries,
     },
+    retrieval,
     background,
     temporalSync,
     recentMessages,
@@ -1961,6 +1957,17 @@ export function stage2ContextForPrompt(context: Stage2GameChatContext) {
     }).slice(0, 40),
     active_quest_context: compactQuestContext(context.activeQuestContext),
     relevant_long_term_memory: compactMemory(context.memory),
+    retrieved_campaign_context: {
+      query: context.retrieval.query || "",
+      search_query: context.retrieval.search_query || "",
+      resolver_version: context.retrieval.resolver_version || 2,
+      anchors: record(context.retrieval.anchors),
+      campaign_events: rows(context.retrieval.campaign_events).slice(0, 8),
+      lore_entries: rows(context.retrieval.lore_entries).slice(0, 8),
+      contract: record(context.retrieval.contract),
+      rule:
+        "This is query-specific read-only evidence selected across the entire campaign before output limiting. Treat canonical IDs/provenance as stronger than lexical tags. Lore can be an in-world report or rumor and is not automatically objective truth.",
+    },
     background_temporal_context: compactBackground(context.background),
     cooperative_time_sync: {
       synced_count: context.temporalSync.synced_count || 0,
@@ -2042,6 +2049,7 @@ export function stage2ContextForPrompt(context: Stage2GameChatContext) {
     source_location: payload.source_location,
     source_location_structure: payload.source_location_structure,
     source_character_knowledge: payload.source_character_knowledge,
+    retrieved_campaign_context: payload.retrieved_campaign_context,
     participating_players: payload.participating_players,
     characters_physically_present_with_source:
       payload.characters_physically_present_with_source,
