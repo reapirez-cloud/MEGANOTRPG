@@ -18,6 +18,7 @@ export type SocietyAnnouncement = {
   body: string
   published_at: string
   created_by: string | null
+  ai_author_label: string | null
 }
 
 export type WorldLocationPreview = {
@@ -380,7 +381,7 @@ export function useUiV1SocietyNews() {
 
     const { data, error: queryError } = await supabase
       .from("campaign_updates")
-      .select("id, title, body, published_at, created_by")
+      .select("id, title, body, published_at, created_by, ai_author_label")
       .eq("campaign_id", scope.campaignId)
       .eq("kind", "announcement")
       .order("published_at", { ascending: false })

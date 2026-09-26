@@ -1706,6 +1706,176 @@ async function resolvePostTurnWorkerModel(
   return route.model
 }
 
+// Society news is a publication projection, never a new canonical world event.
+// The database queues exactly one cycle per five finalized PC turns; the worker
+// sees only campaign-visible evidence and publicly visible NPC identities.
+async function publishDueAiWorldNews(admin: SupabaseClient, campaignId: string) {
+  for (let batch = 0; batch < 3; batch += 1) {
+    const { data: claimed, error: claimError } = await admin.rpc(
+      "claim_ai_world_news_cycle_v1", { p_campaign_id: campaignId },
+    )
+    if (claimError) throw new Error(claimError.message)
+    const cycle = jsonRecord(claimed)
+    if (!cycle.id) return
+
+    const cycleId = String(cycle.id)
+    const leaseToken = String(cycle.lease_token)
+    const turnNumber = Number(cycle.end_turn_number)
+    const fallbackPosts = [
+      { title: "Разговоры в обществе", body: "Один собеседник заметил: «Чем громче уверенность, тем меньше я ей доверяю». Остальные предпочли не спорить." },
+      { title: "Слово за слово", body: "«Любопытство порой заводит дальше любой дороги», — заметил кто-то в разговоре. Другие, кажется, остались при своём мнении." },
+      { title: "Чужое мнение", body: "«У каждого своя версия событий, даже когда событий почти нет», — усмехнулся один из собеседников. Разговор на этом не закончился." },
+      { title: "Небольшой спор", body: "«Хороший слух живёт дольше того, кто первым его рассказал», — сказал чей-то голос. Верить ли ему, каждый решает сам." },
+    ]
+    const fallback = fallbackPosts[Math.floor(turnNumber / 5) % fallbackPosts.length]
+
+    try {
+      const [eventsResult, loreResult, authorsResult, membersResult, usedResult] = await Promise.all([
+        admin.from("campaign_events")
+          .select("id,summary,event_type,occurred_at")
+          .eq("campaign_id", campaignId).eq("visibility", "campaign")
+          .order("occurred_at", { ascending: false }).limit(12),
+        admin.from("world_lore_entries")
+          .select("id,title,summary,category,occurred_at")
+          .eq("campaign_id", campaignId).eq("visibility", "campaign")
+          .order("created_at", { ascending: false }).limit(12),
+        admin.from("characters")
+          .select("id,name,visibility_mode")
+          .eq("campaign_id", campaignId).eq("character_type", "npc")
+          .eq("visibility", "campaign")
+          .eq("life_state", "alive")
+          .neq("publication_state", "draft")
+          .limit(24),
+        admin.from("campaign_members")
+          .select("active_character_id")
+          .eq("campaign_id", campaignId).not("active_character_id", "is", null),
+        admin.from("campaign_updates")
+          .select("ai_news_evidence_kind,ai_news_evidence_id")
+          .eq("campaign_id", campaignId)
+          .not("ai_news_cycle_id", "is", null)
+          .order("published_at", { ascending: false }).limit(40),
+      ])
+      for (const result of [eventsResult, loreResult, authorsResult, membersResult, usedResult]) {
+        if (result.error) throw new Error(result.error.message)
+      }
+
+      const used = new Set((usedResult.data || []).map((row) =>
+        `${row.ai_news_evidence_kind}:${row.ai_news_evidence_id}`
+      ))
+      const evidence = [
+        ...(eventsResult.data || []).map((row) => ({
+          kind: "campaign_event", id: row.id, summary: row.summary,
+          type: row.event_type, occurred_at: row.occurred_at,
+        })),
+        ...(loreResult.data || []).map((row) => ({
+          kind: "world_lore", id: row.id, title: row.title,
+          summary: row.summary, type: row.category, occurred_at: row.occurred_at,
+        })),
+      ].filter((row) => !used.has(`${row.kind}:${row.id}`))
+      const activeCharacters = [...new Set((membersResult.data || [])
+        .map((member) => member.active_character_id).filter(Boolean))] as string[]
+      const discoverable = (authorsResult.data || [])
+        .filter((author) => author.visibility_mode === "discover")
+      let discovered = new Set<string>()
+      if (activeCharacters.length && discoverable.length) {
+        const { data, error } = await admin.from("character_npc_discoveries")
+          .select("character_id,npc_character_id")
+          .in("character_id", activeCharacters)
+          .in("npc_character_id", discoverable.map((author) => author.id))
+        if (error) throw new Error(error.message)
+        const byNpc = new Map<string, Set<string>>()
+        for (const row of data || []) {
+          if (!byNpc.has(row.npc_character_id)) byNpc.set(row.npc_character_id, new Set())
+          byNpc.get(row.npc_character_id)!.add(row.character_id)
+        }
+        discovered = new Set([...byNpc.entries()]
+          .filter(([, characterIds]) => activeCharacters.every((id) => characterIds.has(id)))
+          .map(([npcId]) => npcId))
+      }
+      const authors = (authorsResult.data || [])
+        .filter((author) => author.visibility_mode === "always" || discovered.has(author.id))
+        .map(({ id, name }) => ({ id, name }))
+
+      let title = fallback.title
+      let body = fallback.body
+      let authorCharacterId: string | null = null
+      let authorLabel = "Голоса общества"
+      let evidenceKind: string | null = null
+      let evidenceId: string | null = null
+
+      try {
+        const model = await resolvePostTurnWorkerModel(admin, campaignId)
+        const answer = await requestJuniorCompletionWithFallback({
+          admin, model, reasoningEffort: "low",
+          request: {
+            messages: [
+              {
+                role: "system",
+                content: [
+                  "Ты редактор внутримировой ленты MEGANOT. Напиши РОВНО ОДНУ короткую живую публикацию на русском после каждых пяти завершённых ходов игрока.",
+                  "Это заметка, мнение или реплика NPC, а не действие ГМ. Ты ничего не меняешь в каноне и не сообщаешь тайны.",
+                  "Если используешь факт, выбирай ОДНО evidence из списка и возвращай его kind/id. Пересказывай лишь изложенное там, не добавляй причин, исходов и подробностей.",
+                  "Если публичных фактов нет, напиши субъективную бытовую реплику без конкретных событий, имён, мест, наград, угроз или новых сущностей; evidence_kind и evidence_id = null.",
+                  "Можно выбрать автором только NPC из allowed_authors; иначе author_character_id=null и author_label=«Голоса общества» или краткое безымянное обозначение голоса.",
+                  "Не говори от лица PC или игрока. Не выдавай слух за достоверную истину. Не повторяй технические слова, ход или номер цикла.",
+                  "Верни только JSON: {title,body,author_character_id,author_label,evidence_kind,evidence_id}. Заголовок 4–120 символов, текст 8–1200.",
+                ].join("\n"),
+              },
+              { role: "user", content: JSON.stringify({ evidence, allowed_authors: authors, cycle: turnNumber / 5 }) },
+            ],
+            temperature: 0.45,
+            timeoutMs: 35_000,
+            retryCount: 0,
+          },
+        })
+        const parsed = parseJsonObject(providerText(answer.payload))
+        const proposedTitle = typeof parsed?.title === "string" ? parsed.title.trim() : ""
+        const proposedBody = typeof parsed?.body === "string" ? parsed.body.trim() : ""
+        const proposedKind = typeof parsed?.evidence_kind === "string" ? parsed.evidence_kind : null
+        const proposedId = typeof parsed?.evidence_id === "string" ? parsed.evidence_id : null
+        const matched = evidence.find((row) => row.kind === proposedKind && row.id === proposedId)
+        const noEvidence = !proposedKind && !proposedId
+        if (proposedTitle.length >= 4 && proposedTitle.length <= 120 &&
+            proposedBody.length >= 8 && proposedBody.length <= 1200 &&
+            (matched || noEvidence)) {
+          title = proposedTitle
+          body = proposedBody
+          evidenceKind = matched?.kind || null
+          evidenceId = matched?.id || null
+          const author = authors.find((row) => row.id === parsed?.author_character_id)
+          authorCharacterId = author?.id || null
+          authorLabel = author?.name || (
+            typeof parsed?.author_label === "string" && parsed.author_label.trim().length <= 100
+              ? parsed.author_label.trim() || "Голоса общества"
+              : "Голоса общества"
+          )
+        }
+      } catch {
+        // Provider failure only affects flavor. An in-world, fact-free fallback
+        // still fulfills this fifth-turn publication without blocking gameplay.
+      }
+
+      const { error: publishError } = await admin.rpc("publish_ai_world_news_cycle_v1", {
+        p_cycle_id: cycleId,
+        p_lease_token: leaseToken,
+        p_title: title,
+        p_body: body,
+        p_author_character_id: authorCharacterId,
+        p_author_label: authorLabel,
+        p_evidence_kind: evidenceKind,
+        p_evidence_id: evidenceId,
+      })
+      if (publishError) throw new Error(publishError.message)
+    } catch (error) {
+      await admin.rpc("fail_ai_world_news_cycle_v1", {
+        p_cycle_id: cycleId, p_lease_token: leaseToken,
+        p_error: error instanceof Error ? error.message : String(error),
+      })
+      return
+    }
+  }
+}
+
 function stage18ToolsForIntent(kind: PostTurnIntent["kind"]) {
   const names =
     kind === "inventory"
@@ -2166,6 +2336,12 @@ async function runStage18PostTurnCommit(
 
     if (!commitCompleted) return
 
+    try {
+      await publishDueAiWorldNews(admin, campaignId)
+    } catch {
+      // News has a durable queue and never reopens a completed world commit.
+    }
+
     // The commit is terminal now. Scheduling the next queued GM turn is deliberately
     // outside the commit failure path: a downstream wake error may be retried later
     // but can never turn a completed Stage 18 commit back into failed/queued.
@@ -2282,6 +2458,12 @@ async function finalizeStage18VisibleAnswer({
       // The durable commit remains queued/running/failed and can be resumed.
       // Never rewrite a published parent turn as failed here.
     }
+  }
+
+  try {
+    await publishDueAiWorldNews(admin, campaignId)
+  } catch {
+    // News is optional flavor; publication retry must not fail the GM turn.
   }
 
   return finalized

@@ -786,6 +786,13 @@
   line-height: 1.25;
 }
 
+.u1-news-entry__byline {
+  display: block;
+  margin-top: 4px;
+  color: var(--u1-text-faint);
+  font-size: 10px;
+}
+
 .u1-news-entry p {
   margin: 7px 0 0;
   color: var(--u1-text-muted);

@@ -2467,6 +2467,7 @@ export function SocietyNewsScreen() {
                     <time>{newsTime(item.published_at)}</time>
                     <div>
                       <strong>{item.title}</strong>
+                      {item.ai_author_label && <span className="u1-news-entry__byline">{item.ai_author_label}</span>}
                       <p>{item.body}</p>
                     </div>
                   </article>
