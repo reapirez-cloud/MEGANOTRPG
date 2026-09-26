@@ -8,7 +8,9 @@
 >
 > Current checkpoint: **Stages 1–12 complete. Inventory certification is CLOSED.**
 >
-> **Temporary active UI override — 2026-09-22:** the certified spatial runtime remains intact but is not mounted. The active simple UI shows all equipment slots, every bag and every empty bag cell simultaneously, supports touch/desktop drag moves and swaps, and exposes one non-physical quick-access shortcut that references an existing item without consuming a hand slot.
+> **Active UI update — 2026-09-26:** the isolated spatial runtime remains intact. The active inventory now uses five non-physical quick-access references, a compact equipment surface, a one-row bag selector, and a searchable list scoped to the selected holder. Item actions run through Snake; canonical writes still go to Cheburashka. The older all-bags/all-empty-cells override below is retained as history.
+
+> **Historical active UI override — 2026-09-22:** the certified spatial runtime remains intact but is not mounted. The active simple UI shows all equipment slots, every bag and every empty bag cell simultaneously, supports touch/desktop drag moves and swaps, and exposes one non-physical quick-access shortcut that references an existing item without consuming a hand slot.
 >
 > This file defines implementation order and completion boundaries. It does not by itself prove that a stage is implemented. Audits must verify source, live Supabase state where relevant, and real runtime behavior before changing a stage to complete.
 

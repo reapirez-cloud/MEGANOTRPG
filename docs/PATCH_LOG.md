@@ -11,6 +11,9 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Player-facing changes
 
+- Rebuilt the active character inventory in graphite: five numbered quick-access slots, compact equipment (including both rings and amulet), one-row bag selection, search and category filters, and a readable item list without Tetris cells.
+- Item tap opens full art and description in a Snake detail window; long press/right click or the item action button opens Snake commands for inspect, use, equip, move, quick-slot assignment and real-destination unequip. A quick-slot tap directly uses a usable item.
+
 - Replaced the GM chat-drawer swipe trigger with a persistent side `GM` button; the drawer opens by tap/click while the left-edge navigation gesture remains available for normal back navigation.
 - Reworked the active simple inventory into an always-visible `Инвентарь → Экипировка` surface: every supported equipment slot is rendered, empty slots explicitly show `Не экипировано`, and every carried bag is rendered as its own panel with all occupied and empty cells visible.
 - Added direct item drag/drop on desktop and touch: items can move between bags/root storage, swap occupied simple slots, move from equipment into a real bag, and equip into compatible empty equipment slots.
@@ -18,6 +21,8 @@ This file is the canonical release journal for work accumulated on `dev` before 
 - Experimental `ИИ мир` slots now default image policy to low quality with a modern high-detail pixel-art base prompt that explicitly rejects coarse 8/16-bit Dendy/NES/Sega sprite aesthetics.
 
 ### Database / migration changes
+
+- Migrated the single quick-access marker to five unique, version-checked, character-authorized slot references on existing Cheburashka items; owner changes clear them and older callers route through slot 1.
 
 - Added AI World Evolution Stage 8 transactional scene-actor promotion. `ai_scene_actors` now stores an idempotent promoted-character mapping/provenance, while `promote_ai_scene_actor_to_npc_v1` creates exactly one canonical NPC and preserves actor HP, resources, conditions/effects, location/game time and discovery state.
 - Added the Stage 6 FK-index follow-up so both scene-actor receipt composite foreign keys are covered in exact `(actor_id, campaign_id)` order after advisor review.
@@ -53,6 +58,8 @@ This file is the canonical release journal for work accumulated on `dev` before 
 - Mobile simple-inventory drag uses pointer events and hit-testing rather than relying on desktop HTML5 drag behavior.
 
 ### Tests / verification
+
+- Built UI 1.0 and checked compact inventory/Snake action regressions; live Supabase migration and quick-slot index were applied, with authenticated-only RPC execution verified.
 
 - Certified AI World Evolution Stage 8 with live rollback smoke: injured Goblin 3/7 -> Ург 3/7, condition/effect/world-time/discovery transfer, idempotent replay, conflicting-name rejection, no duplicate NPC, stale-ref redirect and independent 2/3 Legendary Resistance resource transfer all passed.
 - Restored the exact legacy `Не запрашивай world_materialization второй раз` continuation marker inside the Stage 7 tool-aware post-materialization prompt so the existing canonical reread regression remains explicit.

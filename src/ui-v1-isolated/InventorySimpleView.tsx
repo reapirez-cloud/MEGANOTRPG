@@ -1,55 +1,24 @@
-import {
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type DragEvent as ReactDragEvent,
-  type PointerEvent as ReactPointerEvent,
-} from "react"
-
-import {
-  inventoryPhysicalProfile,
-  inventorySimpleChildren,
-  inventorySimpleContainerCapacity,
-  inventorySimpleContainerTargets,
-  inventorySimpleContainerUsage,
-} from "../inventory-engine"
+import { useEffect, useMemo, useRef, useState, type DragEvent, type PointerEvent } from "react"
+import { inventorySimpleChildren, inventorySimpleContainerCapacity, inventorySimpleContainerTargets, inventorySimpleContainerUsage } from "../inventory-engine"
 import type { InventoryItem } from "../types/characterSheet"
+import { SnakeTrigger, useSnake } from "./SnakeProvider"
+import { inventoryItemActions, inventoryItemDetail } from "./inventorySnakeActions"
 import "./inventory-simple.css"
 
 type Result = { ok: boolean; error?: string }
-
 type Props = {
-  items: InventoryItem[]
-  canControl: boolean
-  focusedItemId?: string | null
-  onMove: (item: InventoryItem, holderItemId: string | null) => Promise<Result>
-  onQuickAccess: (item: InventoryItem, enabled: boolean) => Promise<Result>
+  items: InventoryItem[]; canControl: boolean; focusedItemId?: string | null
+  onMove: (item: InventoryItem, holder: string | null) => Promise<Result>
+  onQuickAccess: (item: InventoryItem, slot: number | null) => Promise<Result>
   onSwap: (first: InventoryItem, second: InventoryItem) => Promise<Result>
   onEquip: (item: InventoryItem) => Promise<Result>
   onUse: (item: InventoryItem, amount?: number) => Promise<Result>
 }
-
-type InventoryGlyphKind =
-  | "bag"
-  | "backpack"
-  | "pouch"
-  | "chest"
-  | "equipment"
-  | "consumable"
-  | "book"
-  | "currency"
-  | "material"
-  | "generic"
-
 function semanticRole(item: InventoryItem) {
-  const profile = inventoryPhysicalProfile(item)
-  return profile.semantic_role || ""
+  return String(item.inventory_profile?.semantic_role || "")
 }
-
 function glyphKind(item: InventoryItem): InventoryGlyphKind {
   const role = semanticRole(item)
-
   if (item.category === "container") {
     if (/backpack/i.test(role)) return "backpack"
     if (/purse|pouch/i.test(role)) return "pouch"
@@ -63,6 +32,17 @@ function glyphKind(item: InventoryItem): InventoryGlyphKind {
   if (item.category === "material") return "material"
   return "generic"
 }
+type InventoryGlyphKind =
+  | "bag"
+  | "backpack"
+  | "pouch"
+  | "chest"
+  | "equipment"
+  | "consumable"
+  | "book"
+  | "currency"
+  | "material"
+  | "generic"
 
 function InventoryGlyph({ kind }: { kind: InventoryGlyphKind }) {
   const common = {
@@ -173,751 +153,204 @@ function InventoryGlyph({ kind }: { kind: InventoryGlyphKind }) {
   )
 }
 
-function categoryLabel(item: InventoryItem) {
-  const labels: Record<string, string> = {
-    equipment: "Экипировка",
-    consumable: "Расходник",
-    tool: "Инструмент",
-    book: "Книга",
-    trinket: "Безделушка",
-    quest: "Квестовый",
-    material: "Материал",
-    currency: "Валюта",
-    container: "Сумка",
-    other: "Предмет",
-  }
-  return labels[item.category] || "Предмет"
-}
 
-function weightLabel(item: InventoryItem) {
-  if (item.weight == null || !Number.isFinite(Number(item.weight))) return "вес неизвестен"
-  const total = Number(item.weight) * Math.max(1, Number(item.quantity || 1))
-  return total.toLocaleString("ru-RU", { maximumFractionDigits: 2 }) + " кг"
-}
-
-function itemMeta(item: InventoryItem) {
-  const chunks = [categoryLabel(item), weightLabel(item)]
-  if (item.stack_mode === "stack" && item.quantity > 1) chunks.unshift(item.quantity + " шт.")
-  if (item.usage_mode === "charges" && item.charges_max) {
-    chunks.unshift((item.charges_current ?? 0) + "/" + item.charges_max + " зарядов")
-  }
-  return chunks.join(" · ")
-}
-
-
-const EQUIPMENT_SLOTS: Array<{
-  key: Exclude<InventoryItem["equipment_slot"], null>
-  label: string
-}> = [
-  { key: "head", label: "Голова" },
-  { key: "neck", label: "Шея" },
-  { key: "shoulders", label: "Плечи" },
-  { key: "chest", label: "Корпус" },
-  { key: "back", label: "Спина" },
-  { key: "hands", label: "Кисти" },
-  { key: "wrists", label: "Запястья" },
-  { key: "waist", label: "Пояс" },
-  { key: "legs", label: "Ноги" },
-  { key: "feet", label: "Ступни" },
-  { key: "main_hand", label: "Основная рука" },
-  { key: "off_hand", label: "Вторая рука" },
-  { key: "two_hands", label: "Две руки" },
-  { key: "ring_left", label: "Кольцо I" },
-  { key: "ring_right", label: "Кольцо II" },
-  { key: "ammo", label: "Боеприпасы" },
+const EQUIPMENT_SLOTS: { key: NonNullable<InventoryItem["equipment_slot"]>; label: string }[] = [
+  { key: "main_hand", label: "Оружие" }, { key: "off_hand", label: "Вторая рука" },
+  { key: "head", label: "Голова" }, { key: "chest", label: "Броня" },
+  { key: "hands", label: "Перчатки" }, { key: "feet", label: "Обувь" },
+  { key: "neck", label: "Амулет" }, { key: "ring_left", label: "Кольцо I" },
+  { key: "ring_right", label: "Кольцо II" }, { key: "shoulders", label: "Плечи" },
+  { key: "back", label: "Спина" }, { key: "wrists", label: "Запястья" },
+  { key: "waist", label: "Пояс" }, { key: "legs", label: "Ноги" },
+  { key: "two_hands", label: "Две руки" }, { key: "ammo", label: "Боеприпасы" },
   { key: "other", label: "Прочее" },
 ]
-
-function hasQuickAccess(item: InventoryItem) {
-  return item.item_state?.quick_access === true
+const FILTERS = ["Все", "Оружие", "Расходники", "Еда", "Материалы", "Прочее"] as const
+function itemWeight(item: InventoryItem) {
+  return item.weight == null ? "—" : `${(Number(item.weight) * item.quantity).toLocaleString("ru-RU", { maximumFractionDigits: 2 })} кг`
+}
+function itemFilter(item: InventoryItem, filter: typeof FILTERS[number]) {
+  if (filter === "Все") return true
+  if (filter === "Оружие") return item.category === "equipment"
+  if (filter === "Расходники") return item.category === "consumable"
+  if (filter === "Еда") return /food|meal|ration/i.test(semanticRole(item))
+  if (filter === "Материалы") return item.category === "material"
+  return !["equipment", "consumable", "material"].includes(item.category)
 }
 
-function simplePlacement(item: InventoryItem) {
-  return item.placement_kind || (item.holder_item_id ? "legacy" : "root")
-}
-
-export default function InventorySimpleView({
-  items,
-  canControl,
-  focusedItemId,
-  onMove,
-  onQuickAccess,
-  onSwap,
-  onEquip,
-  onUse,
-}: Props) {
-  const [selectedItemId, setSelectedItemId] = useState<string | null>(focusedItemId || null)
-  const [targetHolderId, setTargetHolderId] = useState("")
-  const [dragItemId, setDragItemId] = useState<string | null>(null)
-  const pointerDragRef = useRef<{
-    pointerId: number
-    itemId: string
-    startX: number
-    startY: number
-    active: boolean
-  } | null>(null)
-  const suppressClickUntilRef = useRef(0)
-  const [busy, setBusy] = useState("")
-  const [message, setMessage] = useState("")
+export default function InventorySimpleView({ items, canControl, focusedItemId, onMove, onQuickAccess, onSwap, onEquip, onUse }: Props) {
+  const snake = useSnake()
+  const [activeBagId, setActiveBagId] = useState<string | null>(null)
+  const [query, setQuery] = useState("")
+  const [filter, setFilter] = useState<typeof FILTERS[number]>("Все")
+  const [equipmentExpanded, setEquipmentExpanded] = useState(false)
+  const [dragId, setDragId] = useState<string | null>(null)
   const [error, setError] = useState("")
-
-  const selectedItem = selectedItemId
-    ? items.find((item) => item.id === selectedItemId) || null
-    : null
-
-  const bags = useMemo(
-    () => items
-      .filter((item) => item.category === "container" && !item.equipped)
-      .slice()
-      .sort((left, right) => {
-        const order = Number(left.sort_order || 0) - Number(right.sort_order || 0)
-        return order || left.name.localeCompare(right.name, "ru")
-      }),
-    [items],
-  )
-
-  const rootLooseItems = useMemo(
-    () => inventorySimpleChildren(items, null).filter((item) => {
-      const placement = simplePlacement(item)
-      return (
-        item.category !== "container" &&
-        placement !== "hand" &&
-        placement !== "external"
-      )
-    }),
-    [items],
-  )
-
-  const equippedBySlot = useMemo(() => {
-    const map = new Map<string, InventoryItem>()
-    for (const item of items) {
-      if (item.equipped && item.equipment_slot && !map.has(item.equipment_slot)) {
-        map.set(item.equipment_slot, item)
+  const dragRef = useRef<{ id: string; pointerId: number; x: number; y: number; active: boolean } | null>(null)
+  const suppressClick = useRef(0)
+  const pending = useRef(false)
+  const bags = useMemo(() => items.filter((item) => item.category === "container" && !item.equipped)
+    .sort((a, b) => a.sort_order - b.sort_order || a.name.localeCompare(b.name, "ru")), [items])
+  useEffect(() => {
+    if (activeBagId && !bags.some((bag) => bag.id === activeBagId)) setActiveBagId(null)
+  }, [activeBagId, bags])
+  const quick = Array.from({ length: 5 }, (_, i) => items.find((item) => Number(item.item_state?.quick_slot) === i + 1) ||
+    (i === 0 ? items.find((item) => item.item_state?.quick_access === true) : undefined))
+  const equipment = new Map(items.filter((item) => item.equipped && item.equipment_slot).map((item) => [item.equipment_slot, item]))
+  const currentBag = bags.find((bag) => bag.id === activeBagId) || null
+  const visibleItems = (currentBag ? inventorySimpleChildren(items, currentBag.id) :
+    items.filter((item) => !item.equipped && item.category !== "container" && !item.holder_item_id))
+    .filter((item) => itemFilter(item, filter) && item.name.toLocaleLowerCase("ru").includes(query.toLocaleLowerCase("ru")))
+  const totalWeight = items.reduce((total, item) => total + (item.weight == null ? 0 : Number(item.weight) * item.quantity), 0)
+  const operations = { move: onMove, quick: onQuickAccess, equip: onEquip, use: onUse }
+  function actions(item: InventoryItem) {
+    return inventoryItemActions(item, items, canControl, operations, setActiveBagId)
+  }
+  function inspect(item: InventoryItem) { snake.openSurface(inventoryItemDetail(item), { entity: { type: "inventory-item", id: item.id } }) }
+  function openActions(item: InventoryItem, element: HTMLElement) {
+    const rect = element.getBoundingClientRect()
+    snake.openMenu({ entity: { type: "inventory-item", id: item.id }, actions: actions(item),
+      title: item.name, point: { x: rect.right - 12, y: rect.top + rect.height / 2 } })
+  }
+  async function commit(task: () => Promise<Result>) {
+    if (pending.current) return
+    pending.current = true
+    setError("")
+    try {
+      const result = await task()
+      if (!result.ok) setError(result.error || "Действие не выполнено.")
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "Действие не выполнено.")
+    } finally {
+      pending.current = false
+      setDragId(null)
+    }
+  }
+  function drop(id: string, element: Element | null) {
+    const item = items.find((entry) => entry.id === id)
+    if (!item || !element) { setDragId(null); return }
+    const quickTarget = element.closest<HTMLElement>("[data-quick-slot]")
+    if (quickTarget) {
+      void commit(() => onQuickAccess(item, Number(quickTarget.dataset.quickSlot)))
+      return
+    }
+    const equipmentTarget = element.closest<HTMLElement>("[data-equip-slot]")
+    if (equipmentTarget) {
+      if (!item.equipped && item.category === "equipment" && item.equipment_slot === equipmentTarget.dataset.equipSlot &&
+        !equipment.has(item.equipment_slot)) void commit(() => onEquip(item))
+      else setDragId(null)
+      return
+    }
+    const bagTarget = element.closest<HTMLElement>("[data-bag-target]")
+    if (bagTarget) { void commit(() => onMove(item, bagTarget.dataset.bagTarget || null)); return }
+    const other = element.closest<HTMLElement>("[data-item-id]")
+    if (other?.dataset.itemId && other.dataset.itemId !== id) {
+      const target = items.find((entry) => entry.id === other.dataset.itemId)
+      if (target && !item.equipped && !target.equipped && item.category !== "container" && target.category !== "container") {
+        void commit(() => onSwap(item, target)); return
       }
     }
-    return map
-  }, [items])
-
-  const quickItem = useMemo(
-    () => items.find((item) => hasQuickAccess(item)) || null,
-    [items],
-  )
-
-  const targets = useMemo(
-    () => selectedItem ? inventorySimpleContainerTargets(items, selectedItem) : [],
-    [items, selectedItem],
-  )
-
-  useEffect(() => {
-    if (!focusedItemId) return
-    if (items.some((item) => item.id === focusedItemId)) {
-      setSelectedItemId(focusedItemId)
-    }
-  }, [focusedItemId, items])
-
-  useEffect(() => {
-    if (!selectedItem) {
-      setTargetHolderId("")
-      return
-    }
-    const firstAvailable = targets.find((entry) => !entry.full)
-    setTargetHolderId(
-      selectedItem.holder_item_id
-        ? ""
-        : firstAvailable?.container.id || "",
-    )
-  }, [selectedItem?.id, selectedItem?.holder_item_id, targets])
-
-  async function run(
-    key: string,
-    task: () => Promise<Result>,
-    successMessage: string,
-  ) {
-    if (busy) return
-    setBusy(key)
-    setMessage("")
-    setError("")
-    const result = await task()
-    setBusy("")
-    setDragItemId(null)
-    if (!result.ok) {
-      setError(result.error || "Действие не выполнено.")
-      return
-    }
-    setMessage(successMessage)
+    setDragId(null)
   }
-
-  function selectItem(item: InventoryItem) {
-    setSelectedItemId(item.id)
-    setMessage("")
-    setError("")
-  }
-
-  function draggedItem() {
-    return dragItemId
-      ? items.find((item) => item.id === dragItemId) || null
-      : null
-  }
-
-  function moveToHolder(item: InventoryItem, holderItemId: string | null) {
-    if (item.equipped && holderItemId === null) {
-      setError("Экипированный предмет можно снять только в реальную сумку.")
-      setDragItemId(null)
-      return
-    }
-    if (
-      (item.holder_item_id ?? null) === holderItemId &&
-      simplePlacement(item) !== "hand"
-    ) {
-      setDragItemId(null)
-      return
-    }
-    void run(
-      "move:" + item.id,
-      () => onMove(item, holderItemId),
-      holderItemId ? "Предмет переложен в сумку." : "Предмет переложен при себе.",
-    )
-  }
-
-  function swapWith(item: InventoryItem, target: InventoryItem) {
-    if (
-      item.id === target.id ||
-      item.equipped ||
-      target.equipped ||
-      item.category === "container" ||
-      target.category === "container"
-    ) {
-      setDragItemId(null)
-      return
-    }
-    void run(
-      "swap:" + item.id,
-      () => onSwap(item, target),
-      "Предметы поменяны местами.",
-    )
-  }
-
-  function setQuickAccess(item: InventoryItem, enabled: boolean) {
-    void run(
-      "quick:" + item.id,
-      () => onQuickAccess(item, enabled),
-      enabled
-        ? "Предмет добавлен в быстрый доступ."
-        : "Предмет убран из быстрого доступа.",
-    )
-  }
-
-  function equipInto(
-    item: InventoryItem,
-    slot: Exclude<InventoryItem["equipment_slot"], null>,
-    occupant: InventoryItem | undefined,
-  ) {
-    if (
-      occupant ||
-      item.category !== "equipment" ||
-      item.equipment_slot !== slot ||
-      item.equipped
-    ) {
-      setDragItemId(null)
-      return
-    }
-    void run(
-      "equip:" + item.id,
-      () => onEquip(item),
-      "Предмет экипирован.",
-    )
-  }
-
-  function beginPointerDrag(
-    event: ReactPointerEvent<HTMLButtonElement>,
-    item: InventoryItem,
-  ) {
-    if (
-      !canControl ||
-      event.pointerType === "mouse" ||
-      event.isPrimary === false
-    ) {
-      return
-    }
-
-    pointerDragRef.current = {
-      pointerId: event.pointerId,
-      itemId: item.id,
-      startX: event.clientX,
-      startY: event.clientY,
-      active: false,
-    }
+  function pointerDown(event: PointerEvent<HTMLButtonElement>, item: InventoryItem) {
+    if (!canControl || event.pointerType === "mouse") return
+    dragRef.current = { id: item.id, pointerId: event.pointerId, x: event.clientX, y: event.clientY, active: false }
     event.currentTarget.setPointerCapture(event.pointerId)
   }
-
-  function movePointerDrag(event: ReactPointerEvent<HTMLButtonElement>) {
-    const drag = pointerDragRef.current
-    if (!drag || drag.pointerId !== event.pointerId) return
-
-    const distance = Math.hypot(
-      event.clientX - drag.startX,
-      event.clientY - drag.startY,
-    )
-    if (!drag.active && distance >= 8) {
-      drag.active = true
-      setDragItemId(drag.itemId)
+  function pointerMove(event: PointerEvent<HTMLButtonElement>) {
+    const state = dragRef.current
+    if (!state || state.pointerId !== event.pointerId) return
+    if (!state.active && Math.hypot(event.clientX - state.x, event.clientY - state.y) > 12) {
+      state.active = true; setDragId(state.id)
     }
-    if (drag.active) event.preventDefault()
+    if (state.active) event.preventDefault()
   }
-
-  function finishPointerDrag(event: ReactPointerEvent<HTMLButtonElement>) {
-    const drag = pointerDragRef.current
-    pointerDragRef.current = null
-    if (!drag || drag.pointerId !== event.pointerId) return
-    if (!drag.active) {
-      setDragItemId(null)
-      return
-    }
-
-    suppressClickUntilRef.current = performance.now() + 360
+  function pointerUp(event: PointerEvent<HTMLButtonElement>) {
+    const state = dragRef.current; dragRef.current = null
+    if (!state || !state.active) return
+    suppressClick.current = performance.now() + 500
     event.preventDefault()
-
-    const item = items.find((candidate) => candidate.id === drag.itemId)
-    const target = document.elementFromPoint(event.clientX, event.clientY)
-    if (!item || !(target instanceof Element)) {
-      setDragItemId(null)
-      return
-    }
-
-    const itemDrop = target.closest<HTMLElement>("[data-simple-drop-item]")
-    const targetItemId = itemDrop?.dataset.simpleDropItem
-    if (targetItemId && targetItemId !== item.id) {
-      const targetItem = items.find((candidate) => candidate.id === targetItemId)
-      if (targetItem) {
-        swapWith(item, targetItem)
-        return
-      }
-    }
-
-    const quickDrop = target.closest<HTMLElement>("[data-simple-drop-quick]")
-    if (quickDrop) {
-      setQuickAccess(item, true)
-      return
-    }
-
-    const equipmentDrop = target.closest<HTMLElement>("[data-simple-drop-equipment]")
-    if (equipmentDrop?.dataset.simpleDropEquipment) {
-      const slot = equipmentDrop.dataset.simpleDropEquipment as Exclude<
-        InventoryItem["equipment_slot"],
-        null
-      >
-      equipInto(item, slot, equippedBySlot.get(slot))
-      return
-    }
-
-    const holderDrop = target.closest<HTMLElement>("[data-simple-drop-holder]")
-    if (holderDrop?.dataset.simpleDropHolder) {
-      moveToHolder(item, holderDrop.dataset.simpleDropHolder)
-      return
-    }
-
-    if (target.closest("[data-simple-drop-root]")) {
-      moveToHolder(item, null)
-      return
-    }
-
-    setDragItemId(null)
+    drop(state.id, document.elementFromPoint(event.clientX, event.clientY))
   }
-
-  function cancelPointerDrag() {
-    pointerDragRef.current = null
-    setDragItemId(null)
+  function dragStart(event: DragEvent<HTMLButtonElement>, item: InventoryItem) {
+    if (!canControl) { event.preventDefault(); return }
+    setDragId(item.id); event.dataTransfer.setData("text/plain", item.id); event.dataTransfer.effectAllowed = "move"
   }
-
-  function beginDrag(
-    event: ReactDragEvent<HTMLButtonElement>,
-    item: InventoryItem,
-  ) {
-    if (!canControl) {
-      event.preventDefault()
-      return
-    }
-    setDragItemId(item.id)
-    event.dataTransfer.effectAllowed = "move"
-    event.dataTransfer.setData("text/plain", item.id)
+  function dragOver(event: DragEvent<HTMLElement>) { if (canControl) event.preventDefault() }
+  function nativeDrop(event: DragEvent<HTMLElement>) {
+    event.preventDefault(); event.stopPropagation()
+    drop(event.dataTransfer.getData("text/plain") || dragId || "", event.target as Element)
   }
-
-  function allowDrop(event: ReactDragEvent<HTMLElement>) {
-    if (!canControl) return
-    event.preventDefault()
-    event.dataTransfer.dropEffect = "move"
+  function thumb(item: InventoryItem) {
+    return item.image_url ? <img src={item.image_url} alt="" loading="lazy" /> : <InventoryGlyph kind={glyphKind(item)} />
   }
-
-  function dropIntoHolder(
-    event: ReactDragEvent<HTMLElement>,
-    holderItemId: string | null,
-  ) {
-    event.preventDefault()
-    event.stopPropagation()
-    const item = draggedItem()
-    if (!item) return
-    moveToHolder(item, holderItemId)
-  }
-
-  function dropOnItem(
-    event: ReactDragEvent<HTMLElement>,
-    target: InventoryItem,
-  ) {
-    event.preventDefault()
-    event.stopPropagation()
-    const item = draggedItem()
-    if (!item) return
-    swapWith(item, target)
-  }
-
-  function dropQuick(event: ReactDragEvent<HTMLElement>) {
-    event.preventDefault()
-    event.stopPropagation()
-    const item = draggedItem()
-    if (!item) return
-    setQuickAccess(item, true)
-  }
-
-  function dropEquipment(
-    event: ReactDragEvent<HTMLElement>,
-    slot: Exclude<InventoryItem["equipment_slot"], null>,
-    occupant: InventoryItem | undefined,
-  ) {
-    event.preventDefault()
-    event.stopPropagation()
-    const item = draggedItem()
-    if (!item) return
-    equipInto(item, slot, occupant)
-  }
-
-  function itemSlot(
-    item: InventoryItem,
-    compact = false,
-    acceptsItemDrop = true,
-  ) {
-    return (
-      <button
-        type="button"
-        className="u1-simple-inventory__slot u1-simple-inventory__slot--filled"
-        key={item.id}
-        data-selected={selectedItemId === item.id || undefined}
-        data-dragging={dragItemId === item.id || undefined}
-        data-compact={compact || undefined}
-        data-simple-drop-item={acceptsItemDrop ? item.id : undefined}
-        draggable={canControl}
-        onDragStart={(event) => beginDrag(event, item)}
-        onDragEnd={() => setDragItemId(null)}
-        onPointerDown={(event) => beginPointerDrag(event, item)}
-        onPointerMove={movePointerDrag}
-        onPointerUp={finishPointerDrag}
-        onPointerCancel={cancelPointerDrag}
-        onDragOver={acceptsItemDrop ? allowDrop : undefined}
-        onDrop={acceptsItemDrop ? (event) => dropOnItem(event, item) : undefined}
-        onClick={() => {
-          if (performance.now() < suppressClickUntilRef.current) return
-          selectItem(item)
-        }}
-        aria-label={item.name}
-      >
-        <span className="u1-simple-inventory__slot-icon">
-          {item.image_url ? (
-            <img src={item.image_url} alt="" loading="lazy" />
-          ) : (
-            <InventoryGlyph kind={glyphKind(item)} />
-          )}
-        </span>
-        <strong>{item.name}</strong>
-        {item.stack_mode === "stack" && item.quantity > 1 ? (
-          <b className="u1-simple-inventory__quantity">{item.quantity}</b>
-        ) : null}
-        {item.category === "container" ? (
-          <i className="u1-simple-inventory__nested-mark" aria-label="Контейнер">↳</i>
-        ) : null}
-      </button>
-    )
-  }
-
-  function emptySlot(key: string) {
-    return (
-      <div
-        className="u1-simple-inventory__slot u1-simple-inventory__slot--empty"
-        aria-hidden="true"
-        key={key}
-      >
-        <InventoryGlyph kind="generic" />
+  function itemRow(item: InventoryItem) {
+    return <SnakeTrigger key={item.id} entity={{ type: "inventory-item", id: item.id }} actions={actions(item)}>
+      <div className="u1-inventory__row" data-item-id={item.id} data-focused={item.id === focusedItemId || undefined}
+        onDragOver={dragOver} onDrop={nativeDrop}>
+        <button type="button" className="u1-inventory__row-main" draggable={canControl}
+          onDragStart={(event) => dragStart(event, item)} onDragEnd={() => setDragId(null)}
+          onPointerDown={(event) => pointerDown(event, item)} onPointerMove={pointerMove}
+          onPointerUp={pointerUp} onPointerCancel={() => { dragRef.current = null; setDragId(null) }}
+          onClick={() => { if (performance.now() >= suppressClick.current) inspect(item) }}>
+          <span className="u1-inventory__thumb">{thumb(item)}</span>
+          <span className="u1-inventory__row-text"><strong>{item.name}</strong><small>{item.description || item.category}</small></span>
+          <span className="u1-inventory__row-count">{item.quantity > 1 ? `×${item.quantity}` : ""}<small>{itemWeight(item)}</small></span>
+        </button>
+        <button type="button" className="u1-inventory__more" aria-label={`Действия: ${item.name}`}
+          onClick={(event) => { event.stopPropagation(); openActions(item, event.currentTarget) }}>⋮</button>
       </div>
-    )
+    </SnakeTrigger>
   }
-
-  return (
-    <div
-      className="u1-simple-inventory"
-      data-simple-inventory="v2"
-      data-dragging={Boolean(dragItemId) || undefined}
-    >
-      <section className="u1-simple-inventory__equipment" aria-label="Инвентарь — экипировка">
-        <header>
-          <div>
-            <span>ИНВЕНТАРЬ</span>
-            <strong>Экипировка</strong>
+  return <div className="u1-inventory" data-simple-inventory="v3" data-dragging={Boolean(dragId) || undefined}>
+    <div className="u1-inventory__heading"><h1>Инвентарь</h1><div><span>{totalWeight.toLocaleString("ru-RU", { maximumFractionDigits: 1 })} кг при себе</span><i /></div></div>
+    <section className="u1-inventory__quick" aria-label="Быстрый доступ">
+      {quick.map((item, index) => <div key={index} className="u1-inventory__quick-cell" data-quick-slot={index + 1}
+        onDragOver={dragOver} onDrop={nativeDrop}>
+        <span className="u1-inventory__quick-number">{index + 1}</span>
+        {item ? <SnakeTrigger entity={{ type: "inventory-item", id: item.id }} actions={actions(item)}>
+          <button type="button" title={item.name} onClick={(event) => {
+            if (canControl && (item.category === "consumable" || item.usage_mode && item.usage_mode !== "none") && !item.equipped) {
+              void commit(() => onUse(item, 1))
+            } else openActions(item, event.currentTarget)
+          }}>
+            {thumb(item)}{item.quantity > 1 && <b>{item.quantity}</b>}
+          </button></SnakeTrigger> : <span className="u1-inventory__quick-empty">+</span>}
+      </div>)}
+    </section>
+    <section className="u1-inventory__gear" aria-label="Экипировка">
+      <div className="u1-inventory__section-heading"><strong>Экипировка</strong>
+        <button type="button" onClick={() => setEquipmentExpanded(!equipmentExpanded)}>
+          {equipmentExpanded ? "Свернуть" : `Все слоты · ${EQUIPMENT_SLOTS.length}`}</button></div>
+      <div className="u1-inventory__gear-grid">
+        {(equipmentExpanded ? EQUIPMENT_SLOTS : EQUIPMENT_SLOTS.slice(0, 9)).map(({ key, label }) => {
+          const item = equipment.get(key)
+          return <div className="u1-inventory__gear-cell" key={key} data-equip-slot={key} onDragOver={dragOver} onDrop={nativeDrop}>
+            {item ? <SnakeTrigger entity={{ type: "inventory-item", id: item.id }} actions={actions(item)}>
+              <button type="button" onClick={() => inspect(item)} className="u1-inventory__gear-item">{thumb(item)}</button>
+            </SnakeTrigger> : <span className="u1-inventory__gear-empty">◇</span>}
+            <small>{label}</small>
           </div>
-          <small>{items.filter((item) => item.equipped).length} экипировано</small>
-        </header>
-
-        <div className="u1-simple-inventory__equipment-grid">
-          {EQUIPMENT_SLOTS.map((slot) => {
-            const item = equippedBySlot.get(slot.key)
-            return (
-              <div
-                className="u1-simple-inventory__equipment-slot"
-                data-empty={!item || undefined}
-                data-equipment-slot={slot.key}
-                data-simple-drop-equipment={slot.key}
-                key={slot.key}
-                onDragOver={allowDrop}
-                onDrop={(event) => dropEquipment(event, slot.key, item)}
-              >
-                <span>{slot.label}</span>
-                {item ? (
-                  <div className="u1-simple-inventory__equipment-filled">
-                    {itemSlot(item, true)}
-                    <small>Экипировано</small>
-                  </div>
-                ) : (
-                  <div className="u1-simple-inventory__equipment-empty">
-                    <InventoryGlyph kind="equipment" />
-                    <small>Не экипировано</small>
-                  </div>
-                )}
-              </div>
-            )
-          })}
-        </div>
-
-        <div className="u1-simple-inventory__quick">
-          <header>
-            <div>
-              <span>БЫСТРЫЙ ДОСТУП</span>
-              <small>Можно положить любой предмет</small>
-            </div>
-          </header>
-          <div className="u1-simple-inventory__quick-grid">
-            <div
-              className="u1-simple-inventory__quick-slot"
-              data-empty={!quickItem || undefined}
-              data-simple-drop-quick="true"
-              onDragOver={allowDrop}
-              onDrop={dropQuick}
-            >
-              <span>Быстрый доступ</span>
-              {quickItem ? itemSlot(quickItem, true, false) : (
-                <div className="u1-simple-inventory__quick-empty">
-                  <b>+</b>
-                  <small>Перетащи сюда любой предмет</small>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section className="u1-simple-inventory__bags" aria-label="Сумки">
-        <header>
-          <div>
-            <span>КОНТЕЙНЕРЫ</span>
-            <strong>Сумки</strong>
-          </div>
-          <small>{bags.length} шт.</small>
-        </header>
-
-        {bags.length ? (
-          <div className="u1-simple-inventory__bag-stack">
-            {bags.map((bag) => {
-              const children = inventorySimpleChildren(items, bag.id)
-              const capacity = inventorySimpleContainerCapacity(bag)
-              const usage = inventorySimpleContainerUsage(items, bag.id)
-              const emptyCount = Math.max(0, capacity - children.length)
-
-              return (
-                <section
-                  className="u1-simple-inventory__bag-panel"
-                  key={bag.id}
-                  data-bag-id={bag.id}
-                  data-simple-drop-holder={bag.id}
-                  onDragOver={allowDrop}
-                  onDrop={(event) => dropIntoHolder(event, bag.id)}
-                >
-                  <header>
-                    <span className="u1-simple-inventory__bag-icon">
-                      <InventoryGlyph kind={glyphKind(bag)} />
-                    </span>
-                    <div>
-                      <strong>{bag.name}</strong>
-                      <small>{usage.used} / {usage.capacity} ячеек</small>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => selectItem(bag)}
-                      aria-label={"Открыть описание: " + bag.name}
-                    >
-                      ⋯
-                    </button>
-                  </header>
-                  <div className="u1-simple-inventory__slots">
-                    {children.map((item) => itemSlot(item))}
-                    {Array.from({ length: emptyCount }, (_, index) =>
-                      emptySlot(bag.id + ":empty:" + index)
-                    )}
-                  </div>
-                </section>
-              )
-            })}
-          </div>
-        ) : (
-          <div className="u1-simple-inventory__empty-note">
-            Сумок пока нет.
-          </div>
-        )}
-      </section>
-
-      <section
-        className="u1-simple-inventory__contents"
-        data-simple-drop-root="true"
-        onDragOver={allowDrop}
-        onDrop={(event) => dropIntoHolder(event, null)}
-      >
-        <header className="u1-simple-inventory__contents-head">
-          <div>
-            <span className="u1-simple-inventory__contents-glyph" aria-hidden="true">◇</span>
-            <div>
-              <span>ПРИ СЕБЕ</span>
-              <strong>Без сумки</strong>
-            </div>
-          </div>
-          <small>{rootLooseItems.length} предметов</small>
-        </header>
-
-        {rootLooseItems.length ? (
-          <div className="u1-simple-inventory__slots u1-simple-inventory__slots--root">
-            {rootLooseItems.map((item) => itemSlot(item))}
-          </div>
-        ) : (
-          <div className="u1-simple-inventory__empty-note">
-            Здесь пусто. Предметы можно перетаскивать между сумками и этой областью.
-          </div>
-        )}
-      </section>
-
-      {selectedItem ? (
-        <section className="u1-simple-inventory__detail" aria-label="Выбранный предмет">
-          <div className="u1-simple-inventory__detail-main">
-            <span className="u1-simple-inventory__detail-icon">
-              {selectedItem.image_url ? (
-                <img src={selectedItem.image_url} alt="" />
-              ) : (
-                <InventoryGlyph kind={glyphKind(selectedItem)} />
-              )}
-            </span>
-            <div>
-              <small>{categoryLabel(selectedItem)}</small>
-              <strong>{selectedItem.name}</strong>
-              <p>{itemMeta(selectedItem)}</p>
-            </div>
-          </div>
-
-          {selectedItem.description.trim() ? (
-            <p className="u1-simple-inventory__description">
-              {selectedItem.description}
-            </p>
-          ) : null}
-
-          {canControl ? (
-            <div className="u1-simple-inventory__quick-actions">
-              <button
-                type="button"
-                disabled={Boolean(busy)}
-                onClick={() => setQuickAccess(selectedItem, !hasQuickAccess(selectedItem))}
-              >
-                {hasQuickAccess(selectedItem)
-                  ? "Убрать из быстрого доступа"
-                  : "В быстрый доступ"}
-              </button>
-            </div>
-          ) : null}
-
-          {canControl && !selectedItem.equipped ? (
-            <div className="u1-simple-inventory__actions">
-              <label>
-                <span>Переложить без перетаскивания</span>
-                <select
-                  value={targetHolderId}
-                  onChange={(event) => setTargetHolderId(event.target.value)}
-                >
-                  <option value="">При себе</option>
-                  {targets.map((entry) => (
-                    <option
-                      value={entry.container.id}
-                      disabled={entry.full}
-                      key={entry.container.id}
-                    >
-                      {entry.container.name} · {entry.used}/{entry.capacity}
-                      {entry.full ? " · заполнена" : ""}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              <div className="u1-simple-inventory__action-row">
-                <button
-                  type="button"
-                  disabled={Boolean(busy)}
-                  onClick={() => void run(
-                    "move",
-                    () => onMove(selectedItem, targetHolderId || null),
-                    "Предмет переложен.",
-                  )}
-                >
-                  {busy === "move" ? "Перекладываем…" : "Переложить"}
-                </button>
-
-                {selectedItem.category === "equipment" ? (
-                  <button
-                    type="button"
-                    disabled={Boolean(busy)}
-                    onClick={() => void run(
-                      "equip",
-                      () => onEquip(selectedItem),
-                      "Предмет экипирован.",
-                    )}
-                  >
-                    {busy === "equip" ? "…" : "Экипировать"}
-                  </button>
-                ) : null}
-
-                {(selectedItem.usage_mode !== "none" ||
-                  selectedItem.category === "consumable") ? (
-                  <button
-                    type="button"
-                    disabled={Boolean(busy)}
-                    onClick={() => void run(
-                      "use",
-                      () => onUse(selectedItem, 1),
-                      "Предмет использован.",
-                    )}
-                  >
-                    {busy === "use" ? "…" : "Использовать"}
-                  </button>
-                ) : null}
-              </div>
-            </div>
-          ) : null}
-
-          {message ? <div className="u1-simple-inventory__notice">{message}</div> : null}
-          {error ? <div className="u1-simple-inventory__error">{error}</div> : null}
-        </section>
-      ) : error ? (
-        <div className="u1-simple-inventory__error">{error}</div>
-      ) : null}
+        })}
+      </div>
+    </section>
+    <div className="u1-inventory__bags" aria-label="Сумки">
+      <button type="button" className={!currentBag ? "is-active" : ""} data-bag-target=""
+        onDragOver={dragOver} onDrop={nativeDrop} onClick={() => setActiveBagId(null)}>При себе</button>
+      {bags.map((bag) => <SnakeTrigger key={bag.id} entity={{ type: "inventory-item", id: bag.id }} actions={actions(bag)}>
+        <button type="button" className={currentBag?.id === bag.id ? "is-active" : ""}
+          data-bag-target={bag.id} onDragOver={dragOver} onDrop={nativeDrop} onClick={() => setActiveBagId(bag.id)}>
+          <span className="u1-inventory__bag-icon">{thumb(bag)}</span>{bag.name}
+          <small>{inventorySimpleContainerUsage(items, bag.id).used}/{inventorySimpleContainerCapacity(bag)}</small>
+        </button></SnakeTrigger>)}
     </div>
-  )
+    <div className="u1-inventory__search"><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Поиск предметов" aria-label="Поиск предметов" />⌕</div>
+    <div className="u1-inventory__filters">{FILTERS.map((entry) => <button type="button" key={entry}
+      className={entry === filter ? "is-active" : ""} onClick={() => setFilter(entry)}>{entry}</button>)}</div>
+    <section className="u1-inventory__list" aria-label="Предметы">
+      <div className="u1-inventory__list-heading"><strong>{currentBag?.name || "При себе"}</strong><span>{visibleItems.length} предметов</span></div>
+      {visibleItems.length ? visibleItems.map(itemRow) : <p className="u1-inventory__empty">Здесь нет предметов</p>}
+    </section>
+    {error && <div role="alert" className="u1-inventory__error">{error}</div>}
+  </div>
 }

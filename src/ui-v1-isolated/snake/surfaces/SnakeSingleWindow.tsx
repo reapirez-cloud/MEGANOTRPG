@@ -91,9 +91,9 @@ export function SnakeSingleWindow({
       {request.kind === "detail" && (
         <>
           {request.mediaUrl && (
-            <img className="u1-snake-window__media" src={request.mediaUrl} alt="" />
+            <img className="u1-snake-window__media" src={request.mediaUrl} alt="" style={{ objectFit: request.mediaFit || "cover", maxHeight: request.mediaFit === "contain" ? "55dvh" : undefined }} />
           )}
-          {request.body && <p>{request.body}</p>}
+          {request.body && <p style={{ whiteSpace: "pre-wrap" }}>{request.body}</p>}
           <footer className="u1-snake-window__footer">
             <button type="button" data-primary onClick={onClose}>
               Закрыть

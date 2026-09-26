@@ -28,7 +28,7 @@ export default function CharacterInventoryInterface({
     item: InventoryItem,
     holderItemId: string | null,
   ) => Promise<Result>
-  onQuickAccessItem: (item: InventoryItem, enabled: boolean) => Promise<Result>
+  onQuickAccessItem: (item: InventoryItem, slot: number | null) => Promise<Result>
   onSwapItems: (first: InventoryItem, second: InventoryItem) => Promise<Result>
   onEquipItem: (item: InventoryItem) => Promise<Result>
   onUseItem: (item: InventoryItem, amount?: number) => Promise<Result>

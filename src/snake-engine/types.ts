@@ -105,6 +105,7 @@ export type SnakeDetailRequest = SnakeWindowRequestBase & {
   kind: "detail"
   body?: string
   mediaUrl?: string
+  mediaFit?: "contain" | "cover"
 }
 
 export type SnakeMediaItem = {

@@ -549,16 +549,16 @@ export function useUiV1CharacterControl(
 
   const setQuickAccessSimple = useCallback(async (
     item: InventoryItem,
-    enabled: boolean,
+    slot: number | null,
   ): Promise<Result> => {
     if (!canControlCharacter) return { ok: false, error: "Недостаточно прав." }
 
     const { error: quickError } = await supabase.rpc(
-      "set_inventory_quick_access_v1",
+      "set_inventory_quick_slot_v2",
       {
         p_character_id: characterId,
         p_item_id: item.id,
-        p_enabled: enabled,
+        p_slot: slot,
         p_expected_version: item.version,
       },
     )

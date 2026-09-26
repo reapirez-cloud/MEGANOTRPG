@@ -8,10 +8,42 @@ import type { InventoryPlacementTarget } from "../inventory-engine"
 import type { SnakeAction } from "../snake-engine"
 import type { InventoryItem } from "../types/characterSheet"
 import InventorySpatialView from "../ui-v1-isolated/InventorySpatialView"
+import InventorySimpleView from "../ui-v1-isolated/InventorySimpleView"
 import { SnakeProvider } from "../ui-v1-isolated/SnakeProvider"
 import "../ui-v1-isolated/styles.css"
 import "../ui-v1-isolated/snake.css"
 import "../ui-v1-isolated/inventory-spatial.css"
+
+function SimpleHarness() {
+  const [items, setItems] = useState(initialItems.map((entry) => ({ ...entry })))
+  return <main style={{ width: "min(100%, 420px)", minHeight: "100vh", margin: "auto", padding: 12, background: "#121517" }}>
+    <InventorySimpleView items={items} canControl
+      onQuickAccess={async (entry, slot) => {
+        setItems((current) => current.map((candidate) => ({
+          ...candidate,
+          item_state: candidate.id === entry.id
+            ? { ...candidate.item_state, quick_slot: slot }
+            : candidate.item_state?.quick_slot === slot
+              ? { ...candidate.item_state, quick_slot: null }
+              : candidate.item_state,
+        })))
+        return { ok: true }
+      }}
+      onMove={async (entry, holder) => {
+        setItems((current) => current.map((candidate) => candidate.id === entry.id
+          ? { ...candidate, equipped: false, holder_item_id: holder } : candidate))
+        return { ok: true }
+      }}
+      onSwap={async () => ({ ok: true })}
+      onEquip={async (entry) => {
+        setItems((current) => current.map((candidate) => candidate.id === entry.id
+          ? { ...candidate, equipped: true } : candidate))
+        return { ok: true }
+      }}
+      onUse={async () => ({ ok: true })}
+    />
+  </main>
+}
 
 const CHARACTER_ID = "00000000-0000-4000-8000-000000001212"
 const USER_ID = "00000000-0000-4000-8000-000000001213"
@@ -227,7 +259,7 @@ createRoot(root).render(
     <AuthProvider user={user} profile={profile}>
       <AIProvider>
         <SnakeProvider>
-          <Harness />
+          {new URLSearchParams(location.search).has("simple") ? <SimpleHarness /> : <Harness />}
         </SnakeProvider>
       </AIProvider>
     </AuthProvider>
