@@ -10,6 +10,9 @@ const migration = read(
 )
 const runtime = read("supabase/functions/voss-agent/game-chat-runtime.ts")
 const imageTools = read("supabase/functions/voss-agent/image-tools.ts")
+const lowArtOverride = read(
+  "supabase/migrations/20260926124807_ai_gm_low_art_grok46_high_v1.sql",
+)
 
 test("location media publishes into the player character room", () => {
   assert.match(migration, /r\.room_type='character'/)
@@ -49,18 +52,19 @@ test("explicit environment requests bridge game chat to the media pipeline", () 
   assert.match(migration, /to service_role/)
 })
 
-test("location art uses the max 150k target tier even when the slot is low", () => {
+test("automatic location art is hard-clamped to low 50k while testing", () => {
   assert.match(migration, /v_purpose:='master_art'/)
-  assert.match(migration, /'generation_tier'.*'max'/s)
-  assert.match(migration, /'target_token_budget'.*150000/s)
-  assert.match(imageTools, /autoLifecycleLocationMax/)
-  assert.match(imageTools, /quality: "high" as const/)
-  assert.match(imageTools, /ai_gm_location_max_150k/)
+  assert.match(lowArtOverride, /force_ai_gm_media_low_budget_v1/)
+  assert.match(lowArtOverride, /ai_gm_media_stage9_v1/)
+  assert.match(lowArtOverride, /50000/)
+  assert.match(imageTools, /ai_gm_stage9_forced_low_50k/)
+  assert.match(imageTools, /autoLifecycle[\s\S]*quality: "low" as const/)
+  assert.doesNotMatch(imageTools, /ai_gm_location_max_150k/)
 })
 
-test("automatic NPC portraits remain economical", () => {
+test("automatic NPC portraits use the same economical lifecycle clamp", () => {
   assert.match(
     imageTools,
-    /autoLifecycleLocationMax[\s\S]*autoLifecycle[\s\S]*quality: "low" as const/,
+    /autoLifecycle[\s\S]*quality: "low" as const/,
   )
 })
