@@ -150,11 +150,11 @@ function legacyOpenAICompatibleConfig(model: RouterModel) {
 
 function reasoningEffortForModel(model: RouterModel) {
   if (model.model_key === "deepseek-v4.1-flash") return "max"
-  if (model.model_key === "deepseek-v4-pro") return "max"
+  if (model.model_key === "deepseek-v4-pro") return "medium"
   if (model.model_key === "gemini-3.8-flash") return "high"
   if (model.model_key === "mimo-v2.5-pro") return "high"
   if (model.model_key === "gpt-5.6-luna") return "high"
-  if (model.model_key === "grok-4.7" || model.model_key === "grok-4.6") return "high"
+  if (model.model_key === "grok-4.7") return "medium"\n  if (model.model_key === "grok-4.6") return "high"
   return null
 }
 
