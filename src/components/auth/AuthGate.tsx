@@ -19,7 +19,6 @@ type Phase =
   | "ai-character"
   | "ready"
   | "telegram-required"
-  | "not-found"
   | "error"
 
 type TelegramUser = {
@@ -194,8 +193,6 @@ export default function AuthGate({ children }: { children: ReactNode }) {
     }
 
     const rows = (memberships || []) as MembershipRow[]
-    const ownerRows = rows.filter((row) => row.is_owner === true)
-
     const { data: aiWorldRows, error: aiWorldError } = await supabase
       .from("ai_world_slots")
       .select("campaign_id")
@@ -212,26 +209,17 @@ export default function AuthGate({ children }: { children: ReactNode }) {
         .map((row) => row.campaign_id as string | null)
         .filter((value): value is string => Boolean(value)),
     )
-    const standardOwnerRows = ownerRows.filter(
+    const standardRows = rows.filter(
       (row) => !aiCampaignIds.has(row.campaign_id),
     )
     const remembered = rememberedCampaignId()
     const selected =
-      standardOwnerRows.find((row) => row.campaign_id === remembered) ||
-      standardOwnerRows[0] ||
+      standardRows.find((row) => row.campaign_id === remembered) ||
+      standardRows[0] ||
       null
 
     if (!selected) {
-      const { error: signOutError } = await supabase.auth.signOut({ scope: "local" })
-      if (signOutError) {
-        console.warn("Could not clear unauthorized Supabase session:", signOutError.message)
-      }
-      setUser(null)
-      setProfile(null)
-      setCampaign(null)
-      setTelegramUser(null)
-      setError("")
-      setPhase("not-found")
+      setPhase("invite")
       return
     }
 
@@ -294,20 +282,6 @@ export default function AuthGate({ children }: { children: ReactNode }) {
       payload = (await response.json()) as TelegramAuthResponse
     } catch {
       // Keep the generic error below.
-    }
-
-    if (response.status === 404) {
-      const { error: signOutError } = await supabase.auth.signOut({ scope: "local" })
-      if (signOutError) {
-        console.warn("Could not clear unauthorized Supabase session:", signOutError.message)
-      }
-      setUser(null)
-      setProfile(null)
-      setCampaign(null)
-      setTelegramUser(null)
-      setError("")
-      setPhase("not-found")
-      return
     }
 
     if (!response.ok || !payload.token_hash || !payload.telegram_user) {
@@ -866,18 +840,6 @@ export default function AuthGate({ children }: { children: ReactNode }) {
     )
   }
 
-  if (phase === "not-found") {
-    return (
-      <div className="auth-screen">
-        <div className="auth-card">
-          <div className="auth-eyebrow">MEGANOTRPG</div>
-          <h1 className="auth-title">404</h1>
-          <p className="auth-muted">Страница не найдена.</p>
-        </div>
-      </div>
-    )
-  }
-
   if (phase === "error") {
     return (
       <div className="auth-screen">
@@ -922,17 +884,19 @@ export default function AuthGate({ children }: { children: ReactNode }) {
               </span>
             </button>
 
-            <button
-              type="button"
-              className="auth-world-choice auth-world-choice--experimental"
-              onClick={openAiUnlock}
-            >
-              <span className="auth-world-choice__index">02</span>
-              <span className="auth-world-choice__copy">
-                <strong>ИИ мир</strong>
-                <small>Экспериментальное</small>
-              </span>
-            </button>
+            {baseCampaign?.isOwner && (
+              <button
+                type="button"
+                className="auth-world-choice auth-world-choice--experimental"
+                onClick={openAiUnlock}
+              >
+                <span className="auth-world-choice__index">02</span>
+                <span className="auth-world-choice__copy">
+                  <strong>ИИ мир</strong>
+                  <small>Экспериментальное</small>
+                </span>
+              </button>
+            )}
           </div>
         </div>
       </div>

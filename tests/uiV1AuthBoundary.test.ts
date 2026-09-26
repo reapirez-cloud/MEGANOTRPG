@@ -26,8 +26,8 @@ test("UI 1.0 cannot mount outside the complete app access boundary", () => {
 
   assert.match(gate, /\.from\("campaign_members"\)/)
   assert.match(gate, /\.eq\("user_id", currentUser\.id\)/)
-  assert.match(gate, /ownerRows = rows\.filter\(\(row\) => row\.is_owner === true\)/)
-  assert.match(gate, /phase === "not-found"/)
+  assert.match(gate, /const standardRows = rows\.filter\(/)
+  assert.match(gate, /phase === "invite"/)
   assert.match(gate, /phase !== "ready"/)
   assert.match(gate, /<AuthProvider[\s\S]*campaign=\{campaign\}/)
 
@@ -39,33 +39,31 @@ test("UI 1.0 cannot mount outside the complete app access boundary", () => {
 test("remembered campaign id is only a hint after live membership lookup", () => {
   const queryIndex = gate.indexOf('.from("campaign_members")')
   const rememberedIndex = gate.indexOf("const remembered = rememberedCampaignId()")
-  const selectedIndex = gate.indexOf("standardOwnerRows.find")
+  const selectedIndex = gate.indexOf("standardRows.find")
 
   assert.ok(queryIndex >= 0)
   assert.ok(rememberedIndex > queryIndex)
   assert.ok(selectedIndex > rememberedIndex)
   assert.match(
     gate,
-    /standardOwnerRows\.find\(\(row\) => row\.campaign_id === remembered\)/,
+    /standardRows\.find\(\(row\) => row\.campaign_id === remembered\)/,
   )
 })
 
-test("production access is owner-only and unauthorized users see 404", () => {
+test("verified players can enter their campaign and new players can redeem an invite", () => {
   assert.match(
     gate,
-    /if \(!selected\) \{[\s\S]*signOut\(\{ scope: "local" \}\)[\s\S]*setPhase\("not-found"\)[\s\S]*return/,
+    /const standardRows = rows\.filter\([\s\S]*if \(!selected\) \{[\s\S]*setPhase\("invite"\)[\s\S]*return/,
   )
-  assert.match(gate, /response\.status === 404/)
-  assert.match(gate, /<h1 className="auth-title">404<\/h1>/)
-  assert.match(gate, /Страница не найдена\./)
+  assert.match(gate, /"join_campaign_by_invite"/)
+  assert.match(gate, /baseCampaign\?\.isOwner &&/)
+  assert.doesNotMatch(gate, /phase === "not-found"|auth-title">404/)
 
   assert.match(telegramAuth, /\.from\("telegram_identities"\)/)
-  assert.match(telegramAuth, /\.from\("campaign_members"\)/)
-  assert.match(telegramAuth, /\.eq\("is_owner", true\)/)
-  assert.match(telegramAuth, /return json\(res, 404, \{ error: "Not found" \}\)/)
+  assert.doesNotMatch(telegramAuth, /\.from\("campaign_members"\)/)
   assert.match(
     telegramAuth,
-    /linkData\.user\.id !== existingIdentity\.user_id/,
+    /existingIdentity\?\.user_id && linkData\.user\.id !== existingIdentity\.user_id/,
   )
 })
 

@@ -14,6 +14,7 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Runtime and architecture changes
 
+- Вход через Telegram снова доступен участникам кампании без статуса владельца. Существующий игрок попадает в «Мунтар», новый создаёт профиль и вводит код приглашения; заглушка 404 убрана. Несовпадение Telegram и существующей учётной записи по-прежнему отклоняется, а экспериментальный ИИ-мир остаётся доступен владельцу.
 - Перенос предмета в сумку или кошель теперь запускает отложенные проверки Чебурашки до выхода из авторизованного RPC. Монеты больше не откатываются из-за закрытой внутренней проверки экипировки; права приватных функций не расширены.
 - AI GM transient provider errors (429/5xx, timeout and malformed gateway response) now use the same bounded durable continuation rule as Freddy. Junior workers try a different configured model for these temporary failures; bad arguments and permission errors still fail directly.
 - Freddy claims a queued continuation once, checks every durable checkpoint result, and persists each tool outcome before another tool may run. A failed self-dispatch leaves the checkpoint queued for a throttled UI wake instead of falsely marking the turn failed. The chat resumes a stranded queued turn on a later poll.
@@ -21,6 +22,7 @@ This file is the canonical release journal for work accumulated on `dev` before 
 
 ### Tests / verification
 
+- Проверены серверные сценарии нового и существующего Telegram-игрока, отказ при несовпадении идентичности и неверной подписи; проверен маршрут UI через участие в кампании и код приглашения. В рабочей базе все четыре обычных участника имеют Telegram-привязку, код приглашения активен.
 - Проверен перенос золота Кевина в кошель под ролью игрока с откатом транзакции: до исправления воспроизведён отказ 42501; после миграции проверяется результат и отсутствие сохранённых пробных изменений.
 - Added focused recovery classification checks for temporary gateway failures versus permanent command/authorization failures. Build and lint pass; the focused Freddy/recovery tests pass.
 
