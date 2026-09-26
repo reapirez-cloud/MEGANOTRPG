@@ -2,6 +2,19 @@
 
 This file is the canonical release journal for work accumulated on `dev` before promotion to `main`.
 
+## Active patch — 2026-09-26-W
+
+**Status:** OPEN
+**Branch:** `dev`
+**Base main:** `7db504b0277544414eb17511fd16cabfff75aaf5`
+**Started:** 2026-09-26
+
+### Changes
+
+No changes yet.
+
+---
+
 ## Released patches
 
 ## Patch — 2026-09-26-V
@@ -11,6 +24,7 @@ This file is the canonical release journal for work accumulated on `dev` before 
 **Base main:** `0164fb6f6444b3701211f7ebb26222b432e8145d`
 **Started:** 2026-09-26
 **Released:** 2026-09-26
+**Release identity:** `main / 7db504b0277544414eb17511fd16cabfff75aaf5`
 **Promotion source:** `dev / 995283037fc3d727eae247f24b6e571f34312ff9`
 
 ### Changes
