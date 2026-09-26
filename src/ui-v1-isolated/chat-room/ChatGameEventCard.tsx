@@ -773,6 +773,9 @@ function RollRequestCard({ event }: { event: UiChatEvent }) {
   const dcVisibility =
     readString(payload, "dcVisibility", "dc_visibility") || "hidden"
   const dc = payloadNumber(payload, "dc")
+  const chanceToMeetDc = dcVisibility === "public" && dc !== null && modifier !== null
+    ? Math.max(0, Math.min(100, (21 - Math.max(1, Math.min(21, dc - modifier))) * 5))
+    : null
   const resolved =
     status === "resolved" ||
     readString(payload, "status") === "resolved"
@@ -886,6 +889,12 @@ function RollRequestCard({ event }: { event: UiChatEvent }) {
           </span>
         </div>
 
+        {chanceToMeetDc !== null ? (
+          <small className="u1-roll-request-card__waiting">
+            Шанс набрать СЛ: {chanceToMeetDc}% (d20 + {signedRollValue(modifier!)})
+          </small>
+        ) : null}
+
         {!resolved && canResolve ? (
           <button
             type="button"
@@ -917,6 +926,62 @@ function RollRequestCard({ event }: { event: UiChatEvent }) {
   )
 }
 
+function NarrativeResolverCard({ event }: { event: UiChatEvent }) {
+  const payload = isRecord(event.game?.payload) ? event.game!.payload! : {}
+  const roll = payloadNumber(payload, "d100")
+  const matched = isRecord(payload.matchedOutcome) ? payload.matchedOutcome : {}
+  const bands = Array.isArray(payload.outcomeBands)
+    ? payload.outcomeBands.filter(isRecord)
+    : []
+  const presentChance = bands.reduce((sum, band) => {
+    const min = payloadNumber(band, "min")
+    const max = payloadNumber(band, "max")
+    return band.target_present === true && min !== null && max !== null
+      ? sum + max - min + 1
+      : sum
+  }, 0)
+  const hasPresence = bands.some((band) => typeof band.target_present === "boolean")
+
+  return (
+    <article className="u1-room-game-card u1-narrative-resolver-card" data-event-type="roll" aria-label="Бросок мира">
+      <header className="u1-room-game-card__header">
+        <span className="u1-room-game-card__icon" aria-hidden="true"><GameIcon type="roll" /></span>
+        <span className="u1-room-game-card__eyebrow">Бросок мира · d100</span>
+        <time>{formatMessageTime(event.createdAt)}</time>
+      </header>
+      <div className="u1-room-game-card__content">
+        <div className="u1-room-game-card__title">
+          <strong>{readString(payload, "label") || "Случайное событие"}</strong>
+          <small>{payload.reused === true ? "Сохранённый бросок · без переброса" : "Шансы зафиксированы до броска"}</small>
+        </div>
+        {hasPresence ? <p>Вероятность находки: <strong>{presentChance}%</strong></p> : null}
+        <div className="u1-room-roll-stage4__dice" aria-label="Результат d100">
+          {roll !== null ? <DiceGlyph sides={100} value={roll} /> : "—"}
+        </div>
+        <p>Выпало: <strong>{roll ?? "—"}</strong> из 100 · {readString(matched, "description", "label") || "Исход определён"}</p>
+        <details>
+          <summary>Все исходы и вероятности</summary>
+          <ul>
+            {bands.map((band, index) => {
+              const min = payloadNumber(band, "min")
+              const max = payloadNumber(band, "max")
+              if (min === null || max === null) return null
+              const selected = roll !== null && roll >= min && roll <= max
+              return (
+                <li key={readString(band, "key") || index}>
+                  <strong>{min}–{max} ({max - min + 1}%)</strong>
+                  {" · "}{readString(band, "description", "label") || "Исход"}
+                  {selected ? " ← выпало" : ""}
+                </li>
+              )
+            })}
+          </ul>
+        </details>
+      </div>
+    </article>
+  )
+}
+
 export default function ChatGameEventCard({ event }: { event: UiChatEvent }) {
   const presentation = useMemo(() => presentGameEvent(event), [event])
   const [open, setOpen] = useState(false)
@@ -924,6 +989,11 @@ export default function ChatGameEventCard({ event }: { event: UiChatEvent }) {
 
   if (event.type === "roll_request") {
     return <RollRequestCard event={event} />
+  }
+
+  if (event.type === "roll" && isRecord(event.game?.payload) &&
+      event.game.payload.kind === "narrative_resolver") {
+    return <NarrativeResolverCard event={event} />
   }
 
   return (

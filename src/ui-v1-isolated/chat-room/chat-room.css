@@ -5660,3 +5660,22 @@
     padding-bottom: 7px;
   }
 }
+.u1-narrative-resolver-card details {
+  margin-top: 0.55rem;
+  color: #c3c8c9;
+  font-size: 0.78rem;
+}
+
+.u1-narrative-resolver-card summary {
+  cursor: pointer;
+  color: #d5d9d9;
+}
+
+.u1-narrative-resolver-card ul {
+  margin: 0.5rem 0 0;
+  padding-left: 1.1rem;
+}
+
+.u1-narrative-resolver-card li + li {
+  margin-top: 0.35rem;
+}

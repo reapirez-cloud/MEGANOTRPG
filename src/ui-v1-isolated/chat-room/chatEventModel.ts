@@ -126,7 +126,9 @@ export function normalizeChatEvent(
   const aiGmMedia =
     payloadString(message.event_payload, "systemEvent", "system_event") ===
       "ai_gm_media"
-  const aiGmAuthored = aiGmOutput || aiGmRollRequest || aiGmMedia
+  const aiGmResolver =
+    payloadString(message.event_payload, "kind") === "narrative_resolver"
+  const aiGmAuthored = aiGmOutput || aiGmRollRequest || aiGmMedia || aiGmResolver
 
   if (message.event_kind === "roll") {
     type = "roll"

@@ -9,6 +9,9 @@ export type RandomDecisionContext = {
   campaignId: string
   campaignDay: number
   runKey: string
+  // Primary GM authorization uses the running agent_jobs UUID; runKey is the
+  // narrative identity and may be a source/day string.
+  jobId?: string
   surface: RandomDecisionSurface
   sourceMessageId?: string
   sourceCharacterId?: string
@@ -249,7 +252,6 @@ export async function executeRandomDecision(
   const reason = text(args.reason, 1200)
   const targetScope = text(args.target_scope, 32).toLowerCase()
   const targetId = text(args.target_id, 240)
-  const outcomeBands = cleanBands(args.outcome_bands)
   const decisionKind = text(args.decision_kind, 40).toLowerCase()
   const claimBasis = text(args.claim_basis, 64).toLowerCase()
   const rarityClass = text(args.rarity_class, 40).toLowerCase()
@@ -317,42 +319,6 @@ export async function executeRandomDecision(
       throw new Error("random_decision_search_category_required")
     }
 
-    const presenceFlags = outcomeBands.map((band) =>
-      (band as JsonRecord).target_present
-    )
-    if (presenceFlags.some((value) => typeof value !== "boolean")) {
-      throw new Error("random_decision_discovery_presence_flags_required")
-    }
-
-    for (const band of outcomeBands) {
-      const row = band as JsonRecord
-      const payload = record(row.payload)
-      const worldExistence = text(payload.stage17_world_existence, 16).toLowerCase()
-      if (worldExistence !== "exists" && worldExistence !== "absent") {
-        throw new Error("random_decision_discovery_world_existence_required")
-      }
-      if (
-        (row.target_present === true && worldExistence !== "exists") ||
-        (row.target_present === false && worldExistence !== "absent")
-      ) {
-        throw new Error("random_decision_discovery_world_existence_mismatch")
-      }
-    }
-
-    const presentPercent = outcomeBands.reduce((total, band) => {
-      const row = band as JsonRecord
-      return row.target_present === true
-        ? total + Number(row.max) - Number(row.min) + 1
-        : total
-    }, 0)
-    const maxPresent =
-      DISCOVERY_MAX_PRESENT_PERCENT[
-        rarityClass as keyof typeof DISCOVERY_MAX_PRESENT_PERCENT
-      ]
-    if (presentPercent > maxPresent) {
-      throw new Error("random_decision_discovery_probability_too_high")
-    }
-
     if (context.surface === "primary_gm") {
       decisionRunKey = [
         "day",
@@ -370,25 +336,81 @@ export async function executeRandomDecision(
     decisionRunKey,
     decisionLocalKey,
   )
+  const authorizedRunKey = context.surface === "primary_gm"
+    ? context.jobId
+    : context.runKey
+  if (!authorizedRunKey) throw new Error("random_decision_job_id_required")
+
+  // A previous search of this category already fixed its odds and d100 result.
+  // Read it before checking the model's new proposal, which may use different
+  // wording or invalid odds and must never change the existing pool.
+  let existingPool: JsonRecord = {}
+  if (decisionKind === "world_discovery" && context.surface === "primary_gm") {
+    const lookup = await context.admin.rpc("lookup_ai_gm_discovery_pool_v1", {
+      p_campaign_id: context.campaignId,
+      p_job_id: context.jobId,
+      p_decision_key: decisionKey,
+      p_campaign_day: context.campaignDay,
+      p_target_scope: targetScope,
+      p_target_id: targetId,
+    })
+    if (lookup.error) throw new Error(lookup.error.message)
+    existingPool = record(lookup.data)
+  }
+
+  const outcomeBands = existingPool.commit_id ? [] : cleanBands(args.outcome_bands)
+  if (decisionKind === "world_discovery" && !existingPool.commit_id) {
+    const presenceFlags = outcomeBands.map((band) =>
+      (band as JsonRecord).target_present
+    )
+    if (presenceFlags.some((value) => typeof value !== "boolean")) {
+      throw new Error("random_decision_discovery_presence_flags_required")
+    }
+    for (const band of outcomeBands) {
+      const row = band as JsonRecord
+      const worldExistence = text(record(row.payload).stage17_world_existence, 16).toLowerCase()
+      if (worldExistence !== "exists" && worldExistence !== "absent") {
+        throw new Error("random_decision_discovery_world_existence_required")
+      }
+      if (
+        (row.target_present === true && worldExistence !== "exists") ||
+        (row.target_present === false && worldExistence !== "absent")
+      ) {
+        throw new Error("random_decision_discovery_world_existence_mismatch")
+      }
+    }
+    const presentPercent = outcomeBands.reduce((total, band) => {
+      const row = band as JsonRecord
+      return row.target_present === true
+        ? total + Number(row.max) - Number(row.min) + 1
+        : total
+    }, 0)
+    const maxPresent = DISCOVERY_MAX_PRESENT_PERCENT[
+      rarityClass as keyof typeof DISCOVERY_MAX_PRESENT_PERCENT
+    ]
+    if (presentPercent > maxPresent) {
+      throw new Error("random_decision_discovery_probability_too_high")
+    }
+  }
 
   // Stage 11 protocol is intentionally two RPCs.
   // The first transaction durably commits the question and all outcome bands.
   // Only after it succeeds may the second transaction generate/return a roll.
-  const committed = await context.admin.rpc("commit_random_decision_v1", {
+  const committed = existingPool.commit_id ? null : await context.admin.rpc("commit_random_decision_v1", {
     p_campaign_id: context.campaignId,
     p_decision_key: decisionKey,
     p_question: question,
     p_bands: outcomeBands,
     p_campaign_day: context.campaignDay,
-    p_run_key: decisionRunKey,
+    p_run_key: authorizedRunKey,
     p_target_scope: targetScope,
     p_target_id: targetId,
     p_caller_surface: context.surface,
     p_reason: reason,
   })
-  if (committed.error) throw new Error(committed.error.message)
+  if (committed?.error) throw new Error(committed.error.message)
 
-  const commit = record(committed.data)
+  const commit = committed ? record(committed.data) : existingPool
   const commitId = text(commit.commit_id, 100)
   if (!commitId) throw new Error("random_decision_commit_id_missing")
 
@@ -402,9 +424,17 @@ export async function executeRandomDecision(
   const receipt = record(resolution.receipt)
   const matched = record(receipt.matched_outcome)
 
+  if (context.surface === "primary_gm") {
+    const published = await context.admin.rpc("publish_ai_gm_random_decision_v1", {
+      p_job_id: context.jobId,
+      p_commit_id: commitId,
+    })
+    if (published.error) throw new Error(published.error.message)
+  }
+
   return {
     decision_key: decisionKey,
-    question,
+    question: text(resolution.question, 1600) || question,
     roll: receipt.result,
     matched_outcome_key: receipt.matched_outcome_key,
     matched_outcome: matched,
@@ -414,7 +444,7 @@ export async function executeRandomDecision(
     rarity_class: decisionKind === "world_discovery" ? rarityClass : null,
     search_category: decisionKind === "world_discovery" ? searchCategory : null,
     canonical_evidence_ids: canonicalEvidenceIds,
-    commit_replayed: commit.replayed === true,
+    commit_replayed: Boolean(existingPool.commit_id) || commit.replayed === true,
     roll_replayed: resolution.replayed === true,
     instruction:
       "Follow matched_outcome exactly. Do not reroll, remap bands or replace the decided branch.",
