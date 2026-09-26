@@ -155,3 +155,51 @@ test("legacy adapter ignores malformed persisted feature mechanics instead of br
   assert.equal(view.contract.name, "Kevin")
   assert.equal(view.contract.capabilities.features.some((entry) => entry.key === "bad-feature"), true)
 })
+
+
+test("legacy adapter keeps different catalog spells separate when their localized names collide", () => {
+  const hex = spell({
+    id: "hex-row",
+    catalog_spell_id: "catalog-hex",
+    name: "Сглаз",
+    spell_level: 1,
+    school: "Enchantment",
+    cast_mode: "slot",
+    slot_level: 1,
+  })
+  const eyebite = spell({
+    id: "eyebite-row",
+    catalog_spell_id: "catalog-eyebite",
+    name: "Сглаз",
+    spell_level: 6,
+    school: "Necromancy",
+    cast_mode: "slot",
+    slot_level: 6,
+  })
+
+  const view = resolveLegacyCharacterEngineView({
+    character: { id: "c1", name: "Kevin", level: 14 },
+    sheet: sheet({
+      spell_slots: {
+        "1": { max: 1, used: 0 },
+        "6": { max: 1, used: 0 },
+      },
+    }),
+    spells: [hex, eyebite],
+    features: [],
+    inventoryContributions: [],
+    resourceStates: {},
+    templateBundles: [],
+    suppressedSourceIds: new Set<string>(),
+  })
+
+  assert.equal(view.contract.spells.length, 2)
+  assert.deepEqual(
+    view.contract.spells.map((entry) => [entry.identity.name, entry.identity.level, entry.identity.school]),
+    [
+      ["Сглаз", 1, "Enchantment"],
+      ["Сглаз", 6, "Necromancy"],
+    ],
+  )
+  assert.notEqual(view.contract.spells[0]!.key, view.contract.spells[1]!.key)
+})
