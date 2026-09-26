@@ -180,6 +180,54 @@ A player on day 3 cannot see state from day 5.
 
 Irreversible future events must not leak backward through canonical base rows.
 
+# Context Resolver retrieval
+
+**Status: IMPLEMENTED — 2026-09-26**
+
+This is separate from World Resolver randomness.
+
+Runtime flow:
+
+```text
+player turn
+  ↓
+deterministic Context Resolver
+  ↓
+search the entire eligible campaign corpus
+  ↓
+rank by canonical entity links + tags/aliases + text + scene relevance
+  ↓
+apply visibility + game-time boundaries
+  ↓
+bounded one-hop graph expansion
+  ↓
+small evidence pack to PRIMARY AI GM
+```
+
+Locked rules:
+
+- never pre-limit campaign memory to the most recent N rows before relevance search;
+- limits are output limits applied only after retrieval/ranking;
+- canonical UUID/entity links and evidence provenance outrank lexical tags;
+- hidden tags and aliases improve recall but never create canon;
+- Russian morphology and exact/simple-token fallback both participate in retrieval;
+- retrieved memory may expand one bounded hop to linked NPC/location/faction/quest/quest-target/relationship evidence;
+- source campaign events for selected memory facts remain attached as provenance;
+- Living Lore/news/rumors are retrievable knowledge artifacts, not automatically objective world truth;
+- visibility and split-party temporal boundaries apply before evidence reaches the primary GM;
+- the room's last 50 visible messages survive location changes, retaining each message's own location/time snapshot.
+
+Junior indexing:
+
+- every durable memory fact receives hidden `search_tags`, `search_aliases`, `relation_keys` and `entity_refs`;
+- juniors reuse the existing retrieval tag dictionary instead of inventing synonyms for the same concept;
+- the server automatically preserves source-event evidence links and recognized subject links;
+- UUIDs may only come from canonical context/evidence and are never invented by the model.
+
+The optional **pre-GM junior context gatherer** remains a separate open question below. It is not required for this deterministic resolver.
+
+---
+
 # Open design questions
 
 ## Pre-GM junior context gatherer
