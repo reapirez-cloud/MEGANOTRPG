@@ -178,7 +178,13 @@ export function useChatRoomEvents(roomId: string) {
     const rawMessages = ((messagesResult.data || []) as ChatMessage[]).reverse()
     const normalized = await normalizeRows(rawMessages)
 
-    setEvents((current) => mergeEvents(current, normalized))
+    setEvents((current) => {
+      if (rawMessages.length < MESSAGE_LIMIT) return normalized
+
+      const firstLatestId = rawMessages[0]?.id ?? Number.POSITIVE_INFINITY
+      const older = current.filter((event) => event.id < firstLatestId)
+      return mergeEvents(older, normalized)
+    })
     setRefreshing(false)
   }, [normalizeRows, roomId])
 
@@ -234,12 +240,39 @@ export function useChatRoomEvents(roomId: string) {
       .on(
         "postgres_changes",
         {
-          event: "*",
+          event: "INSERT",
           schema: "public",
           table: "chat_messages",
           filter: `room_id=eq.${roomId}`,
         },
         refreshSoon,
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "chat_messages",
+          filter: `room_id=eq.${roomId}`,
+        },
+        refreshSoon,
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "DELETE",
+          schema: "public",
+          table: "chat_messages",
+        },
+        (payload) => {
+          const removed = payload.old as Partial<ChatMessage>
+          if (removed.id != null) {
+            setEvents((current) =>
+              current.filter((event) => event.id !== removed.id)
+            )
+          }
+          refreshSoon()
+        },
       )
       .subscribe()
 
