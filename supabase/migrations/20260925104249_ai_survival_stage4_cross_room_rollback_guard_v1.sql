@@ -141,13 +141,12 @@ begin
   loop
     insert into private.character_survival_runtime(
       character_id,campaign_id,satiety_remainder,alertness_remainder,
-      created_at,updated_at
+      updated_at
     ) values (
       (v_row->>'character_id')::uuid,
       (v_row->>'campaign_id')::uuid,
       coalesce((v_row->>'satiety_remainder')::integer,0),
       coalesce((v_row->>'alertness_remainder')::integer,0),
-      coalesce((v_row->>'created_at')::timestamptz,now()),
       now()
     )
     on conflict(character_id) do update set
