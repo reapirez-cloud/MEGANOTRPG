@@ -14,7 +14,6 @@ type Phase =
   | "profile"
   | "invite"
   | "world-select"
-  | "ai-unlock"
   | "ai-slots"
   | "ai-slot-unlock"
   | "ai-character"
@@ -73,8 +72,8 @@ type AiWorldCharacterBootstrap = {
 }
 
 const CAMPAIGN_STORAGE_KEY = "meganotrpg:v1:campaign-id"
-const AI_WORLD_PASSWORD = [1, 4, 8, 8].join("")
 const AI_WORLD_SLOT_COUNT = 5
+const PROTECTED_AI_WORLD_SLOT_ID = "7c911141-669c-469c-bc40-2e898841774c"
 
 function isLocalDevelopment() {
   return (
@@ -147,7 +146,6 @@ export default function AuthGate({ children }: { children: ReactNode }) {
   const [inviteCode, setInviteCode] = useState("")
   const [saving, setSaving] = useState(false)
   const [joining, setJoining] = useState(false)
-  const [aiPassword, setAiPassword] = useState("")
   const [aiSlots, setAiSlots] = useState<AiWorldSlot[]>([])
   const [aiSlotNames, setAiSlotNames] = useState<Record<string, string>>({})
   const [aiSlotsLoading, setAiSlotsLoading] = useState(false)
@@ -230,7 +228,6 @@ export default function AuthGate({ children }: { children: ReactNode }) {
     setCampaign(selectedAccess)
     setBaseCampaign(selectedAccess)
     setSelectedAiSlot(null)
-    setAiPassword("")
     setError("")
     setPhase("world-select")
   }
@@ -512,12 +509,6 @@ export default function AuthGate({ children }: { children: ReactNode }) {
     setPhase("ready")
   }
 
-  function openAiUnlock() {
-    setAiPassword("")
-    setError("")
-    setPhase("ai-unlock")
-  }
-
   async function loadAiSlots() {
     if (!user || aiSlotsLoading) return
 
@@ -555,18 +546,6 @@ export default function AuthGate({ children }: { children: ReactNode }) {
       Object.fromEntries(slots.map((slot) => [slot.id, slot.name])),
     )
     setPhase("ai-slots")
-  }
-
-  async function unlockAiWorld(event: FormEvent) {
-    event.preventDefault()
-
-    if (aiPassword !== AI_WORLD_PASSWORD) {
-      setError("Неверный пароль.")
-      return
-    }
-
-    setError("")
-    await loadAiSlots()
   }
 
   async function persistAiSlotName(slot: AiWorldSlot) {
@@ -610,7 +589,7 @@ export default function AuthGate({ children }: { children: ReactNode }) {
   async function openAiSlot(slot: AiWorldSlot, accessCode?: string) {
     if (aiSlotSaving || !user) return
 
-    if (slot.slot_index === 1 && accessCode === undefined) {
+    if (slot.id === PROTECTED_AI_WORLD_SLOT_ID && accessCode === undefined) {
       setSelectedAiSlot(slot)
       setAiSlotPassword("")
       setError("")
@@ -906,7 +885,7 @@ export default function AuthGate({ children }: { children: ReactNode }) {
               <button
                 type="button"
                 className="auth-world-choice auth-world-choice--experimental"
-                onClick={openAiUnlock}
+                onClick={() => void loadAiSlots()}
               >
                 <span className="auth-world-choice__index">02</span>
                 <span className="auth-world-choice__copy">
@@ -917,55 +896,6 @@ export default function AuthGate({ children }: { children: ReactNode }) {
             )}
           </div>
         </div>
-      </div>
-    )
-  }
-
-  if (phase === "ai-unlock") {
-    return (
-      <div className="auth-screen">
-        <form className="auth-card" onSubmit={unlockAiWorld}>
-          <div className="auth-eyebrow">ИИ МИР · ЭКСПЕРИМЕНТАЛЬНОЕ</div>
-          <h1 className="auth-title">Закрытый вход</h1>
-          <p className="auth-muted">
-            Введи пароль, чтобы открыть экспериментальные миры.
-          </p>
-
-          <label className="auth-label" htmlFor="ai-world-password">
-            Пароль
-          </label>
-          <input
-            id="ai-world-password"
-            type="password"
-            inputMode="numeric"
-            className="auth-input"
-            value={aiPassword}
-            onChange={(event) => setAiPassword(event.target.value)}
-            autoFocus
-            autoComplete="off"
-          />
-
-          {error && <div className="auth-error">{error}</div>}
-
-          <button
-            type="submit"
-            className="auth-primary"
-            disabled={aiSlotsLoading || aiPassword.length === 0}
-          >
-            {aiSlotsLoading ? "Открываем…" : "Войти"}
-          </button>
-
-          <button
-            type="button"
-            className="auth-secondary"
-            onClick={() => {
-              setError("")
-              setPhase("world-select")
-            }}
-          >
-            Назад
-          </button>
-        </form>
       </div>
     )
   }
@@ -990,8 +920,8 @@ export default function AuthGate({ children }: { children: ReactNode }) {
           <div className="auth-eyebrow">ИИ МИР · КОМНАТА 01</div>
           <h1 className="auth-title">{slotTitle}</h1>
           <p className="auth-muted">
-            Первая комната закрыта отдельным паролем. Остальные комнаты ИИ
-            доступны без этого дополнительного замка.
+            Эта первая тестовая комната закрыта отдельным паролем. Остальные
+            комнаты ИИ доступны без этого дополнительного замка.
           </p>
 
           <label className="auth-label" htmlFor="ai-slot-password">
